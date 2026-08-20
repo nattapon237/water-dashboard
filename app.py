@@ -3,9 +3,15 @@ import numpy as np
 import pandas as pd
 import requests
 import json
+import time
 
 st.set_page_config(page_title="EEC Community Water Intelligence System", page_icon="💧", layout="wide")
 
+# --- Firebase Configuration (cwis-c2ea8) ---
+FIREBASE_WEB_API_KEY = "AIzaSyAK_swKTrfzsH-_BKHLU40ilTWfyNBqNHA"
+FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatabase.app"
+
+# สไตล์ CSS
 st.markdown("""
     <style>
     .status-normal { color: #2e7d32; font-weight: bold; }
@@ -14,13 +20,88 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.sidebar.title("🎛️ เซนเซอร์ / Input Control")
-ph = st.sidebar.slider("pH Level (ความเป็นกรด-ด่าง)", 0.0, 14.0, 6.4, 0.1)
-tds = st.sidebar.slider("EC / TDS (ppm) (ความขุ่น/สารละลาย)", 0, 2000, 850, 10)
-temp = st.sidebar.slider("Temperature (°C) (อุณหภูมิ)", 10.0, 50.0, 31.0, 0.5)
-do = st.sidebar.slider("DO (mg/L) (ออกซิเจนในน้ำ)", 0.0, 12.0, 4.2, 0.1)
-turbidity = st.sidebar.slider("Turbidity (NTU) (ความขุ่นสะสม)", 0.0, 500.0, 45.0, 1.0)
+# 1. ฟังก์ชันรับ Auth Token จาก Firebase Anonymous Authentication
+@st.cache_data(ttl=3000)
+def get_firebase_token():
+    auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_WEB_API_KEY}"
+    try:
+        res = requests.post(auth_url, json={"returnSecureToken": True}, timeout=5)
+        if res.status_code == 200:
+            return res.json().get("idToken")
+        return None
+    except Exception:
+        return None
 
+# 2. ฟังก์ชันอ่านข้อมูลจาก Realtime Database
+def read_sensor_data(id_token):
+    if not id_token:
+        return None
+    url = f"{FIREBASE_DB_URL}/devices/uno-r4/status.json?auth={id_token}"
+    try:
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200:
+            return res.json()
+        return None
+    except Exception:
+        return None
+
+# 3. ฟังก์ชันจำลองส่งข้อมูลขึ้น Firebase
+def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, do_val, turb_val):
+    if not id_token:
+        return False
+    url = f"{FIREBASE_DB_URL}/devices/uno-r4/status.json?auth={id_token}"
+    payload = {
+        "ph": ph_val,
+        "tds": tds_val,
+        "temp": temp_val,
+        "do": do_val,
+        "turbidity": turb_val,
+        "updatedAt": int(time.time())
+    }
+    try:
+        res = requests.put(url, json=payload, timeout=5)
+        return res.status_code == 200
+    except Exception:
+        return False
+
+# ตรวจสอบการเชื่อมต่อ Auth
+id_token = get_firebase_token()
+
+st.sidebar.title("🔥 สถานะ Firebase")
+if id_token:
+    st.sidebar.success("🟢 เชื่อมต่อ RTDB สำเร็จ")
+else:
+    st.sidebar.error("🔴 ขาดการเชื่อมต่อ Firebase")
+
+st.sidebar.markdown("---")
+st.sidebar.title("🎛️ เซนเซอร์ / Input Control")
+sim_ph = st.sidebar.slider("pH Level (ความเป็นกรด-ด่าง)", 0.0, 14.0, 6.4, 0.1)
+sim_tds = st.sidebar.slider("EC / TDS (ppm) (ความขุ่น/สารละลาย)", 0, 2000, 850, 10)
+sim_temp = st.sidebar.slider("Temperature (°C) (อุณหภูมิ)", 10.0, 50.0, 31.0, 0.5)
+sim_do = st.sidebar.slider("DO (mg/L) (ออกซิเจนในน้ำ)", 0.0, 12.0, 4.2, 0.1)
+sim_turb = st.sidebar.slider("Turbidity (NTU) (ความขุ่นสะสม)", 0.0, 500.0, 45.0, 1.0)
+
+if st.sidebar.button("📤 ส่งค่าจำลองขึ้น Firebase", use_container_width=True):
+    if write_mock_sensor_data(id_token, sim_ph, sim_tds, sim_temp, sim_do, sim_turb):
+        st.sidebar.success("✅ บันทึกค่าขึ้น Firebase เรียบร้อย!")
+        st.rerun()
+    else:
+        st.sidebar.error("❌ บันทึกไม่สำเร็จ")
+
+# ดึงค่าล่าสุดจาก Firebase RTDB
+live_data = read_sensor_data(id_token)
+if live_data and isinstance(live_data, dict) and "ph" in live_data:
+    ph = float(live_data.get("ph", sim_ph))
+    tds = int(live_data.get("tds", sim_tds))
+    temp = float(live_data.get("temp", sim_temp))
+    do = float(live_data.get("do", sim_do))
+    turbidity = float(live_data.get("turbidity", sim_turb))
+    data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database (`/devices/uno-r4/status`)"
+else:
+    ph, tds, temp, do, turbidity = sim_ph, sim_tds, sim_temp, sim_do, sim_turb
+    data_source_badge = "⚠️ ยังไม่มีข้อมูลสดใน Firebase (กำลังใช้ค่าจำลองจากแถบด้านข้าง)"
+
+# ฟังก์ชันคำนวณความเสี่ยง
 def calculate_risk(ph, tds, temp, do, turbidity):
     risk_score = 0
     reasons = []
@@ -66,11 +147,13 @@ else:
     status_label = "🟢 ปกติ (Normal)"
     status_color = "status-normal"
 
+# จัดการแท็บหน้าเว็บ
 tab1, tab2 = st.tabs(["📊 EEC Water Overview (หน้าแรก)", "🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน"])
 
 with tab1:
     st.title("💧 EEC Community Water Overview")
     st.caption("ระบบเฝ้าระวังและประเมินความเสี่ยงคุณภาพน้ำอัจฉริยะเพื่อการอุปโภค บริโภค และการเกษตรของชุมชน")
+    st.info(data_source_badge)
     st.markdown("---")
 
     col_score1, col_score2 = st.columns([1, 2])
@@ -99,7 +182,10 @@ with tab1:
 
     st.markdown("---")
     st.subheader("📈 แนวโน้มความแปรปรวนคุณภาพน้ำย้อนหลัง (Community Water Trends)")
-    chart_data = pd.DataFrame(np.random.randn(20, 3) + [tds/100, ph*10, do*10], columns=['ความขุ่น/สารละลาย (TDS)', 'ค่าความเป็นกรด-ด่าง (pH)', 'ออกซิเจนในน้ำ (DO)'])
+    chart_data = pd.DataFrame(
+        np.random.randn(20, 3) + [tds / 100, ph * 10, do * 10],
+        columns=['ความขุ่น/สารละลาย (TDS)', 'ค่าความเป็นกรด-ด่าง (pH)', 'ออกซิเจนในน้ำ (DO)']
+    )
     st.line_chart(chart_data)
 
 with tab2:
