@@ -16,61 +16,57 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# --- High-Tech Clean Dark Theme CSS ---
+# --- High-Tech Modern Dark Theme CSS (Fixed UI Layout) ---
 st.markdown("""
     <style>
-    /* ภาพรวมพื้นหลัง */
     .stApp {
-        background-color: #070f1e;
-        color: #f1f5f9;
+        background-color: #050b14;
+        color: #f8fafc;
         font-family: 'Segoe UI', sans-serif;
     }
     
-    /* Sidebar สไตล์ดาร์กโมเดิร์น */
     [data-testid="stSidebar"] {
-        background-color: #0b192c;
+        background-color: #091526;
         color: #ffffff;
+        border-right: 1px solid #1e293b;
     }
     
-    /* การ์ดข้อมูล (Clean Tech Card) */
-    .metric-card {
-        background-color: #0b192c;
-        border: 1px solid #1e3e62;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        margin-bottom: 15px;
+    /* ดีไซน์การ์ดเนื้อหาให้คลุมทับเนื้อหาภายในสวยงาม ไม่ว่างเปล่า */
+    .tech-card {
+        background: linear-gradient(135deg, #0b1a30 0%, #071120 100%);
+        border: 1px solid #1e3a8a;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        margin-bottom: 20px;
     }
     
-    /* หัวข้อและตัวหนังสือ */
     h1, h2, h3 {
         color: #38bdf8 !important;
-        font-weight: 600;
+        font-weight: 700;
     }
     
-    p, span, label, .stMarkdown {
+    p, span, label, .stMarkdown, li {
         color: #cbd5e1 !important;
     }
 
-    /* สถานะ */
-    .status-normal { color: #34d399; font-weight: bold; }
-    .status-warning { color: #fbbf24; font-weight: bold; }
-    .status-danger { color: #f87171; font-weight: bold; }
+    .status-normal { color: #34d399 !important; font-weight: bold; }
+    .status-warning { color: #fbbf24 !important; font-weight: bold; }
+    .status-danger { color: #f87171 !important; font-weight: bold; }
 
-    /* ปุ่มกดไฮเทค */
     .stButton>button {
-        background: linear-gradient(135deg, #0284c7, #0ea5e9);
+        background: linear-gradient(135deg, #0284c7, #2563eb);
         color: white;
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
         font-weight: 600;
-        padding: 0.5rem 1rem;
-        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        padding: 0.6rem 1.2rem;
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
         transition: 0.3s;
     }
     .stButton>button:hover {
         background: linear-gradient(135deg, #0ea5e9, #38bdf8);
-        color: #070f1e;
+        color: #ffffff;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -210,7 +206,7 @@ else:
     status_label = "🟢 ปกติ (Normal)"
     status_color = "status-normal"
 
-# --- ระบบแจ้งเตือนอัตโนมัติ (Background Automation Logic) ---
+# --- ระบบแจ้งเตือนอัตโนมัติ ---
 now = datetime.now()
 current_time_str = now.strftime("%H:%M")
 current_date_str = now.strftime("%Y-%m-%d")
@@ -270,31 +266,31 @@ with tab1:
     st.info(data_source_badge)
     st.markdown("---")
 
-    # --- แถวที่ 1: แสดงค่าเซนเซอร์หลักแบบ Live Metrics ทั้งหมดในแถวเดียว (อ่านง่าย ชัดเจน) ---
+    # แถวที่ 1: Live Sensor Metrics (อยู่ในกรอบการ์ดทั้งหมด)
     st.markdown("### 🔬 Live Sensor Metrics (ข้อมูลเซนเซอร์ปัจจุบัน)")
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     
     with col1:
-        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>pH</h4><h2>{ph:.1f}</h2><p>ความเป็นกรด-ด่าง</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>pH</h4><h2>{ph:.1f}</h2><p>ความเป็นกรด-ด่าง</p></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>TDS</h4><h2>{tds:.1f}</h2><p>ppm</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>TDS</h4><h2>{tds:.1f}</h2><p>ppm</p></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>Temp</h4><h2>{temp:.1f}</h2><p>°C</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>Temp</h4><h2>{temp:.1f}</h2><p>°C</p></div>', unsafe_allow_html=True)
     with col4:
-        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>DO</h4><h2>{do_val:.1f}</h2><p>mg/L</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>DO</h4><h2>{do_val:.1f}</h2><p>mg/L</p></div>', unsafe_allow_html=True)
     with col5:
-        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>Turbidity</h4><h2>{turbidity:.1f}</h2><p>NTU</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>Turbidity</h4><h2>{turbidity:.1f}</h2><p>NTU</p></div>', unsafe_allow_html=True)
     with col6:
         sys_status_text = "Online" if live_data else "Simulated"
-        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>System</h4><h2>{sys_status_text}</h2><p>Status</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>System</h4><h2>{sys_status_text}</h2><p>Status</p></div>', unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # --- แถวที่ 2: AI Risk Score & สรุปสถานการณ์ (ซ้าย) + กราฟแนวโน้ม (ขวา) ---
+    # แถวที่ 2: AI Risk Score & กราฟแนวโน้ม
     col_left, col_right = st.columns([1, 1.5], gap="large")
     
     with col_left:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.markdown('<div class="tech-card">', unsafe_allow_html=True)
         st.markdown("### 🤖 AI Water Risk Score")
         st.metric(label="ดัชนีความเสี่ยงรวมของชุมชน", value=f"{risk_score}%")
         st.markdown(f"สถานะปัจจุบัน: <span class='{status_color}'>{status_label}</span>", unsafe_allow_html=True)
@@ -309,7 +305,7 @@ with tab1:
         st.markdown('</div>', unsafe_allow_html=True)
         
     with col_right:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.markdown('<div class="tech-card">', unsafe_allow_html=True)
         st.markdown("### 📈 แนวโน้มความแปรปรวนของคุณภาพน้ำ")
         chart_data = pd.DataFrame(
             np.random.randn(15, 3) + [tds / 100, do_val * 2, turbidity / 100],
@@ -319,30 +315,35 @@ with tab1:
         st.markdown('</div>', unsafe_allow_html=True)
 
 with tab2:
-    st.title("🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน")
-    st.caption("แนวทางปฏิบัติเชิงรุกสำหรับผู้นำชุมชน คณะกรรมการประปาหมู่บ้าน และกลุ่มเกษตรกร")
+    st.markdown("## 🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน")
+    st.markdown("แนวทางปฏิบัติเชิงรุกสำหรับผู้นำชุมชน คณะกรรมการประปาหมู่บ้าน และกลุ่มเกษตรกร")
     st.markdown("---")
     
     col_action1, col_action2 = st.columns(2, gap="large")
+    
     with col_action1:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("#### 🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน")
+        # หุ้มเนื้อหาทั้งหมดภายใน .tech-card เพื่อป้องกันกล่องว่างเปล่า
+        st.markdown('<div class="tech-card">', unsafe_allow_html=True)
+        st.markdown("### 🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน")
+        st.markdown("<br>", unsafe_allow_html=True)
         if risk_score < 30:
-            st.write("1. **แจกจ่ายน้ำปกติ:** ระบบประปาหมู่บ้านใช้งานได้ตามปกติ")
-            st.write("2. **จัดเก็บข้อมูล:** บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง")
+            st.markdown("1. **แจกจ่ายน้ำปกติ:** ระบบประปาหมู่บ้านใช้งานได้ตามปกติ")
+            st.markdown("2. **จัดเก็บข้อมูล:** บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง")
         elif risk_score < 60:
-            st.write("1. 📢 **แจ้งเตือนเกษตรกร:** สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง")
-            st.write("2. ⚙️ **ปรับระบบกรอง:** เพิ่มระยะเวลาการตกตะกอนในระบบประปา")
-            st.write("3. 🌊 **เติมออกซิเจน:** ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ")
+            st.markdown("1. 📢 **แจ้งเตือนเกษตรกร:** สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง")
+            st.markdown("2. ⚙️ **ปรับระบบกรอง:** เพิ่มระยะเวลาการตกตะกอนในระบบประปา")
+            st.markdown("3. 🌊 **เติมออกซิเจน:** ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ")
         else:
-            st.write("1. 🚫 **งดใช้น้ำชั่วคราว:** ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน")
-            st.write("2. 🚰 **ใช้แหล่งน้ำสำรอง:** เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน")
+            st.markdown("1. 🚫 **งดใช้น้ำชั่วคราว:** ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน")
+            st.markdown("2. 🚰 **ใช้แหล่งน้ำสำรอง:** เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_action2:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("#### 📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)")
+        # หุ้มเนื้อหาทั้งหมดภายใน .tech-card เช่นกัน
+        st.markdown('<div class="tech-card">', unsafe_allow_html=True)
+        st.markdown("### 📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)")
         st.info("ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลทุก 05:00 น. / 18:00 น.")
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
             test_msg = (
                 f"📢 [ทดสอบระบบ LINE น้ำชุมชน EEC]\n"
