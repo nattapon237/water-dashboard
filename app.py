@@ -48,7 +48,7 @@ def get_firebase_token():
     except Exception:
         return None
 
-# 2. ฟังก์ชันอ่านข้อมูลจาก Realtime Database (ดึงคีย์ orp ตรงกับ Firebase)
+# 2. ฟังก์ชันอ่านข้อมูลจาก Realtime Database
 def read_sensor_data(id_token):
     if not id_token:
         return None
@@ -61,8 +61,8 @@ def read_sensor_data(id_token):
     except Exception:
         return None
 
-# 3. ฟังก์ชันจำลองส่งข้อมูลขึ้น Firebase (ใช้คีย์ orp แทน do)
-def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, orp_val, turb_val):
+# 3. ฟังก์ชันจำลองส่งข้อมูลขึ้น Firebase
+def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, do_val, turb_val):
     if not id_token:
         return False
     url = f"{FIREBASE_DB_URL}/devices/uno-r4/status.json?auth={id_token}"
@@ -70,7 +70,7 @@ def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, orp_val, turb_va
         "ph": ph_val,
         "tds": tds_val,
         "temp": temp_val,
-        "orp": orp_val,          # เปลี่ยนเป็นคีย์ orp ตามโครงสร้างใหม่
+        "do": do_val,            # ตามโครงสร้างใน Firebase ของคุณปัจจุบันที่เป็น do
         "turbidity": turb_val,
         "updatedAt": int(time.time())
     }
@@ -79,11 +79,6 @@ def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, orp_val, turb_va
         return res.status_code == 200
     except Exception:
         return False
-
-# ฟังก์ชันคำนวณหาค่า DO (mg/L) ทางทฤษฎีจากอุณหภูมิ (Temperature °C)
-def calculate_do_from_temp(temp):
-    do_val = 14.6 - (0.41 * temp) + (0.008 * (temp ** 2)) - (0.00007 * (temp ** 3))
-    return max(round(do_val, 2), 0.0)
 
 # ตรวจสอบการเชื่อมต่อ Auth
 id_token = get_firebase_token()
@@ -97,13 +92,13 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.title("🎛️ เซนเซอร์ / Input Control")
 sim_ph = st.sidebar.slider("pH Level (ความเป็นกรด-ด่าง)", 0.0, 14.0, 6.4, 0.1)
-sim_tds = st.sidebar.slider("EC / TDS (ppm) (ความขุ่น/สารละลาย)", 0, 2000, 156.7, 1.0)
+sim_tds = st.sidebar.slider("EC / TDS (ppm) (ความขุ่น/สารละลาย)", 0.0, 2000.0, 156.7, 0.1)
 sim_temp = st.sidebar.slider("Temperature (°C) (อุณหภูมิ)", 10.0, 50.0, 24.5, 0.5)
-sim_orp = st.sidebar.slider("ORP (mV) (ศักย์รีดอกซ์)", -500.0, 500.0, 250.0, 5.0)
-sim_turb = st.sidebar.slider("Turbidity (NTU) (ความขุ่นสะสม)", 0.0, 1000.0, 815.9, 1.0)
+sim_do = st.sidebar.slider("DO (mg/L) (ออกซิเจนละลายน้ำ)", 0.0, 20.0, 4.9, 0.1)
+sim_turb = st.sidebar.slider("Turbidity (NTU) (ความขุ่นสะสม)", 0.0, 1000.0, 815.9, 0.1)
 
 if st.sidebar.button("📤 ส่งค่าจำลองขึ้น Firebase", use_container_width=True):
-    if write_mock_sensor_data(id_token, sim_ph, sim_tds, sim_temp, sim_orp, sim_turb):
+    if write_mock_sensor_data(id_token, sim_ph, sim_tds, sim_temp, sim_do, sim_turb):
         st.sidebar.success("✅ บันทึกค่าขึ้น Firebase เรียบร้อย!")
         st.rerun()
     else:
@@ -115,18 +110,15 @@ if live_data and isinstance(live_data, dict) and "ph" in live_data:
     ph = float(live_data.get("ph", sim_ph))
     tds = float(live_data.get("tds", sim_tds))
     temp = float(live_data.get("temp", sim_temp))
-    orp = float(live_data.get("orp", sim_orp))     # ดึงค่า orp จากฐานข้อมูลจริง
+    do_val = float(live_data.get("do", sim_do))     # ดึงค่า do จากฐานข้อมูลจริง
     turbidity = float(live_data.get("turbidity", sim_turb))
     data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database (`/devices/uno-r4/status`)"
 else:
-    ph, tds, temp, orp, turbidity = sim_ph, sim_tds, sim_temp, sim_orp, sim_turb
+    ph, tds, temp, do_val, turbidity = sim_ph, sim_tds, sim_temp, sim_do, sim_turb
     data_source_badge = "⚠️ ยังไม่มีข้อมูลสดใน Firebase (กำลังใช้ค่าจำลองจากแถบด้านข้าง)"
 
-# คำนวณค่า DO ทางทฤษฎีจากอุณหภูมิที่ได้
-calc_do = calculate_do_from_temp(temp)
-
 # ฟังก์ชันคำนวณความเสี่ยง
-def calculate_risk(ph, tds, temp, orp, calc_do, turbidity):
+def calculate_risk(ph, tds, temp, do_val, turbidity):
     risk_score = 0
     reasons = []
     if ph < 5.5 or ph > 9.0:
@@ -138,29 +130,25 @@ def calculate_risk(ph, tds, temp, orp, calc_do, turbidity):
 
     if tds > 1000:
         risk_score += 30
-        reasons.append(f"EC/TDS ({tds} ppm) มีค่าความเค็ม/สารละลายสูงเกินเกณฑ์ประปาชุมชน")
+        reasons.append(f"EC/TDS ({tds:.1f} ppm) มีค่าความเค็ม/สารละลายสูงเกินเกณฑ์ประปาชุมชน")
     elif tds > 600:
         risk_score += 15
-        reasons.append(f"EC/TDS ({tds} ppm) มีแนวโน้มเพิ่มขึ้น เสี่ยงกระทบพืชสวนและการประปา")
+        reasons.append(f"EC/TDS ({tds:.1f} ppm) มีแนวโน้มเพิ่มขึ้น เสี่ยงกระทบพืชสวนและการประปา")
 
-    if orp < 50:
+    if do_val < 3.0:
         risk_score += 25
-        reasons.append(f"ORP ({orp:.1f} mV) ต่ำกว่าเกณฑ์ บ่งบอกถึงสภาวะสารอินทรีย์หนาแน่น")
-
-    if calc_do < 3.0:
-        risk_score += 25
-        reasons.append(f"DO คำนวณ ({calc_do} mg/L) อยู่ในเกณฑ์ต่ำ เนื่องจากอุณหภูมิน้ำสูง")
+        reasons.append(f"DO ({do_val:.1f} mg/L) อยู่ในเกณฑ์ต่ำ ออกซิเจนในน้ำไม่เพียงพอ")
 
     if temp > 35.0:
         risk_score += 10
-        reasons.append(f"อุณหภูมิ ({temp} °C) สูงเกินไป กระทบต่อระบบนิเวศแหล่งน้ำ")
+        reasons.append(f"อุณหภูมิ ({temp:.1f} °C) สูงเกินไป กระทบต่อระบบนิเวศแหล่งน้ำ")
     if turbidity > 100:
         risk_score += 15
-        reasons.append(f"ความขุ่น ({turbidity} NTU) สูงกว่าเกณฑ์ ต้องเพิ่มกระบวนการตกตะกอน")
+        reasons.append(f"ความขุ่น ({turbidity:.1f} NTU) สูงกว่าเกณฑ์ ต้องเพิ่มกระบวนการตกตะกอน")
 
     return min(risk_score, 99), reasons
 
-risk_score, risk_reasons = calculate_risk(ph, tds, temp, orp, calc_do, turbidity)
+risk_score, risk_reasons = calculate_risk(ph, tds, temp, do_val, turbidity)
 
 if risk_score >= 60:
     status_label = "🔴 เสี่ยงอันตราย (Danger)"
@@ -195,7 +183,7 @@ if risk_score >= 60 and st.session_state.last_danger_alert_date != current_date_
         f"------------------------------\n"
         f"📊 ตรวจพบสถานะน้ำระดับอันตราย (Risk Score: {risk_score}%)\n"
         f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm\n"
-        f"• ORP: {orp:.1f} mV | DO (คำนวณ): {calc_do} mg/L\n"
+        f"• DO: {do_val:.1f} mg/L | Temp: {temp:.1f} °C\n"
         f"⚠️ สาเหตุหลัก:\n- " + "\n- ".join(risk_reasons) + "\n"
         f"------------------------------\n"
         f"กรุณาตรวจสอบระบบประปาหมู่บ้านและประกาศงดใช้น้ำด่วน!"
@@ -218,8 +206,7 @@ if scheduled_slot and st.session_state.last_scheduled_alert != alert_key_name:
         f"------------------------------\n"
         f"สถานะน้ำชุมชน EEC ล่าสุด:\n"
         f"• ดัชนีความเสี่ยง: {risk_score}% ({status_label})\n"
-        f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm | ORP: {orp:.1f} mV\n"
-        f"• DO (คำนวณจากอุณหภูมิ): {calc_do} mg/L\n"
+        f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm | DO: {do_val:.1f} mg/L\n"
         f"------------------------------\n"
         f"💡 สรุปภาพรวม: {'ระบบปกติพร้อมใช้งาน' if risk_score < 30 else 'พบความผิดปกติ ควรตรวจสอบระบบกรองน้ำ'}"
     )
@@ -256,15 +243,15 @@ with tab1:
     m1.metric("pH (กรด-ด่าง)", f"{ph:.1f}")
     m2.metric("EC / TDS", f"{tds:.1f} ppm")
     m3.metric("อุณหภูมิ", f"{temp:.1f} °C")
-    m4.metric("ORP", f"{orp:.1f} mV")
-    m5.metric("DO (คำนวณ)", f"{calc_do} mg/L")
-    m6.metric("ความขุ่น", f"{turbidity:.1f} NTU")
+    m4.metric("DO (ออกซิเจน)", f"{do_val:.1f} mg/L")
+    m5.metric("ความขุ่น", f"{turbidity:.1f} NTU")
+    m6.metric("สถานะระบบ", "Online" if live_data else "Simulation")
 
     st.markdown("---")
     st.subheader("📈 แนวโน้มความแปรปรวนคุณภาพน้ำย้อนหลัง (Community Water Trends)")
     chart_data = pd.DataFrame(
-        np.random.randn(20, 3) + [tds / 100, orp / 10, calc_do * 2],
-        columns=['ความขุ่น/สารละลาย (TDS)', 'ORP (mV)', 'DO คำนวณ (mg/L)']
+        np.random.randn(20, 3) + [tds / 100, do_val * 2, turbidity / 100],
+        columns=['สารละลาย (TDS)', 'DO (mg/L)', 'ความขุ่น (NTU)']
     )
     st.line_chart(chart_data)
 
@@ -283,7 +270,7 @@ with tab2:
         elif risk_score < 60:
             st.write("1. 📢 **แจ้งเตือนเกษตรกร:** สารละลาย/ความเค็มเริ่มสูง ระวังการสูบน้ำเข้าแปลงเกษตรที่ไวต่อค่าน้ำ")
             st.write("2. ⚙️ **ปรับระบบกรองประปา:** เพิ่มระยะเวลาการตกตะกอนและการกรองของระบบประปาหมู่บ้าน")
-            st.write("3. 🌊 **ปรับปรุงการเติมออกซิเจน:** ค่า DO หรือ ORP ลดลง ควรตรวจสอบระบบบำบัดน้ำ")
+            st.write("3. 🌊 **ปรับปรุงการเติมออกซิเจน:** ค่า DO ลดลง ควรตรวจสอบระบบบำบัดน้ำ")
             st.write("4. 🔎 **สำรวจต้นน้ำ:** ส่งตัวแทนชุมชน ตรวจเช็กจุดสูบน้ำหรือแหล่งน้ำต้นน้ำว่ามีการปนเปื้อนหรือไม่")
         else:
             st.write("1. 🚫 **ประกาศงดใช้น้ำชั่วคราว:** แจ้งห้ามใช้น้ำเพื่อการบริโภคและสูบเข้าพื้นที่การเกษตรด่วน")
@@ -301,7 +288,7 @@ with tab2:
                 f"------------------------------\n"
                 f"📊 Risk Score: {risk_score}% ({status_label})\n"
                 f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm\n"
-                f"• ORP: {orp:.1f} mV | DO (คำนวณ): {calc_do} mg/L\n"
+                f"• DO: {do_val:.1f} mg/L | Temp: {temp:.1f} °C\n"
                 f"------------------------------\n"
                 f"💡 ระบบทำงานอัตโนมัติสมบูรณ์แล้ว!"
             )
