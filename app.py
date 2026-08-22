@@ -79,7 +79,6 @@ st.markdown("""
         transform: translateY(-2px);
     }
     
-    /* แต่งกล่องแจ้งเตือนข้อมูลระบบ */
     .stAlert {
         background: rgba(15, 28, 63, 0.8) !important;
         border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -385,9 +384,7 @@ with tab2:
                 f"------------------------------\n"
                 f"📊 Risk Score: {risk_score}% ({status_label})\n"
                 f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm\n"
-                f"• DO: {do_val:.1f} mg/L | Temp: {temp:.1f} °C\n"
-                f"------------------------------\n"
-                f"💡 ระบบทำงานอัตโนมัติสมบูรณ์!"
+                f"• DO: {do_val:.1f} mg/L | Temp: {temp:.1f} °C"
             )
             if send_line_notification(test_msg):
                 st.success("✅ ส่งข้อความทดสอบเข้า LINE สำเร็จ!")
