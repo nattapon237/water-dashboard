@@ -16,12 +16,61 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# สไตล์ CSS
+# --- Dark Tech Blue UI Custom CSS ---
 st.markdown("""
     <style>
-    .status-normal { color: #2e7d32; font-weight: bold; }
-    .status-warning { color: #ef6c00; font-weight: bold; }
-    .status-danger { color: #c62828; font-weight: bold; }
+    /* ภาพรวมพื้นหลังหลักของ Streamlit */
+    .stApp {
+        background-color: #0b132b;
+        color: #e0e1dd;
+    }
+    
+    /* ปรับแต่ง Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #1c2541;
+        color: #ffffff;
+    }
+    
+    /* สไตล์การ์ดข้อมูล (Metric / Container) */
+    .tech-card {
+        background-color: #1c2541;
+        border: 1px solid #3a506b;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        margin-bottom: 15px;
+    }
+    
+    /* หัวข้อและตัวหนังสือ */
+    h1, h2, h3, h4 {
+        color: #6fffe9 !important;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    
+    p, span, label, .stMarkdown {
+        color: #caf0f8 !important;
+    }
+
+    /* สไตล์สถานะต่างๆ */
+    .status-normal { color: #52b788; font-weight: bold; font-size: 1.1rem; }
+    .status-warning { color: #fca311; font-weight: bold; font-size: 1.1rem; }
+    .status-danger { color: #e76f51; font-weight: bold; font-size: 1.1rem; }
+
+    /* ปรับแต่งปุ่ม */
+    .stButton>button {
+        background: linear-gradient(135deg, #0077b6, #00b4d8);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        padding: 0.5rem 1rem;
+        box-shadow: 0 4px 10px rgba(0, 180, 216, 0.4);
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(135deg, #00b4d8, #90e0ef);
+        color: #0b132b;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -70,7 +119,7 @@ def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, do_val, turb_val
         "ph": ph_val,
         "tds": tds_val,
         "temp": temp_val,
-        "do": do_val,            # ใช้คีย์ do ให้ตรงกับฐานข้อมูลใน Firebase
+        "do": do_val,
         "turbidity": turb_val,
         "updatedAt": int(time.time())
     }
@@ -92,10 +141,10 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.title("🎛️ เซนเซอร์ / Input Control")
 sim_ph = st.sidebar.slider("pH Level (ความเป็นกรด-ด่าง)", 0.0, 14.0, 6.4, 0.1)
-sim_tds = st.sidebar.slider("EC / TDS (ppm) (ความขุ่น/สารละลาย)", 0.0, 2000.0, 156.7, 0.1)
+sim_tds = st.sidebar.slider("EC / TDS (ppm) (สารละลาย)", 0.0, 2000.0, 156.7, 0.1)
 sim_temp = st.sidebar.slider("Temperature (°C) (อุณหภูมิ)", 10.0, 50.0, 24.5, 0.5)
 sim_do = st.sidebar.slider("DO (mg/L) (ออกซิเจนละลายน้ำ)", 0.0, 20.0, 4.9, 0.1)
-sim_turb = st.sidebar.slider("Turbidity (NTU) (ความขุ่นสะสม)", 0.0, 1000.0, 815.9, 0.1)
+sim_turb = st.sidebar.slider("Turbidity (NTU) (ความขุ่น)", 0.0, 1000.0, 67.0, 0.1)
 
 if st.sidebar.button("📤 ส่งค่าจำลองขึ้น Firebase", use_container_width=True):
     if write_mock_sensor_data(id_token, sim_ph, sim_tds, sim_temp, sim_do, sim_turb):
@@ -110,7 +159,7 @@ if live_data and isinstance(live_data, dict) and "ph" in live_data:
     ph = float(live_data.get("ph", sim_ph))
     tds = float(live_data.get("tds", sim_tds))
     temp = float(live_data.get("temp", sim_temp))
-    do_val = float(live_data.get("do", sim_do))     # ดึงค่า do จาก Firebase จริง
+    do_val = float(live_data.get("do", sim_do))
     turbidity = float(live_data.get("turbidity", sim_turb))
     data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database (`/devices/uno-r4/status`)"
 else:
@@ -175,7 +224,6 @@ if "last_danger_alert_date" not in st.session_state:
 if "last_scheduled_alert" not in st.session_state:
     st.session_state.last_scheduled_alert = ""
 
-# 1. แจ้งเตือนอัตโนมัติทันทีเมื่อสถานะเป็นสีแดง (Danger)
 if risk_score >= 60 and st.session_state.last_danger_alert_date != current_date_str:
     danger_msg = (
         f"🚨 [แจ้งเตือนวิกฤติด่วน!]\n"
@@ -191,7 +239,6 @@ if risk_score >= 60 and st.session_state.last_danger_alert_date != current_date_
     if send_line_notification(danger_msg):
         st.session_state.last_danger_alert_date = current_date_str
 
-# 2. แจ้งเตือนตามเวลาอัตโนมัติ (05:00 และ 18:00)
 scheduled_slot = None
 if "05:00" <= current_time_str <= "05:05":
     scheduled_slot = "05:00 รอบเช้า"
@@ -217,18 +264,22 @@ if scheduled_slot and st.session_state.last_scheduled_alert != alert_key_name:
 tab1, tab2 = st.tabs(["📊 EEC Water Overview (หน้าแรก)", "🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน"])
 
 with tab1:
-    st.title("💧 EEC Community Water Overview")
+    st.title("💧 EEC Community Water Intelligence System")
     st.caption("ระบบเฝ้าระวังและประเมินความเสี่ยงคุณภาพน้ำอัจฉริยะเพื่อการอุปโภค บริโภค และการเกษตรของชุมชน")
     st.info(data_source_badge)
     st.markdown("---")
 
-    col_score1, col_score2 = st.columns([1, 2])
+    # แผงแสดงดัชนีความเสี่ยงแบบไฮเทค
+    col_score1, col_score2 = st.columns([1, 2], gap="large")
     with col_score1:
+        st.markdown("""<div class="tech-card">""", unsafe_allow_html=True)
         st.markdown("### 🤖 AI WATER RISK SCORE")
         st.metric(label="ดัชนีความเสี่ยงรวมของชุมชน", value=f"{risk_score}%")
         st.markdown(f"สถานะปัจจุบัน: <span class='{status_color}'>{status_label}</span>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with col_score2:
+        st.markdown("""<div class="tech-card">""", unsafe_allow_html=True)
         st.markdown("### 📌 สรุปสถานการณ์คุณภาพน้ำชุมชน")
         if risk_score < 30:
             st.success("✅ คุณภาพน้ำอยู่ในเกณฑ์ดี ปลอดภัยสำหรับการอุปโภค การเกษตร และการประปาหมู่บ้าน")
@@ -236,50 +287,68 @@ with tab1:
             st.warning(f"⚠️ ตรวจพบความผิดปกติบางประการที่ต้องเฝ้าระวัง:\n- " + "\n- ".join(risk_reasons))
         else:
             st.error(f"🚨 ตรวจพบสภาวะน้ำวิกฤต! สาเหตุหลัก:\n- " + "\n- ".join(risk_reasons))
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("📊 ข้อมูลจริงจากเซนเซอร์ชุมชน (Live Sensor Metrics)")
+    
     m1, m2, m3, m4, m5, m6 = st.columns(6)
-    m1.metric("pH (กรด-ด่าง)", f"{ph:.1f}")
-    m2.metric("EC / TDS", f"{tds:.1f} ppm")
-    m3.metric("อุณหภูมิ", f"{temp:.1f} °C")
-    m4.metric("DO (ออกซิเจน)", f"{do_val:.1f} mg/L")
-    m5.metric("ความขุ่น", f"{turbidity:.1f} NTU")
-    m6.metric("สถานะระบบ", "Online" if live_data else "Simulation")
+    with m1:
+        st.markdown(f"""<div class="tech-card" style="text-align:center;"><h4>pH</h4><h2>{ph:.1f}</h2><p>กรด-ด่าง</p></div>""", unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"""<div class="tech-card" style="text-align:center;"><h4>TDS</h4><h2>{tds:.1f}</h2><p>ppm</p></div>""", unsafe_allow_html=True)
+    with m3:
+        st.markdown(f"""<div class="tech-card" style="text-align:center;"><h4>Temp</h4><h2>{temp:.1f}</h2><p>°C</p></div>""", unsafe_allow_html=True)
+    with m4:
+        st.markdown(f"""<div class="tech-card" style="text-align:center;"><h4>DO</h4><h2>{do_val:.1f}</h2><p>mg/L</p></div>""", unsafe_allow_html=True)
+    with m5:
+        st.markdown(f"""<div class="tech-card" style="text-align:center;"><h4>Turbidity</h4><h2>{turbidity:.1f}</h2><p>NTU</p></div>""", unsafe_allow_html=True)
+    with m6:
+        status_sys = "Online" if live_data else "Sim"
+        st.markdown(f"""<div class="tech-card" style="text-align:center;"><h4>System</h4><h2>{status_sys}</h2><p>Status</p></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("📈 แนวโน้มความแปรปรวนคุณภาพน้ำย้อนหลัง (Community Water Trends)")
+    
+    st.markdown("""<div class="tech-card">""", unsafe_allow_html=True)
     chart_data = pd.DataFrame(
         np.random.randn(20, 3) + [tds / 100, do_val * 2, turbidity / 100],
         columns=['สารละลาย (TDS)', 'DO (mg/L)', 'ความขุ่น (NTU)']
     )
-    st.line_chart(chart_data)
+    st.line_chart(chart_data, color=["#00b4d8", "#90e0ef", "#03045e"])
+    st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
     st.title("🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน")
     st.caption("แนวทางปฏิบัติเชิงรุกสำหรับผู้นำชุมชน คณะกรรมการประปาหมู่บ้าน และกลุ่มเกษตรกร")
     st.markdown("---")
+    
+    st.markdown(f"""<div class="tech-card">""", unsafe_allow_html=True)
     st.markdown(f"### สถานะการประเมิน: <span class='{status_color}'>{status_label}</span> (Risk Score: {risk_score}%)", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    col_action1, col_action2 = st.columns(2)
+    col_action1, col_action2 = st.columns(2, gap="large")
     with col_action1:
-        st.markdown("#### 🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน (Community Actions)")
+        st.markdown("""<div class="tech-card">""", unsafe_allow_html=True)
+        st.markdown("#### 🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน")
         if risk_score < 30:
             st.write("1. **แจกจ่ายน้ำปกติ:** ระบบประปาหมู่บ้านและช่องทางส่งน้ำการเกษตรใช้งานได้ตามปกติ")
             st.write("2. **จัดเก็บข้อมูล:** ระบบบันทึกค่าน้ำเข้าสู่ฐานข้อมูลเฝ้าระวังของชุมชนตามปกติ")
         elif risk_score < 60:
-            st.write("1. 📢 **แจ้งเตือนเกษตรกร:** สารละลาย/ความเค็มเริ่มสูง ระวังการสูบน้ำเข้าแปลงเกษตรที่ไวต่อค่าน้ำ")
-            st.write("2. ⚙️ **ปรับระบบกรองประปา:** เพิ่มระยะเวลาการตกตะกอนและการกรองของระบบประปาหมู่บ้าน")
+            st.write("1. 📢 **แจ้งเตือนเกษตรกร:** สารละลาย/ความเค็มเริ่มสูง ระวังการสูบน้ำเข้าแปลงเกษตร")
+            st.write("2. ⚙️ **ปรับระบบกรองประปา:** เพิ่มระยะเวลาการตกตะกอนและการกรองของระบบประปา")
             st.write("3. 🌊 **ปรับปรุงการเติมออกซิเจน:** ค่า DO ลดลง ควรตรวจสอบระบบบำบัดน้ำ")
-            st.write("4. 🔎 **สำรวจต้นน้ำ:** ส่งตัวแทนชุมชน ตรวจเช็กจุดสูบน้ำหรือแหล่งน้ำต้นน้ำว่ามีการปนเปื้อนหรือไม่")
+            st.write("4. 🔎 **สำรวจต้นน้ำ:** ส่งตัวแทนชุมชน ตรวจเช็กจุดสูบน้ำว่ามีการปนเปื้อนหรือไม่")
         else:
-            st.write("1. 🚫 **ประกาศงดใช้น้ำชั่วคราว:** แจ้งห้ามใช้น้ำเพื่อการบริโภคและสูบเข้าพื้นที่การเกษตรด่วน")
-            st.write("2. 🚰 **สลับแหล่งน้ำสำรอง:** เปิดใช้งานแหล่งน้ำสำรอง/น้ำบาดาลหมู่บ้านแทนแหล่งน้ำหลัก")
-            st.write("3. 🧪 **ประสานงาน อบต./เทศบาล:** แจ้งเจ้าหน้าที่สิ่งแวดล้อมท้องถิ่นลงพื้นที่ตรวจวิเคราะห์เคมีฉุกเฉิน")
-            st.write("4. 📲 **แจ้งเตือนหอกระจายข่าว:** ส่งข้อความแจ้งเตือนผ่าน LINE ถึงผู้ใหญ่บ้านและคณะกรรมการหมู่บ้าน")
+            st.write("1. 🚫 **ประกาศงดใช้น้ำชั่วคราว:** แจ้งห้ามใช้น้ำเพื่อการบริโภคและสูบเข้าพื้นที่เกษตรด่วน")
+            st.write("2. 🚰 **สลับแหล่งน้ำสำรอง:** เปิดใช้งานแหล่งน้ำสำรอง/น้ำบาดาลหมู่บ้านแทน")
+            st.write("3. 🧪 **ประสานงาน อบต./เทศบาล:** แจ้งเจ้าหน้าที่สิ่งแวดล้อมลงพื้นที่ตรวจวิเคราะห์")
+            st.write("4. 📲 **แจ้งเตือนหอกระจายข่าว:** ส่งข้อความแจ้งเตือนผ่าน LINE ถึงผู้ใหญ่บ้าน")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with col_action2:
-        st.markdown("#### 📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE Notification)")
+        st.markdown("""<div class="tech-card">""", unsafe_allow_html=True)
+        st.markdown("#### 📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)")
         st.info("ระบบตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นสีแดง และส่งสรุปผลทุกวันเวลา 05:00 น. และ 18:00 น.")
         if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
             test_msg = (
@@ -296,6 +365,7 @@ with tab2:
                 st.success("✅ ส่งข้อความทดสอบเข้า LINE สำเร็จ!")
             else:
                 st.error("❌ ส่งไม่สำเร็จ")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ระบบหน่วงเวลาและรีเฟรชหน้าเว็บอัตโนมัติทุกๆ 60 วินาที
 time.sleep(60)
