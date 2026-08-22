@@ -31,7 +31,6 @@ st.markdown("""
         border-right: 1px solid #1e3e62;
     }
     
-    /* ดีไซน์การ์ดแบบ Bento Grid ทรงมน สวยงามไฮเทค */
     .bento-card {
         background: linear-gradient(135deg, #0f1c3f 0%, #0b1329 100%);
         border: 1px solid #1d3557;
@@ -42,7 +41,7 @@ st.markdown("""
         height: 100%;
     }
     
-    h1, h2, h3 {
+    h1, h2, h3, h4 {
         color: #38bdf8 !important;
         font-weight: 700;
     }
@@ -267,59 +266,61 @@ with tab1:
     st.info(data_source_badge)
     st.markdown("---")
 
-    # --- แถวที่ 1 ของ Bento Grid (3 การ์ดย่อยสไตล์แดชบอร์ด) ---
+    # --- แถวที่ 1 ของ Bento Grid ---
     col1, col2, col3 = st.columns([1, 1.5, 1], gap="medium")
     
     with col1:
         st.markdown(f"""
             <div class="bento-card">
                 <h4 style="color: #38bdf8; margin-top:0;">🔬 ภาพรวมค่าเซนเซอร์</h4>
-                <p style="margin: 5px 0;"><b>pH Level:</b> {ph:.1f}</p>
-                <p style="margin: 5px 0;"><b>TDS:</b> {tds:.1f} ppm</p>
-                <p style="margin: 5px 0;"><b>Temp:</b> {temp:.1f} °C</p>
-                <p style="margin: 5px 0;"><b>DO:</b> {do_val:.1f} mg/L</p>
-                <p style="margin: 5px 0;"><b>Turbidity:</b> {turbidity:.1f} NTU</p>
+                <p style="margin: 6px 0;"><b>pH Level:</b> {ph:.1f}</p>
+                <p style="margin: 6px 0;"><b>TDS:</b> {tds:.1f} ppm</p>
+                <p style="margin: 6px 0;"><b>Temp:</b> {temp:.1f} °C</p>
+                <p style="margin: 6px 0;"><b>DO:</b> {do_val:.1f} mg/L</p>
+                <p style="margin: 6px 0;"><b>Turbidity:</b> {turbidity:.1f} NTU</p>
             </div>
         """, unsafe_allow_html=True)
         
     with col2:
         st.markdown("""
-            <div class="bento-card">
+            <div class="bento-card" style="margin-bottom: 0px;">
                 <h4 style="color: #38bdf8; margin-top:0;">📈 แนวโน้มคุณภาพน้ำ (Area Trend)</h4>
             </div>
         """, unsafe_allow_html=True)
         chart_data_1 = pd.DataFrame(np.random.randn(10, 3) + [tds/100, do_val, turbidity/50], columns=['TDS', 'DO', 'Turbidity'])
-        st.area_chart(chart_data_1, color=["#0ea5e9", "#34d399", "#38bdf8"], height=180)
+        st.area_chart(chart_data_1, color=["#0ea5e9", "#34d399", "#38bdf8"], height=160)
 
     with col3:
+        analysis_text = "คุณภาพน้ำอยู่ในเกณฑ์ดี ปลอดภัย" if risk_score < 30 else ("เริ่มมีความผิดปกติ ควรเฝ้าระวัง" if risk_score < 60 else "วิกฤต! ควรตรวจสอบเร่งด่วน")
         st.markdown(f"""
             <div class="bento-card">
                 <h4 style="color: #38bdf8; margin-top:0;">🤖 AI Risk Assessment</h4>
-                <h2 style="color: {'#34d399' if risk_score<30 else ('#fbbf24' if risk_score<60 else '#f87171')};">{risk_score}%</h2>
-                <p>สถานะ: <span class='{status_color}'>{status_label}</span></p>
+                <h2 style="color: {'#34d399' if risk_score<30 else ('#fbbf24' if risk_score<60 else '#f87171')}; margin: 5px 0;">{risk_score}%</h2>
+                <p style="margin: 5px 0;">สถานะ: <span class='{status_color}'>{status_label}</span></p>
+                <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 8px;">💡 <b>คำแนะนำ:</b> {analysis_text}</p>
             </div>
         """, unsafe_allow_html=True)
 
-    # --- แถวที่ 2 ของ Bento Grid (กราฟเส้นเปรียบเทียบ และ บาร์ชาร์ตสถิติ) ---
+    # --- แถวที่ 2 ของ Bento Grid ---
     col4, col5 = st.columns([1.2, 1], gap="medium")
     
     with col4:
         st.markdown("""
-            <div class="bento-card">
+            <div class="bento-card" style="margin-bottom: 0px;">
                 <h4 style="color: #38bdf8; margin-top:0;">📊 การเปรียบเทียบพารามิเตอร์เชิงลึก</h4>
             </div>
         """, unsafe_allow_html=True)
         chart_data_2 = pd.DataFrame(np.random.randn(12, 2) * 5 + 50, columns=['Value A', 'Value B'])
-        st.line_chart(chart_data_2, color=["#0ea5e9", "#34d399"], height=200)
+        st.line_chart(chart_data_2, color=["#0ea5e9", "#34d399"], height=180)
 
     with col5:
         st.markdown("""
-            <div class="bento-card">
+            <div class="bento-card" style="margin-bottom: 0px;">
                 <h4 style="color: #38bdf8; margin-top:0;">📊 สถิติความแปรปรวนย้อนหลัง</h4>
             </div>
         """, unsafe_allow_html=True)
         bar_data = pd.DataFrame(np.random.rand(8, 2) * 100, columns=['Series 1', 'Series 2'])
-        st.bar_chart(bar_data, color=["#0ea5e9", "#38bdf8"], height=200)
+        st.bar_chart(bar_data, color=["#0ea5e9", "#38bdf8"], height=180)
 
 with tab2:
     st.markdown("## 🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน")
@@ -331,10 +332,10 @@ with tab2:
     with col_action1:
         if risk_score < 30:
             action_content = """
-                <ol style="color: #cbd5e1; padding-left: 20px; line-height: 1.8;">
-                    <li><b>แจกจ่ายน้ำปกติ:</b> ระบบประปาหมู่บ้านใช้งานได้ตามปกติ</li>
-                    <li><b>จัดเก็บข้อมูล:</b> บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง</li>
-                </ol>
+                <ul style="color: #cbd5e1; padding-left: 20px; line-height: 1.8; list-style-type: none;">
+                    <li>1. 💧 <b>แจกจ่ายน้ำปกติ:</b> ระบบประปาหมู่บ้านใช้งานได้ตามปกติ</li>
+                    <li>2. 📊 <b>จัดเก็บข้อมูล:</b> บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง</li>
+                </ul>
             """
         elif risk_score < 60:
             action_content = """
@@ -366,6 +367,7 @@ with tab2:
                 <h3 style="color: #38bdf8; margin-top: 0;">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)</h3>
                 <p style="color: #94a3b8; font-size: 0.9rem;">ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลทุก 05:00 น. / 18:00 น.</p>
                 <br>
+            </div>
         """, unsafe_allow_html=True)
         
         if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
@@ -383,7 +385,6 @@ with tab2:
                 st.success("✅ ส่งข้อความทดสอบเข้า LINE สำเร็จ!")
             else:
                 st.error("❌ ส่งไม่สำเร็จ")
-        st.markdown('</div>', unsafe_allow_html=True)
 
 # หน่วงเวลาและรีเฟรชหน้าเว็บทุกๆ 60 วินาที
 time.sleep(60)
