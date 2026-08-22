@@ -16,74 +16,61 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# --- Advanced Bento Grid & Dashboard Theme (CSS) ---
+# --- High-Tech Clean Dark Theme CSS ---
 st.markdown("""
     <style>
+    /* ภาพรวมพื้นหลัง */
     .stApp {
-        background-color: #060b19;
-        color: #e0e1dd;
-    }
-    
-    [data-testid="stSidebar"] {
-        background-color: #0b132b;
-        color: #ffffff;
-    }
-    
-    /* กล่องการ์ดแบบเข้ม (Dark Tech Card) */
-    .bento-dark {
-        background-color: #0b132b;
-        border: 1px solid #1c2541;
-        padding: 20px;
-        border-radius: 16px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-        margin-bottom: 20px;
-        height: 100%;
-    }
-    
-    /* กล่องการ์ดแบบสว่าง (Light Contrast Card - ตามเรฟ) */
-    .bento-light {
-        background-color: #f8f9fa;
-        color: #111111;
-        border: 1px solid #e9ecef;
-        padding: 20px;
-        border-radius: 16px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-        margin-bottom: 20px;
-        height: 100%;
-    }
-    .bento-light h3, .bento-light h4, .bento-light p, .bento-light span, .bento-light li, .bento-light div {
-        color: #1c2541 !important;
-    }
-
-    /* หัวข้อหลัก */
-    h1, h2, h3 {
-        color: #48cae4 !important;
+        background-color: #070f1e;
+        color: #f1f5f9;
         font-family: 'Segoe UI', sans-serif;
     }
     
-    p, span, label {
-        color: #90e0ef;
+    /* Sidebar สไตล์ดาร์กโมเดิร์น */
+    [data-testid="stSidebar"] {
+        background-color: #0b192c;
+        color: #ffffff;
+    }
+    
+    /* การ์ดข้อมูล (Clean Tech Card) */
+    .metric-card {
+        background-color: #0b192c;
+        border: 1px solid #1e3e62;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        margin-bottom: 15px;
+    }
+    
+    /* หัวข้อและตัวหนังสือ */
+    h1, h2, h3 {
+        color: #38bdf8 !important;
+        font-weight: 600;
+    }
+    
+    p, span, label, .stMarkdown {
+        color: #cbd5e1 !important;
     }
 
     /* สถานะ */
-    .status-normal { color: #2ec4b6; font-weight: bold; }
-    .status-warning { color: #ff9f1c; font-weight: bold; }
-    .status-danger { color: #e71d36; font-weight: bold; }
+    .status-normal { color: #34d399; font-weight: bold; }
+    .status-warning { color: #fbbf24; font-weight: bold; }
+    .status-danger { color: #f87171; font-weight: bold; }
 
     /* ปุ่มกดไฮเทค */
     .stButton>button {
-        background: linear-gradient(135deg, #0077b6, #00b4d8);
+        background: linear-gradient(135deg, #0284c7, #0ea5e9);
         color: white;
         border: none;
-        border-radius: 10px;
-        font-weight: bold;
-        padding: 0.6rem 1.2rem;
-        box-shadow: 0 4px 15px rgba(0, 180, 216, 0.4);
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
         transition: 0.3s;
     }
     .stButton>button:hover {
-        background: linear-gradient(135deg, #00b4d8, #90e0ef);
-        color: #0b132b;
+        background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+        color: #070f1e;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -283,58 +270,36 @@ with tab1:
     st.info(data_source_badge)
     st.markdown("---")
 
-    # --- แถวที่ 1: กราฟเส้นใหญ่ (การ์ดสว่าง) + กราฟแท่งสรุป (การ์ดมืด) ---
-    row1_col1, row1_col2 = st.columns([1.5, 1], gap="medium")
+    # --- แถวที่ 1: แสดงค่าเซนเซอร์หลักแบบ Live Metrics ทั้งหมดในแถวเดียว (อ่านง่าย ชัดเจน) ---
+    st.markdown("### 🔬 Live Sensor Metrics (ข้อมูลเซนเซอร์ปัจจุบัน)")
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     
-    with row1_col1:
-        st.markdown('<div class="bento-light">', unsafe_allow_html=True)
-        st.markdown("### 📈 แนวโน้มความแปรปรวนของคุณภาพน้ำ")
-        chart_data = pd.DataFrame(
-            np.random.randn(15, 3) + [tds / 100, do_val * 2, turbidity / 100],
-            columns=['TDS (สารละลาย)', 'DO (ออกซิเจน)', 'ความขุ่น']
-        )
-        st.line_chart(chart_data, color=["#0077b6", "#00b4d8", "#48cae4"])
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with row1_col2:
-        st.markdown('<div class="bento-dark">', unsafe_allow_html=True)
-        st.markdown("### 📊 เปรียบเทียบค่าเซนเซอร์หลัก")
-        bar_data = pd.DataFrame({
-            'ค่าปัจจุบัน': [ph, tds/50, do_val*2, turbidity/20]
-        }, index=['pH', 'TDS (สัดส่วน)', 'DO', 'Turbidity'])
-        st.bar_chart(bar_data, color="#00b4d8")
-        st.markdown('</div>', unsafe_allow_html=True)
+    with col1:
+        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>pH</h4><h2>{ph:.1f}</h2><p>ความเป็นกรด-ด่าง</p></div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>TDS</h4><h2>{tds:.1f}</h2><p>ppm</p></div>', unsafe_allow_html=True)
+    with col3:
+        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>Temp</h4><h2>{temp:.1f}</h2><p>°C</p></div>', unsafe_allow_html=True)
+    with col4:
+        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>DO</h4><h2>{do_val:.1f}</h2><p>mg/L</p></div>', unsafe_allow_html=True)
+    with col5:
+        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>Turbidity</h4><h2>{turbidity:.1f}</h2><p>NTU</p></div>', unsafe_allow_html=True)
+    with col6:
+        sys_status_text = "Online" if live_data else "Simulated"
+        st.markdown(f'<div class="metric-card" style="text-align:center;"><h4>System</h4><h2>{sys_status_text}</h2><p>Status</p></div>', unsafe_allow_html=True)
 
-    # --- แถวที่ 2: การ์ดแสดงเกจวัดค่า / สถานะความเสี่ยง (จำลองตามเรฟ 3 ช่องกลาง) ---
-    row2_col1, row2_col2, row2_col3 = st.columns(3, gap="medium")
-    
-    with row2_col1:
-        st.markdown('<div class="bento-dark" style="text-align:center;">', unsafe_allow_html=True)
-        st.markdown("#### 🤖 AI RISK SCORE")
-        st.metric(label="ดัชนีความเสี่ยงรวม", value=f"{risk_score}%")
-        st.markdown(f"สถานะ: <span class='{status_color}'>{status_label}</span>", unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with row2_col2:
-        st.markdown('<div class="bento-dark" style="text-align:center;">', unsafe_allow_html=True)
-        st.markdown("#### 🌡️ อุณหภูมิเฉลี่ยน้ำ")
-        st.metric(label="Temperature", value=f"{temp:.1f} °C")
-        st.progress(min(int((temp / 50) * 100), 100))
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with row2_col3:
-        st.markdown('<div class="bento-dark" style="text-align:center;">', unsafe_allow_html=True)
-        st.markdown("#### 💧 ออกซิเจนละลาย (DO)")
-        st.metric(label="Dissolved Oxygen", value=f"{do_val:.1f} mg/L")
-        st.progress(min(int((do_val / 20) * 100), 100))
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("---")
 
-    # --- แถวที่ 3: สรุปสถานการณ์ (การ์ดสว่าง) + ข้อมูลเซนเซอร์ครบถ้วน (การ์ดมืด) ---
-    row3_col1, row3_col2 = st.columns([1.2, 1.8], gap="medium")
+    # --- แถวที่ 2: AI Risk Score & สรุปสถานการณ์ (ซ้าย) + กราฟแนวโน้ม (ขวา) ---
+    col_left, col_right = st.columns([1, 1.5], gap="large")
     
-    with row3_col1:
-        st.markdown('<div class="bento-light">', unsafe_allow_html=True)
-        st.markdown("### 📌 สรุปสถานการณ์น้ำ")
+    with col_left:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.markdown("### 🤖 AI Water Risk Score")
+        st.metric(label="ดัชนีความเสี่ยงรวมของชุมชน", value=f"{risk_score}%")
+        st.markdown(f"สถานะปัจจุบัน: <span class='{status_color}'>{status_label}</span>", unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown("#### 📌 บทวิเคราะห์สถานการณ์")
         if risk_score < 30:
             st.success("✅ คุณภาพน้ำอยู่ในเกณฑ์ดี ปลอดภัยสำหรับการอุปโภคและการเกษตร")
         elif risk_score < 60:
@@ -343,15 +308,14 @@ with tab1:
             st.error(f"🚨 สภาวะน้ำวิกฤต:\n- " + "\n- ".join(risk_reasons))
         st.markdown('</div>', unsafe_allow_html=True)
         
-    with row3_col2:
-        st.markdown('<div class="bento-dark">', unsafe_allow_html=True)
-        st.markdown("### 🔬 ค่าเซนเซอร์สดทั้งหมด (Live Metrics)")
-        m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("pH", f"{ph:.1f}")
-        m2.metric("TDS", f"{tds:.0f}")
-        m3.metric("Temp", f"{temp:.1f}")
-        m4.metric("DO", f"{do_val:.1f}")
-        m5.metric("Turb", f"{turbidity:.0f}")
+    with col_right:
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        st.markdown("### 📈 แนวโน้มความแปรปรวนของคุณภาพน้ำ")
+        chart_data = pd.DataFrame(
+            np.random.randn(15, 3) + [tds / 100, do_val * 2, turbidity / 100],
+            columns=['TDS (สารละลาย)', 'DO (ออกซิเจน)', 'ความขุ่น']
+        )
+        st.line_chart(chart_data, color=["#38bdf8", "#34d399", "#fbbf24"])
         st.markdown('</div>', unsafe_allow_html=True)
 
 with tab2:
@@ -361,7 +325,7 @@ with tab2:
     
     col_action1, col_action2 = st.columns(2, gap="large")
     with col_action1:
-        st.markdown('<div class="bento-light">', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
         st.markdown("#### 🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน")
         if risk_score < 30:
             st.write("1. **แจกจ่ายน้ำปกติ:** ระบบประปาหมู่บ้านใช้งานได้ตามปกติ")
@@ -376,7 +340,7 @@ with tab2:
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_action2:
-        st.markdown('<div class="bento-dark">', unsafe_allow_html=True)
+        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
         st.markdown("#### 📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)")
         st.info("ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลทุก 05:00 น. / 18:00 น.")
         if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
@@ -397,9 +361,5 @@ with tab2:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # หน่วงเวลาและรีเฟรชหน้าเว็บทุกๆ 60 วินาที
-time.sleep(60)
-st.rerun()
-
-# ระบบหน่วงเวลาและรีเฟรชหน้าเว็บอัตโนมัติทุกๆ 60 วินาที
 time.sleep(60)
 st.rerun()
