@@ -48,7 +48,7 @@ def get_firebase_token():
     except Exception:
         return None
 
-# 2. ฟังก์ชันอ่านข้อมูลจาก Realtime Database
+# 2. ฟังก์ชันอ่านข้อมูลจาก Realtime Database (ดึงคีย์ orp ตรงกับ Firebase)
 def read_sensor_data(id_token):
     if not id_token:
         return None
@@ -61,7 +61,7 @@ def read_sensor_data(id_token):
     except Exception:
         return None
 
-# 3. ฟังก์ชันจำลองส่งข้อมูลขึ้น Firebase
+# 3. ฟังก์ชันจำลองส่งข้อมูลขึ้น Firebase (ใช้คีย์ orp แทน do)
 def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, orp_val, turb_val):
     if not id_token:
         return False
@@ -70,7 +70,7 @@ def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, orp_val, turb_va
         "ph": ph_val,
         "tds": tds_val,
         "temp": temp_val,
-        "orp": orp_val,
+        "orp": orp_val,          # เปลี่ยนเป็นคีย์ orp ตามโครงสร้างใหม่
         "turbidity": turb_val,
         "updatedAt": int(time.time())
     }
@@ -82,8 +82,6 @@ def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, orp_val, turb_va
 
 # ฟังก์ชันคำนวณหาค่า DO (mg/L) ทางทฤษฎีจากอุณหภูมิ (Temperature °C)
 def calculate_do_from_temp(temp):
-    # สูตรประมาณการความอิ่มตัวของออกซิเจนในน้ำจืดตามอุณหภูมิ (Empirical Formula)
-    # DO_sat ≈ 14.6 - 0.41*T + 0.008*T^2 - 0.00007*T^3 (โดยประมาณในช่วง 0-40°C)
     do_val = 14.6 - (0.41 * temp) + (0.008 * (temp ** 2)) - (0.00007 * (temp ** 3))
     return max(round(do_val, 2), 0.0)
 
@@ -99,10 +97,10 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.title("🎛️ เซนเซอร์ / Input Control")
 sim_ph = st.sidebar.slider("pH Level (ความเป็นกรด-ด่าง)", 0.0, 14.0, 6.4, 0.1)
-sim_tds = st.sidebar.slider("EC / TDS (ppm) (ความขุ่น/สารละลาย)", 0, 2000, 850, 10)
-sim_temp = st.sidebar.slider("Temperature (°C) (อุณหภูมิ)", 10.0, 50.0, 31.0, 0.5)
+sim_tds = st.sidebar.slider("EC / TDS (ppm) (ความขุ่น/สารละลาย)", 0, 2000, 156.7, 1.0)
+sim_temp = st.sidebar.slider("Temperature (°C) (อุณหภูมิ)", 10.0, 50.0, 24.5, 0.5)
 sim_orp = st.sidebar.slider("ORP (mV) (ศักย์รีดอกซ์)", -500.0, 500.0, 250.0, 5.0)
-sim_turb = st.sidebar.slider("Turbidity (NTU) (ความขุ่นสะสม)", 0.0, 500.0, 45.0, 1.0)
+sim_turb = st.sidebar.slider("Turbidity (NTU) (ความขุ่นสะสม)", 0.0, 1000.0, 815.9, 1.0)
 
 if st.sidebar.button("📤 ส่งค่าจำลองขึ้น Firebase", use_container_width=True):
     if write_mock_sensor_data(id_token, sim_ph, sim_tds, sim_temp, sim_orp, sim_turb):
@@ -115,9 +113,9 @@ if st.sidebar.button("📤 ส่งค่าจำลองขึ้น Firebas
 live_data = read_sensor_data(id_token)
 if live_data and isinstance(live_data, dict) and "ph" in live_data:
     ph = float(live_data.get("ph", sim_ph))
-    tds = int(live_data.get("tds", sim_tds))
+    tds = float(live_data.get("tds", sim_tds))
     temp = float(live_data.get("temp", sim_temp))
-    orp = float(live_data.get("orp", sim_orp))
+    orp = float(live_data.get("orp", sim_orp))     # ดึงค่า orp จากฐานข้อมูลจริง
     turbidity = float(live_data.get("turbidity", sim_turb))
     data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database (`/devices/uno-r4/status`)"
 else:
@@ -127,7 +125,7 @@ else:
 # คำนวณค่า DO ทางทฤษฎีจากอุณหภูมิที่ได้
 calc_do = calculate_do_from_temp(temp)
 
-# ฟังก์ชันคำนวณความเสี่ยง (นำ ORP และค่า DO ที่คำนวณได้มาร่วมประเมิน)
+# ฟังก์ชันคำนวณความเสี่ยง
 def calculate_risk(ph, tds, temp, orp, calc_do, turbidity):
     risk_score = 0
     reasons = []
@@ -196,7 +194,7 @@ if risk_score >= 60 and st.session_state.last_danger_alert_date != current_date_
         f"📅 ประจำวันที่: {formatted_thai_date}\n"
         f"------------------------------\n"
         f"📊 ตรวจพบสถานะน้ำระดับอันตราย (Risk Score: {risk_score}%)\n"
-        f"• pH: {ph:.1f} | TDS: {tds} ppm\n"
+        f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm\n"
         f"• ORP: {orp:.1f} mV | DO (คำนวณ): {calc_do} mg/L\n"
         f"⚠️ สาเหตุหลัก:\n- " + "\n- ".join(risk_reasons) + "\n"
         f"------------------------------\n"
@@ -220,7 +218,7 @@ if scheduled_slot and st.session_state.last_scheduled_alert != alert_key_name:
         f"------------------------------\n"
         f"สถานะน้ำชุมชน EEC ล่าสุด:\n"
         f"• ดัชนีความเสี่ยง: {risk_score}% ({status_label})\n"
-        f"• pH: {ph:.1f} | TDS: {tds} ppm | ORP: {orp:.1f} mV\n"
+        f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm | ORP: {orp:.1f} mV\n"
         f"• DO (คำนวณจากอุณหภูมิ): {calc_do} mg/L\n"
         f"------------------------------\n"
         f"💡 สรุปภาพรวม: {'ระบบปกติพร้อมใช้งาน' if risk_score < 30 else 'พบความผิดปกติ ควรตรวจสอบระบบกรองน้ำ'}"
@@ -256,11 +254,11 @@ with tab1:
     st.subheader("📊 ข้อมูลจริงจากเซนเซอร์ชุมชน (Live Sensor Metrics)")
     m1, m2, m3, m4, m5, m6 = st.columns(6)
     m1.metric("pH (กรด-ด่าง)", f"{ph:.1f}")
-    m2.metric("EC / TDS", f"{tds} ppm")
+    m2.metric("EC / TDS", f"{tds:.1f} ppm")
     m3.metric("อุณหภูมิ", f"{temp:.1f} °C")
     m4.metric("ORP", f"{orp:.1f} mV")
     m5.metric("DO (คำนวณ)", f"{calc_do} mg/L")
-    m6.metric("ความขุ่น", f"{turbidity:.0f} NTU")
+    m6.metric("ความขุ่น", f"{turbidity:.1f} NTU")
 
     st.markdown("---")
     st.subheader("📈 แนวโน้มความแปรปรวนคุณภาพน้ำย้อนหลัง (Community Water Trends)")
@@ -302,7 +300,7 @@ with tab2:
                 f"📅 วันที่: {formatted_thai_date}\n"
                 f"------------------------------\n"
                 f"📊 Risk Score: {risk_score}% ({status_label})\n"
-                f"• pH: {ph:.1f} | TDS: {tds} ppm\n"
+                f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm\n"
                 f"• ORP: {orp:.1f} mV | DO (คำนวณ): {calc_do} mg/L\n"
                 f"------------------------------\n"
                 f"💡 ระบบทำงานอัตโนมัติสมบูรณ์แล้ว!"
