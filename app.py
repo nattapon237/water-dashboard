@@ -330,37 +330,31 @@ with tab2:
     col_action1, col_action2 = st.columns(2, gap="large")
     
     with col_action1:
-        if risk_score < 30:
-            action_content = """
-                <ul style="color: #cbd5e1; padding-left: 20px; line-height: 1.8; list-style-type: none;">
-                    <li>1. 💧 <b>แจกจ่ายน้ำปกติ:</b> ระบบประปาหมู่บ้านใช้งานได้ตามปกติ</li>
-                    <li>2. 📊 <b>จัดเก็บข้อมูล:</b> บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง</li>
-                </ul>
-            """
-        elif risk_score < 60:
-            action_content = """
-                <ul style="color: #cbd5e1; padding-left: 20px; line-height: 1.8; list-style-type: none;">
-                    <li>1. 📢 <b>แจ้งเตือนเกษตรกร:</b> สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง</li>
-                    <li>2. ⚙️ <b>ปรับระบบกรอง:</b> เพิ่มระยะเวลาการตกตะกอนในระบบประปา</li>
-                    <li>3. 🌊 <b>เติมออกซิเจน:</b> ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ</li>
-                </ul>
-            """
-        else:
-            action_content = """
-                <ul style="color: #cbd5e1; padding-left: 20px; line-height: 1.8; list-style-type: none;">
-                    <li>1. 🚫 <b>งดใช้น้ำชั่วคราว:</b> ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน</li>
-                    <li>2. 🚰 <b>ใช้แหล่งน้ำสำรอง:</b> เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน</li>
-                </ul>
-            """
-
-        # เพิ่ม unsafe_allow_html=True ที่ถูกต้องแล้ว
-        st.markdown(f"""
+        st.markdown("""
             <div class="bento-card">
                 <h3 style="color: #38bdf8; margin-top: 0;">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน</h3>
                 <br>
-                {action_content}
-            </div>
         """, unsafe_allow_html=True)
+        
+        # ใช้ Markdown ปกติของ Streamlit แทนการซ้อน HTML ในตัวแปร
+        if risk_score < 30:
+            st.markdown("""
+            * 💧 **แจกจ่ายน้ำปกติ:** ระบบประปาหมู่บ้านใช้งานได้ตามปกติ
+            * 📊 **จัดเก็บข้อมูล:** บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง
+            """)
+        elif risk_score < 60:
+            st.markdown("""
+            * 📢 **แจ้งเตือนเกษตรกร:** สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง
+            * ⚙️ **ปรับระบบกรอง:** เพิ่มระยะเวลาการตกตะกอนในระบบประปา
+            * 🌊 **เติมออกซิเจน:** ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ
+            """)
+        else:
+            st.markdown("""
+            * 🚫 **งดใช้น้ำชั่วคราว:** ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน
+            * 🚰 **ใช้แหล่งน้ำสำรอง:** เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน
+            """)
+            
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with col_action2:
         st.markdown("""
