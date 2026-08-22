@@ -17,186 +17,157 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# ============================================================================
-# DESIGN SYSTEM
-# Palette   : void #030712 / panel #0b1526 / hairline cyan rgba(56,189,248,.18)
-#             signal-safe #34d399 · signal-warn #fbbf24 · signal-danger #f87171
-#             accent-cyan #22d3ee · accent-violet #a78bfa · accent-orange #fb923c
-# Type      : Space Grotesk (display) · Inter (body) · JetBrains Mono (data/readouts)
-# Signature : per-sensor "tide bars" — horizontal range gauges colored by zone,
-#             echoing a water level, + a circular risk ring as the hero readout.
-# ============================================================================
-
+# --- High-Tech Cyber-Water Glassmorphism CSS ---
 st.markdown("""
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-    :root {
-        --void: #030712;
-        --panel: rgba(11, 21, 38, 0.78);
-        --panel-solid: #0b1526;
-        --hairline: rgba(56, 189, 248, 0.16);
-        --hairline-strong: rgba(56, 189, 248, 0.42);
-        --cyan: #22d3ee;
-        --violet: #a78bfa;
-        --orange: #fb923c;
-        --safe: #34d399;
-        --warn: #fbbf24;
-        --danger: #f87171;
-        --text-hi: #eef2f7;
-        --text-mid: #b6c2d1;
-        --text-low: #6b7c93;
-    }
-
-    .stApp {
-        background:
-            radial-gradient(ellipse 900px 500px at 15% -10%, rgba(34,211,238,0.09), transparent 60%),
-            radial-gradient(ellipse 700px 500px at 100% 0%, rgba(167,139,250,0.06), transparent 55%),
-            var(--void);
-        color: var(--text-mid);
-        font-family: 'Inter', sans-serif;
-    }
-
-    [data-testid="stSidebar"] {
-        background-color: #050c18;
-        border-right: 1px solid var(--hairline);
-    }
-    [data-testid="stSidebar"] * { font-family: 'Inter', sans-serif; }
-
-    h1, h2, h3, h4 {
-        font-family: 'Space Grotesk', sans-serif !important;
-        color: var(--text-hi) !important;
-        letter-spacing: 0.2px;
-    }
-    p, span, label, .stMarkdown, li { color: var(--text-mid); }
-
-    /* ---------- header strip ---------- */
-    .hdr-eyebrow {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.72rem;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: var(--cyan);
-        margin-bottom: 2px;
-    }
-    .hdr-title { font-size: 1.9rem; font-weight: 700; color: var(--text-hi); margin: 0 0 4px 0; }
-    .hdr-sub { color: var(--text-low); font-size: 0.92rem; }
-
-    .status-pill {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 10px 18px; border-radius: 999px;
-        font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.95rem;
-        border: 1px solid var(--pill-color, var(--safe));
-        color: var(--pill-color, var(--safe));
-        background: color-mix(in srgb, var(--pill-color, var(--safe)) 12%, transparent);
-        box-shadow: 0 0 22px color-mix(in srgb, var(--pill-color, var(--safe)) 35%, transparent);
-        float: right;
-    }
-    .status-dot {
-        width: 8px; height: 8px; border-radius: 50%;
-        background: var(--pill-color, var(--safe));
-        box-shadow: 0 0 8px var(--pill-color, var(--safe));
-    }
-
-    /* ---------- generic panel ---------- */
-    .panel {
-        background: linear-gradient(155deg, rgba(20,35,64,0.55) 0%, rgba(6,12,24,0.85) 100%);
-        border: 1px solid var(--hairline);
-        border-radius: 16px;
-        padding: 20px 22px;
-        height: 100%;
-        backdrop-filter: blur(14px);
-    }
-    .panel-title {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 0.98rem; font-weight: 700; color: var(--text-hi);
-        display: flex; align-items: center; gap: 8px;
-        margin-bottom: 14px;
-    }
-    .panel-title .tag {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 500;
-        color: var(--text-low); letter-spacing: 1px; text-transform: uppercase;
-        border: 1px solid var(--hairline-strong); border-radius: 5px; padding: 2px 6px;
-    }
-
-    /* ---------- sensor gauge cards ---------- */
-    .gauge-card {
-        background: linear-gradient(155deg, rgba(20,35,64,0.55) 0%, rgba(6,12,24,0.85) 100%);
-        border: 1px solid var(--hairline);
-        border-radius: 14px;
-        padding: 16px 16px 14px 16px;
-    }
-    .gauge-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-    .gauge-label {
-        font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase;
-        color: var(--text-low); font-weight: 600;
-    }
-    .gauge-icon { font-size: 1.05rem; opacity: 0.85; }
-    .gauge-value {
-        font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.65rem;
-        line-height: 1.1; margin: 2px 0 12px 0;
-    }
-    .gauge-unit { font-size: 0.85rem; font-weight: 500; color: var(--text-low); margin-left: 3px; }
-    .gauge-track {
-        position: relative; height: 6px; border-radius: 4px; margin-bottom: 6px;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
-    }
-    .gauge-marker {
-        position: absolute; top: -3px; width: 3px; height: 12px; border-radius: 2px;
-        background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px #000;
-        transform: translateX(-50%);
-    }
-    .gauge-range {
-        display: flex; justify-content: space-between;
-        font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-low);
-    }
-
-    /* ---------- risk ring ---------- */
-    .risk-wrap { display: flex; align-items: center; gap: 22px; }
-    .risk-figure { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-    .risk-status-label { font-size: 0.95rem; font-weight: 600; margin-top: 2px; }
-    .risk-advice {
-        font-size: 0.83rem; color: var(--text-low); margin-top: 10px;
-        border-top: 1px solid var(--hairline); padding-top: 10px; line-height: 1.5;
-    }
-
-    /* ---------- recommendation checklist ---------- */
-    .check-row {
-        display: flex; gap: 12px; align-items: flex-start;
-        padding: 10px 0; border-bottom: 1px solid var(--hairline);
-    }
-    .check-row:last-child { border-bottom: none; }
-    .check-icon { font-size: 1rem; margin-top: 1px; }
-    .check-text { font-size: 0.88rem; color: var(--text-mid); line-height: 1.45; }
-    .check-text b { color: var(--text-hi); }
-
-    /* ---------- misc ---------- */
-    .data-badge {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
-        color: var(--cyan); background: rgba(34,211,238,0.08);
-        border: 1px solid rgba(34,211,238,0.25); border-radius: 8px;
-        padding: 8px 14px; display: inline-block;
-    }
-    hr.divider { border: 0; height: 1px; background: var(--hairline); margin: 22px 0; }
-
-    .stButton>button {
-        background: linear-gradient(135deg, #0f5f8a, #0ea5e9);
-        color: #f8fafc; border: 1px solid var(--hairline-strong);
-        border-radius: 10px; font-weight: 600; font-family: 'Inter', sans-serif;
-        padding: 0.6rem 1.2rem; box-shadow: 0 4px 18px rgba(14,165,233,0.35);
-        transition: all 0.2s ease;
-    }
-    .stButton>button:hover {
-        background: linear-gradient(135deg, #0ea5e9, #22d3ee);
-        color: #04101f; box-shadow: 0 6px 24px rgba(34,211,238,0.55);
-        transform: translateY(-1px);
-    }
-    .stAlert {
-        background: rgba(11,21,38,0.85) !important;
-        border: 1px solid var(--hairline-strong) !important;
-        color: var(--cyan) !important; border-radius: 10px;
-    }
-    </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #030712;
+  --panel: rgba(11, 21, 38, 0.78);
+  --panel-solid: #0b1526;
+  --hairline: rgba(56, 189, 248, 0.16);
+  --hairline-strong: rgba(56, 189, 248, 0.42);
+  --cyan: #22d3ee;
+  --violet: #a78bfa;
+  --orange: #fb923c;
+  --safe: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --text-hi: #eef2f7;
+  --text-mid: #b6c2d1;
+  --text-low: #6b7c93;
+}
+.stApp {
+  background: radial-gradient(ellipse 900px 500px at 15% -10%, rgba(34,211,238,0.09), transparent 60%), radial-gradient(ellipse 700px 500px at 100% 0%, rgba(167,139,250,0.06), transparent 55%), var(--void);
+  color: var(--text-mid);
+  font-family: 'Inter', sans-serif;
+}
+[data-testid="stSidebar"] {
+  background-color: #050c18;
+  border-right: 1px solid var(--hairline);
+}
+[data-testid="stSidebar"] * { font-family: 'Inter', sans-serif; }
+h1, h2, h3, h4 {
+  font-family: 'Space Grotesk', sans-serif !important;
+  color: var(--text-hi) !important;
+  letter-spacing: 0.2px;
+}
+p, span, label, .stMarkdown, li { color: var(--text-mid); }
+.hdr-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 2px;
+}
+.hdr-title { font-size: 1.9rem; font-weight: 700; color: var(--text-hi); margin: 0 0 4px 0; }
+.hdr-sub { color: var(--text-low); font-size: 0.92rem; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.95rem;
+  border: 1px solid var(--pill-color, var(--safe));
+  color: var(--pill-color, var(--safe));
+  background: color-mix(in srgb, var(--pill-color, var(--safe)) 12%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--pill-color, var(--safe)) 35%, transparent);
+  float: right;
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--pill-color, var(--safe));
+  box-shadow: 0 0 8px var(--pill-color, var(--safe));
+}
+.panel {
+  background: linear-gradient(155deg, rgba(20,35,64,0.55) 0%, rgba(6,12,24,0.85) 100%);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  padding: 20px 22px;
+  height: 100%;
+  backdrop-filter: blur(14px);
+}
+.panel-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.98rem; font-weight: 700; color: var(--text-hi);
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px;
+}
+.panel-title .tag {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 500;
+  color: var(--text-low); letter-spacing: 1px; text-transform: uppercase;
+  border: 1px solid var(--hairline-strong); border-radius: 5px; padding: 2px 6px;
+}
+.gauge-card {
+  background: linear-gradient(155deg, rgba(20,35,64,0.55) 0%, rgba(6,12,24,0.85) 100%);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 16px 16px 14px 16px;
+}
+.gauge-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.gauge-label {
+  font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text-low); font-weight: 600;
+}
+.gauge-icon { font-size: 1.05rem; opacity: 0.85; }
+.gauge-value {
+  font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.65rem;
+  line-height: 1.1; margin: 2px 0 12px 0;
+}
+.gauge-unit { font-size: 0.85rem; font-weight: 500; color: var(--text-low); margin-left: 3px; }
+.gauge-track {
+  position: relative; height: 6px; border-radius: 4px; margin-bottom: 6px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.gauge-marker {
+  position: absolute; top: -3px; width: 3px; height: 12px; border-radius: 2px;
+  background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px #000;
+  transform: translateX(-50%);
+}
+.gauge-range {
+  display: flex; justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-low);
+}
+.risk-wrap { display: flex; align-items: center; gap: 22px; }
+.risk-figure { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+.risk-status-label { font-size: 0.95rem; font-weight: 600; margin-top: 2px; }
+.risk-advice {
+  font-size: 0.83rem; color: var(--text-low); margin-top: 10px;
+  border-top: 1px solid var(--hairline); padding-top: 10px; line-height: 1.5;
+}
+.check-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 10px 0; border-bottom: 1px solid var(--hairline);
+}
+.check-row:last-child { border-bottom: none; }
+.check-icon { font-size: 1rem; margin-top: 1px; }
+.check-text { font-size: 0.88rem; color: var(--text-mid); line-height: 1.45; }
+.check-text b { color: var(--text-hi); }
+.data-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+  color: var(--cyan); background: rgba(34,211,238,0.08);
+  border: 1px solid rgba(34,211,238,0.25); border-radius: 8px;
+  padding: 8px 14px; display: inline-block;
+}
+hr.divider { border: 0; height: 1px; background: var(--hairline); margin: 22px 0; }
+.stButton>button {
+  background: linear-gradient(135deg, #0f5f8a, #0ea5e9);
+  color: #f8fafc; border: 1px solid var(--hairline-strong);
+  border-radius: 10px; font-weight: 600; font-family: 'Inter', sans-serif;
+  padding: 0.6rem 1.2rem; box-shadow: 0 4px 18px rgba(14,165,233,0.35);
+  transition: all 0.2s ease;
+}
+.stButton>button:hover {
+  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  color: #04101f; box-shadow: 0 6px 24px rgba(34,211,238,0.55);
+  transform: translateY(-1px);
+}
+.stAlert {
+  background: rgba(11,21,38,0.85) !important;
+  border: 1px solid var(--hairline-strong) !important;
+  color: var(--cyan) !important; border-radius: 10px;
+}
+</style>
 """, unsafe_allow_html=True)
 
 # ฟังก์ชันส่งข้อความ LINE
@@ -389,7 +360,6 @@ if scheduled_slot and st.session_state.last_scheduled_alert != alert_key_name:
 # ============================================================================
 
 def zone_color(value, zones):
-    """zones: list of (lo, hi, color_var) — returns the css color var the value falls in."""
     for lo, hi, color in zones:
         if lo <= value < hi:
             return color
@@ -409,31 +379,27 @@ def render_gauge_card(icon, label, value, unit, vmin, vmax, zones, fmt="{:.1f}")
     pct = (clipped - vmin) / (vmax - vmin) * 100
     color = zone_color(value, zones)
     gradient = gradient_from_zones(zones, vmin, vmax)
-    st.markdown(f"""
-        <div class="gauge-card">
-            <div class="gauge-top">
-                <span class="gauge-label">{label}</span>
-                <span class="gauge-icon">{icon}</span>
-            </div>
-            <div class="gauge-value" style="color:{color}">{fmt.format(value)}<span class="gauge-unit">{unit}</span></div>
-            <div class="gauge-track" style="background:{gradient}">
-                <div class="gauge-marker" style="left:{pct:.1f}%"></div>
-            </div>
-            <div class="gauge-range"><span>{vmin}</span><span>{vmax}</span></div>
-        </div>
-    """, unsafe_allow_html=True)
+    html = f"""<div class="gauge-card">
+<div class="gauge-top">
+<span class="gauge-label">{label}</span>
+<span class="gauge-icon">{icon}</span>
+</div>
+<div class="gauge-value" style="color:{color}">{fmt.format(value)}<span class="gauge-unit">{unit}</span></div>
+<div class="gauge-track" style="background:{gradient}">
+<div class="gauge-marker" style="left:{pct:.1f}%"></div>
+</div>
+<div class="gauge-range"><span>{vmin}</span><span>{vmax}</span></div>
+</div>"""
+    st.markdown(html, unsafe_allow_html=True)
 
 def render_risk_ring(score, status_color_css, size=132, stroke=12):
     r = (size - stroke) / 2
     circumference = 2 * math.pi * r
     dash = circumference * (score / 100)
-    return f"""
-    <svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" style="transform: rotate(-90deg); flex-shrink:0;">
-        <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="rgba(148,163,184,0.12)" stroke-width="{stroke}"/>
-        <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="{status_color_css}" stroke-width="{stroke}"
-            stroke-dasharray="{dash:.1f} {circumference:.1f}" stroke-linecap="round"/>
-    </svg>
-    """
+    return f"""<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" style="transform: rotate(-90deg); flex-shrink:0;">
+<circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="rgba(148,163,184,0.12)" stroke-width="{stroke}"/>
+<circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="{status_color_css}" stroke-width="{stroke}" stroke-dasharray="{dash:.1f} {circumference:.1f}" stroke-linecap="round"/>
+</svg>"""
 
 # --- จัดการแท็บหน้าเว็บ ---
 tab1, tab2 = st.tabs(["📊 EEC Water Overview (หน้าแรก)", "🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน"])
@@ -445,13 +411,12 @@ with tab1:
         st.markdown('<div class="hdr-title">💧 EEC Community Water Intelligence System</div>', unsafe_allow_html=True)
         st.markdown('<div class="hdr-sub">ระบบเฝ้าระวังและประเมินความเสี่ยงคุณภาพน้ำอัจฉริยะเพื่อการอุปโภค บริโภค และการเกษตรของชุมชน</div>', unsafe_allow_html=True)
     with hcol2:
-        st.markdown(f"""
-            <div style="text-align:right; padding-top: 8px;">
-                <span class="status-pill" style="--pill-color:{status_color}">
-                    <span class="status-dot"></span>{status_label} · {status_label_en}
-                </span>
-            </div>
-        """, unsafe_allow_html=True)
+        pill_html = f"""<div style="text-align:right; padding-top: 8px;">
+<span class="status-pill" style="--pill-color:{status_color}">
+<span class="status-dot"></span>{status_label} · {status_label_en}
+</span>
+</div>"""
+        st.markdown(pill_html, unsafe_allow_html=True)
 
     st.markdown(f'<div class="data-badge">{data_source_badge}</div>', unsafe_allow_html=True)
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
@@ -478,55 +443,45 @@ with tab1:
     col2, col3 = st.columns([1.6, 1], gap="medium")
 
     with col2:
-        st.markdown("""
-            <div class="panel" style="margin-bottom: 0;">
-                <div class="panel-title">📈 แนวโน้มคุณภาพน้ำ <span class="tag">AREA TREND</span></div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="panel" style="margin-bottom: 0;"><div class="panel-title">📈 แนวโน้มคุณภาพน้ำ <span class="tag">AREA TREND</span></div>', unsafe_allow_html=True)
         chart_data_1 = pd.DataFrame(np.random.randn(10, 3) + [tds/100, do_val, turbidity/50], columns=['TDS', 'DO', 'Turbidity'])
         st.area_chart(chart_data_1, color=["#22d3ee", "#34d399", "#a78bfa"], height=200)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col3:
         analysis_text = ("คุณภาพน้ำอยู่ในเกณฑ์ดี ปลอดภัยต่อการใช้งาน" if risk_score < 30
-                          else ("เริ่มมีความผิดปกติ ควรเฝ้าระวังอย่างใกล้ชิด" if risk_score < 60
-                                else "สถานะวิกฤต ควรตรวจสอบและดำเนินการเร่งด่วน"))
+                         else ("เริ่มมีความผิดปกติ ควรเฝ้าระวังอย่างใกล้ชิด" if risk_score < 60
+                               else "สถานะวิกฤต ควรตรวจสอบและดำเนินการเร่งด่วน"))
         ring_svg = render_risk_ring(risk_score, status_color)
-        st.markdown(f"""
-            <div class="panel">
-                <div class="panel-title">🤖 AI Risk Assessment <span class="tag">LIVE</span></div>
-                <div class="risk-wrap">
-                    <div style="position:relative; width:132px; height:132px;">
-                        {ring_svg}
-                        <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                            <span class="risk-figure" style="font-size:1.9rem; color:{status_color};">{risk_score}%</span>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="risk-status-label" style="color:{status_color}">{status_label}</div>
-                        <div style="font-size:0.78rem; color:var(--text-low); font-family:'JetBrains Mono',monospace;">RISK INDEX</div>
-                    </div>
-                </div>
-                <div class="risk-advice">💡 <b style="color:var(--text-mid)">คำแนะนำ:</b> {analysis_text}</div>
-            </div>
-        """, unsafe_allow_html=True)
+        risk_html = f"""<div class="panel">
+<div class="panel-title">🤖 AI Risk Assessment <span class="tag">LIVE</span></div>
+<div class="risk-wrap">
+<div style="position:relative; width:132px; height:132px;">
+{ring_svg}
+<div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+<span class="risk-figure" style="font-size:1.9rem; color:{status_color};">{risk_score}%</span>
+</div>
+</div>
+<div>
+<div class="risk-status-label" style="color:{status_color}">{status_label}</div>
+<div style="font-size:0.78rem; color:var(--text-low); font-family:'JetBrains Mono',monospace;">RISK INDEX</div>
+</div>
+</div>
+<div class="risk-advice">💡 <b style="color:var(--text-mid)">คำแนะนำ:</b> {analysis_text}</div>
+</div>"""
+        st.markdown(risk_html, unsafe_allow_html=True)
 
     st.write("")
     col4, col5 = st.columns([1.2, 1], gap="medium")
 
     with col4:
-        st.markdown("""
-            <div class="panel" style="margin-bottom: 0;">
-                <div class="panel-title">📊 การเปรียบเทียบพารามิเตอร์เชิงลึก <span class="tag">DEEP COMPARE</span></div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="panel" style="margin-bottom: 0;"><div class="panel-title">📊 การเปรียบเทียบพารามิเตอร์เชิงลึก <span class="tag">DEEP COMPARE</span></div>', unsafe_allow_html=True)
         chart_data_2 = pd.DataFrame(np.random.randn(12, 2) * 5 + 50, columns=['Value A', 'Value B'])
         st.line_chart(chart_data_2, color=["#22d3ee", "#34d399"], height=190)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col5:
-        st.markdown("""
-            <div class="panel" style="margin-bottom: 0;">
-                <div class="panel-title">📊 สถิติความแปรปรวนย้อนหลัง <span class="tag">VARIANCE</span></div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="panel" style="margin-bottom: 0;"><div class="panel-title">📊 สถิติความแปรปรวนย้อนหลัง <span class="tag">VARIANCE</span></div>', unsafe_allow_html=True)
         bar_data = pd.DataFrame(np.random.rand(8, 2) * 100, columns=['Series 1', 'Series 2'])
         st.bar_chart(bar_data, color=["#22d3ee", "#a78bfa"], height=190)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -560,34 +515,31 @@ with tab2:
             f'<div class="check-row"><span class="check-icon">{icon}</span><span class="check-text">{text}</span></div>'
             for icon, text in rows
         )
-        st.markdown(f"""
-            <div class="panel">
-                <div class="panel-title">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน <span class="tag">{status_label_en}</span></div>
-                {rows_html}
-            </div>
-        """, unsafe_allow_html=True)
+        action_html = f"""<div class="panel">
+<div class="panel-title">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน <span class="tag">{status_label_en}</span></div>
+{rows_html}
+</div>"""
+        st.markdown(action_html, unsafe_allow_html=True)
 
         if risk_reasons:
             reasons_html = "".join(
                 f'<div class="check-row"><span class="check-icon">⚠️</span><span class="check-text">{r}</span></div>'
                 for r in risk_reasons
             )
-            st.markdown(f"""
-                <div class="panel" style="margin-top:18px;">
-                    <div class="panel-title">🔍 สาเหตุที่ตรวจพบ <span class="tag">DETECTED</span></div>
-                    {reasons_html}
-                </div>
-            """, unsafe_allow_html=True)
+            reasons_panel_html = f"""<div class="panel" style="margin-top:18px;">
+<div class="panel-title">🔍 สาเหตุที่ตรวจพบ <span class="tag">DETECTED</span></div>
+{reasons_html}
+</div>"""
+            st.markdown(reasons_panel_html, unsafe_allow_html=True)
 
     with col_action2:
-        st.markdown("""
-            <div class="panel">
-                <div class="panel-title">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน <span class="tag">LINE</span></div>
-                <p style="color: var(--text-low); font-size: 0.88rem; line-height: 1.6; margin-bottom: 18px;">
-                    ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลรายงานประจำวันทุกเวลา 05:00 น. / 18:00 น.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+        line_html = """<div class="panel">
+<div class="panel-title">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน <span class="tag">LINE</span></div>
+<p style="color: var(--text-low); font-size: 0.88rem; line-height: 1.6; margin-bottom: 18px;">
+ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลรายงานประจำวันทุกเวลา 05:00 น. / 18:00 น.
+</p>
+</div>"""
+        st.markdown(line_html, unsafe_allow_html=True)
 
         if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
             test_msg = (
