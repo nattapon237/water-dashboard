@@ -4,12 +4,21 @@ import pandas as pd
 import requests
 import json
 import time
+from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="EEC Community Water Intelligence System", page_icon="💧", layout="wide")
+
+# ตั้งค่า Auto-refresh ทุกๆ 60 วินาที เพื่อเช็คเวลาและสถานะอัตโนมัติ
+st_autorefresh(interval=60 * 1000, key="water_monitor_refresh")
 
 # --- Firebase Configuration (cwis-c2ea8) ---
 FIREBASE_WEB_API_KEY = "AIzaSyAK_swKTrfzsH-_BKHLU40ilTWfyNBqNHA"
 FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatabase.app"
+
+# LINE API Configuration
+LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
+TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
 # สไตล์ CSS
 st.markdown("""
@@ -19,6 +28,17 @@ st.markdown("""
     .status-danger { color: #c62828; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
+
+# ฟังก์ชันส่งข้อความเข้า LINE
+def send_line_notification(message):
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}", "Content-Type": "application/json"}
+    payload = {"to": TARGET_USER_ID, "messages": [{"type": "text", "text": message}]}
+    try:
+        res = requests.post(url, headers=headers, data=json.dumps(payload), timeout=5)
+        return res.status_code == 200
+    except Exception:
+        return False
 
 # 1. ฟังก์ชันรับ Auth Token จาก Firebase Anonymous Authentication
 @st.cache_data(ttl=3000)
@@ -147,7 +167,62 @@ else:
     status_label = "🟢 ปกติ (Normal)"
     status_color = "status-normal"
 
-# จัดการแท็บหน้าเว็บ
+# --- ระบบแจ้งเตือนอัตโนมัติ (Background Automation Logic) ---
+now = datetime.now()
+current_time_str = now.strftime("%H:%M")
+current_date_str = now.strftime("%Y-%m-%d")
+
+# แปลงวันที่เป็นรูปแบบไทย (วัน เดือน ปี พ.ศ.)
+thai_months = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", 
+               "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+thai_year = now.year + 543
+formatted_thai_date = f"{now.day} {thai_months[now.month]} พ.ศ. {thai_year} (เวลา {current_time_str} น.)"
+
+if "last_danger_alert_date" not in st.session_state:
+    st.session_state.last_danger_alert_date = ""
+if "last_scheduled_alert" not in st.session_state:
+    st.session_state.last_scheduled_alert = ""
+
+# 1. แจ้งเตือนอัตโนมัติทันทีเมื่อสถานะเป็นสีแดง (Danger) และยังไม่ได้แจ้งเตือนในวันเดียวกัน
+if risk_score >= 60 and st.session_state.last_danger_alert_date != current_date_str:
+    danger_msg = (
+        f"🚨 [แจ้งเตือนวิกฤติด่วน!]\n"
+        f"📅 ประจำวันที่: {formatted_thai_date}\n"
+        f"------------------------------\n"
+        f"📊 ตรวจพบสถานะน้ำระดับอันตราย (Risk Score: {risk_score}%)\n"
+        f"• pH: {ph:.1f} | TDS: {tds} ppm\n"
+        f"• DO: {do:.1f} mg/L | ความขุ่น: {turbidity:.0f} NTU\n"
+        f"⚠️ สาเหตุหลัก:\n- " + "\n- ".join(risk_reasons) + "\n"
+        f"------------------------------\n"
+        f"กรุณาตรวจสอบระบบประปาหมู่บ้านและประกาศงดใช้น้ำด่วน!"
+    )
+    if send_line_notification(danger_msg):
+        st.session_state.last_danger_alert_date = current_date_str
+
+# 2. แจ้งเตือนตามเวลาอัตโนมัติ (05:00 และ 18:00)
+scheduled_slot = None
+if "05:00" <= current_time_str <= "05:05":
+    scheduled_slot = "05:00 รอบเช้า"
+elif "18:00" <= current_time_str <= "18:05":
+    scheduled_slot = "18:00 รอบเย็น"
+
+alert_key_name = f"{current_date_str}_{scheduled_slot}"
+if scheduled_slot and st.session_state.last_scheduled_alert != alert_key_name:
+    sched_msg = (
+        f"⏰ [รายงานประจำวัน - {scheduled_slot}]\n"
+        f"📅 วันที่: {formatted_thai_date}\n"
+        f"------------------------------\n"
+        f"สถานะน้ำชุมชน EEC ล่าสุด:\n"
+        f"• ดัชนีความเสี่ยง: {risk_score}% ({status_label})\n"
+        f"• pH: {ph:.1f} | TDS: {tds} ppm\n"
+        f"• DO: {do:.1f} mg/L | Temp: {temp:.1f}°C | ความขุ่น: {turbidity:.0f} NTU\n"
+        f"------------------------------\n"
+        f"💡 สรุปภาพรวม: {'ระบบปกติพร้อมใช้งาน' if risk_score < 30 else 'พบความผิดปกติ ควรตรวจสอบระบบกรองน้ำ'}"
+    )
+    if send_line_notification(sched_msg):
+        st.session_state.last_scheduled_alert = alert_key_name
+
+# --- จัดการแท็บหน้าเว็บ ---
 tab1, tab2 = st.tabs(["📊 EEC Water Overview (หน้าแรก)", "🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน"])
 
 with tab1:
@@ -213,24 +288,19 @@ with tab2:
 
     with col_action2:
         st.markdown("#### 📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE Notification)")
-        st.info("ส่งรายงานสถานการณ์และคำแนะนำ AI ตรงถึง LINE ของผู้ใหญ่บ้าน / ประธานประปาหมู่บ้าน")
-        if st.button("🚀 ส่งรายงานเตือนภัยชุมชนเข้า LINE", use_container_width=True):
-            LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
-            TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
-            msg = (
-                f"📢 [รายงานสถานการณ์น้ำชุมชน EEC]\n"
+        st.info("ระบบตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นสีแดง และส่งสรุปผลทุกวันเวลา 05:00 น. และ 18:00 น.")
+        if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
+            test_msg = (
+                f"📢 [ทดสอบระบบ LINE แจ้งเตือนน้ำชุมชน EEC]\n"
+                f"📅 วันที่: {formatted_thai_date}\n"
                 f"------------------------------\n"
                 f"📊 Risk Score: {risk_score}% ({status_label})\n"
                 f"• pH: {ph:.1f} | TDS: {tds} ppm\n"
                 f"• DO: {do:.1f} mg/L | Temp: {temp:.1f}°C\n"
                 f"------------------------------\n"
-                f"💡 แนวทางปฏิบัติสำหรับชุมชน:\n"
-                + ("• ใช้งานได้ตามปกติ" if risk_score < 30 else "• แจ้งเตือนเฝ้าระวัง และตรวจสอบระบบกรองประปาหมู่บ้านด่วน")
+                f"💡 ระบบทำงานอัตโนมัติสมบูรณ์แล้ว!"
             )
-            payload = {"to": TARGET_USER_ID, "messages": [{"type": "text", "text": msg}]}
-            headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}", "Content-Type": "application/json"}
-            res = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, data=json.dumps(payload))
-            if res.status_code == 200:
-                st.success("✅ ส่งรายงานเตือนภัยเข้า LINE ผู้นำชุมชนสำเร็จ!")
+            if send_line_notification(test_msg):
+                st.success("✅ ส่งข้อความทดสอบเข้า LINE สำเร็จ!")
             else:
                 st.error("❌ ส่งไม่สำเร็จ")
