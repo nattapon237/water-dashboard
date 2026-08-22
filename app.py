@@ -70,7 +70,7 @@ def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, do_val, turb_val
         "ph": ph_val,
         "tds": tds_val,
         "temp": temp_val,
-        "do": do_val,            # ตามโครงสร้างใน Firebase ของคุณปัจจุบันที่เป็น do
+        "do": do_val,            # ใช้คีย์ do ให้ตรงกับฐานข้อมูลใน Firebase
         "turbidity": turb_val,
         "updatedAt": int(time.time())
     }
@@ -110,7 +110,7 @@ if live_data and isinstance(live_data, dict) and "ph" in live_data:
     ph = float(live_data.get("ph", sim_ph))
     tds = float(live_data.get("tds", sim_tds))
     temp = float(live_data.get("temp", sim_temp))
-    do_val = float(live_data.get("do", sim_do))     # ดึงค่า do จากฐานข้อมูลจริง
+    do_val = float(live_data.get("do", sim_do))     # ดึงค่า do จาก Firebase จริง
     turbidity = float(live_data.get("turbidity", sim_turb))
     data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database (`/devices/uno-r4/status`)"
 else:
