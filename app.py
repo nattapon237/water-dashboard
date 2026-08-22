@@ -16,28 +16,28 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# --- High-Tech Modern Dark Theme CSS (Fixed UI Layout) ---
+# --- High-Tech Bento Grid Dark Theme CSS ---
 st.markdown("""
     <style>
     .stApp {
-        background-color: #050b14;
+        background-color: #070f1e;
         color: #f8fafc;
         font-family: 'Segoe UI', sans-serif;
     }
     
     [data-testid="stSidebar"] {
-        background-color: #091526;
+        background-color: #0b192c;
         color: #ffffff;
-        border-right: 1px solid #1e293b;
+        border-right: 1px solid #1e3e62;
     }
     
-    /* ดีไซน์การ์ดเนื้อหาให้ครอบคลุมและสวยงาม */
-    .tech-card {
-        background: linear-gradient(135deg, #0b1a30 0%, #071120 100%);
-        border: 1px solid #1e3a8a;
-        padding: 24px;
+    /* ดีไซน์การ์ดแบบ Bento Grid ทรงมน สวยงามไฮเทค */
+    .bento-card {
+        background: linear-gradient(135deg, #0f1c3f 0%, #0b1329 100%);
+        border: 1px solid #1d3557;
+        padding: 22px;
         border-radius: 16px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
         margin-bottom: 20px;
         height: 100%;
     }
@@ -56,18 +56,18 @@ st.markdown("""
     .status-danger { color: #f87171 !important; font-weight: bold; }
 
     .stButton>button {
-        background: linear-gradient(135deg, #0284c7, #2563eb);
+        background: linear-gradient(135deg, #0284c7, #0ea5e9);
         color: white;
         border: none;
         border-radius: 10px;
         font-weight: 600;
         padding: 0.6rem 1.2rem;
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+        box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
         transition: 0.3s;
     }
     .stButton>button:hover {
         background: linear-gradient(135deg, #0ea5e9, #38bdf8);
-        color: #ffffff;
+        color: #070f1e;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -267,53 +267,59 @@ with tab1:
     st.info(data_source_badge)
     st.markdown("---")
 
-    # แถวที่ 1: Live Sensor Metrics
-    st.markdown("### 🔬 Live Sensor Metrics (ข้อมูลเซนเซอร์ปัจจุบัน)")
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    # --- แถวที่ 1 ของ Bento Grid (3 การ์ดย่อยสไตล์แดชบอร์ด) ---
+    col1, col2, col3 = st.columns([1, 1.5, 1], gap="medium")
     
     with col1:
-        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>pH</h4><h2>{ph:.1f}</h2><p>ความเป็นกรด-ด่าง</p></div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>TDS</h4><h2>{tds:.1f}</h2><p>ppm</p></div>', unsafe_allow_html=True)
-    with col3:
-        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>Temp</h4><h2>{temp:.1f}</h2><p>°C</p></div>', unsafe_allow_html=True)
-    with col4:
-        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>DO</h4><h2>{do_val:.1f}</h2><p>mg/L</p></div>', unsafe_allow_html=True)
-    with col5:
-        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>Turbidity</h4><h2>{turbidity:.1f}</h2><p>NTU</p></div>', unsafe_allow_html=True)
-    with col6:
-        sys_status_text = "Online" if live_data else "Simulated"
-        st.markdown(f'<div class="tech-card" style="text-align:center;"><h4>System</h4><h2>{sys_status_text}</h2><p>Status</p></div>', unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # แถวที่ 2: AI Risk Score & กราฟแนวโน้ม
-    col_left, col_right = st.columns([1, 1.5], gap="large")
-    
-    with col_left:
-        st.markdown('<div class="tech-card">', unsafe_allow_html=True)
-        st.markdown("### 🤖 AI Water Risk Score")
-        st.metric(label="ดัชนีความเสี่ยงรวมของชุมชน", value=f"{risk_score}%")
-        st.markdown(f"สถานะปัจจุบัน: <span class='{status_color}'>{status_label}</span>", unsafe_allow_html=True)
-        st.markdown("---")
-        st.markdown("#### 📌 บทวิเคราะห์สถานการณ์")
-        if risk_score < 30:
-            st.success("✅ คุณภาพน้ำอยู่ในเกณฑ์ดี ปลอดภัยสำหรับการอุปโภคและการเกษตร")
-        elif risk_score < 60:
-            st.warning(f"⚠️ ตรวจพบความผิดปกติ:\n- " + "\n- ".join(risk_reasons))
-        else:
-            st.error(f"🚨 สภาวะน้ำวิกฤต:\n- " + "\n- ".join(risk_reasons))
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="bento-card">
+                <h4 style="color: #38bdf8; margin-top:0;">🔬 ภาพรวมค่าเซนเซอร์</h4>
+                <p style="margin: 5px 0;"><b>pH Level:</b> {ph:.1f}</p>
+                <p style="margin: 5px 0;"><b>TDS:</b> {tds:.1f} ppm</p>
+                <p style="margin: 5px 0;"><b>Temp:</b> {temp:.1f} °C</p>
+                <p style="margin: 5px 0;"><b>DO:</b> {do_val:.1f} mg/L</p>
+                <p style="margin: 5px 0;"><b>Turbidity:</b> {turbidity:.1f} NTU</p>
+            </div>
+        """, unsafe_allow_html=True)
         
-    with col_right:
-        st.markdown('<div class="tech-card">', unsafe_allow_html=True)
-        st.markdown("### 📈 แนวโน้มความแปรปรวนของคุณภาพน้ำ")
-        chart_data = pd.DataFrame(
-            np.random.randn(15, 3) + [tds / 100, do_val * 2, turbidity / 100],
-            columns=['TDS (สารละลาย)', 'DO (ออกซิเจน)', 'ความขุ่น']
-        )
-        st.line_chart(chart_data, color=["#38bdf8", "#34d399", "#fbbf24"])
-        st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+            <div class="bento-card">
+                <h4 style="color: #38bdf8; margin-top:0;">📈 แนวโน้มคุณภาพน้ำ (Area Trend)</h4>
+            </div>
+        """, unsafe_allow_html=True)
+        chart_data_1 = pd.DataFrame(np.random.randn(10, 3) + [tds/100, do_val, turbidity/50], columns=['TDS', 'DO', 'Turbidity'])
+        st.area_chart(chart_data_1, color=["#0ea5e9", "#34d399", "#38bdf8"], height=180)
+
+    with col3:
+        st.markdown(f"""
+            <div class="bento-card">
+                <h4 style="color: #38bdf8; margin-top:0;">🤖 AI Risk Assessment</h4>
+                <h2 style="color: {'#34d399' if risk_score<30 else ('#fbbf24' if risk_score<60 else '#f87171')};">{risk_score}%</h2>
+                <p>สถานะ: <span class='{status_color}'>{status_label}</span></p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # --- แถวที่ 2 ของ Bento Grid (กราฟเส้นเปรียบเทียบ และ บาร์ชาร์ตสถิติ) ---
+    col4, col5 = st.columns([1.2, 1], gap="medium")
+    
+    with col4:
+        st.markdown("""
+            <div class="bento-card">
+                <h4 style="color: #38bdf8; margin-top:0;">📊 การเปรียบเทียบพารามิเตอร์เชิงลึก</h4>
+            </div>
+        """, unsafe_allow_html=True)
+        chart_data_2 = pd.DataFrame(np.random.randn(12, 2) * 5 + 50, columns=['Value A', 'Value B'])
+        st.line_chart(chart_data_2, color=["#0ea5e9", "#34d399"], height=200)
+
+    with col5:
+        st.markdown("""
+            <div class="bento-card">
+                <h4 style="color: #38bdf8; margin-top:0;">📊 สถิติความแปรปรวนย้อนหลัง</h4>
+            </div>
+        """, unsafe_allow_html=True)
+        bar_data = pd.DataFrame(np.random.rand(8, 2) * 100, columns=['Series 1', 'Series 2'])
+        st.bar_chart(bar_data, color=["#0ea5e9", "#38bdf8"], height=200)
 
 with tab2:
     st.markdown("## 🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน")
@@ -323,26 +329,45 @@ with tab2:
     col_action1, col_action2 = st.columns(2, gap="large")
     
     with col_action1:
-        st.markdown('<div class="tech-card">', unsafe_allow_html=True)
-        st.markdown("### 🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน")
-        st.markdown("<br>", unsafe_allow_html=True)
         if risk_score < 30:
-            st.markdown("1. **แจกจ่ายน้ำปกติ:** ระบบประปาหมู่บ้านใช้งานได้ตามปกติ")
-            st.markdown("2. **จัดเก็บข้อมูล:** บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง")
+            action_content = """
+                <ol style="color: #cbd5e1; padding-left: 20px; line-height: 1.8;">
+                    <li><b>แจกจ่ายน้ำปกติ:</b> ระบบประปาหมู่บ้านใช้งานได้ตามปกติ</li>
+                    <li><b>จัดเก็บข้อมูล:</b> บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง</li>
+                </ol>
+            """
         elif risk_score < 60:
-            st.markdown("1. 📢 **แจ้งเตือนเกษตรกร:** สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง")
-            st.markdown("2. ⚙️ **ปรับระบบกรอง:** เพิ่มระยะเวลาการตกตะกอนในระบบประปา")
-            st.markdown("3. 🌊 **เติมออกซิเจน:** ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ")
+            action_content = """
+                <ul style="color: #cbd5e1; padding-left: 20px; line-height: 1.8; list-style-type: none;">
+                    <li>1. 📢 <b>แจ้งเตือนเกษตรกร:</b> สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง</li>
+                    <li>2. ⚙️ <b>ปรับระบบกรอง:</b> เพิ่มระยะเวลาการตกตะกอนในระบบประปา</li>
+                    <li>3. 🌊 <b>เติมออกซิเจน:</b> ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ</li>
+                </ul>
+            """
         else:
-            st.markdown("1. 🚫 **งดใช้น้ำชั่วคราว:** ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน")
-            st.markdown("2. 🚰 **ใช้แหล่งน้ำสำรอง:** เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน")
-        st.markdown('</div>', unsafe_allow_html=True)
+            action_content = """
+                <ul style="color: #cbd5e1; padding-left: 20px; line-height: 1.8; list-style-type: none;">
+                    <li>1. 🚫 <b>งดใช้น้ำชั่วคราว:</b> ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน</li>
+                    <li>2. 🚰 <b>ใช้แหล่งน้ำสำรอง:</b> เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน</li>
+                </ul>
+            """
+
+        st.markdown(f"""
+            <div class="bento-card">
+                <h3 style="color: #38bdf8; margin-top: 0;">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน</h3>
+                <br>
+                {action_content}
+            </div>
+        """, unsafe_allow_html=True)
 
     with col_action2:
-        st.markdown('<div class="tech-card">', unsafe_allow_html=True)
-        st.markdown("### 📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)")
-        st.info("ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลทุก 05:00 น. / 18:00 น.")
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("""
+            <div class="bento-card">
+                <h3 style="color: #38bdf8; margin-top: 0;">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)</h3>
+                <p style="color: #94a3b8; font-size: 0.9rem;">ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลทุก 05:00 น. / 18:00 น.</p>
+                <br>
+        """, unsafe_allow_html=True)
+        
         if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
             test_msg = (
                 f"📢 [ทดสอบระบบ LINE น้ำชุมชน EEC]\n"
