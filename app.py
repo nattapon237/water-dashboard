@@ -4,6 +4,7 @@ import pandas as pd
 import requests
 import json
 import time
+import math
 from datetime import datetime
 
 st.set_page_config(page_title="EEC Community Water Intelligence System", page_icon="💧", layout="wide")
@@ -16,74 +17,184 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# --- High-Tech Cyber-Water Glassmorphism CSS ---
+# ============================================================================
+# DESIGN SYSTEM
+# Palette   : void #030712 / panel #0b1526 / hairline cyan rgba(56,189,248,.18)
+#             signal-safe #34d399 · signal-warn #fbbf24 · signal-danger #f87171
+#             accent-cyan #22d3ee · accent-violet #a78bfa · accent-orange #fb923c
+# Type      : Space Grotesk (display) · Inter (body) · JetBrains Mono (data/readouts)
+# Signature : per-sensor "tide bars" — horizontal range gauges colored by zone,
+#             echoing a water level, + a circular risk ring as the hero readout.
+# ============================================================================
+
 st.markdown("""
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-    .stApp {
-        background: linear-gradient(135deg, #030712 0%, #071124 50%, #020617 100%);
-        color: #f8fafc;
-        font-family: 'Segoe UI', sans-serif;
-    }
-    
-    [data-testid="stSidebar"] {
-        background-color: #050d1a;
-        color: #ffffff;
-        border-right: 1px solid rgba(56, 189, 248, 0.2);
-    }
-    
-    /* Bento Card สไตล์กระจกเงาเรืองแสงไฮเทค */
-    .bento-card {
-        background: linear-gradient(135deg, rgba(15, 28, 63, 0.65) 0%, rgba(5, 13, 26, 0.85) 100%);
-        border: 1px solid rgba(56, 189, 248, 0.3);
-        padding: 24px;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(16px);
-        margin-bottom: 20px;
-        height: 100%;
-        transition: all 0.3s ease;
-    }
-    .bento-card:hover {
-        border-color: rgba(56, 189, 248, 0.7);
-        box-shadow: 0 15px 40px rgba(14, 165, 233, 0.25);
-    }
-    
-    h1, h2, h3, h4 {
-        color: #38bdf8 !important;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-    }
-    
-    p, span, label, .stMarkdown, li {
-        color: #cbd5e1 !important;
+    :root {
+        --void: #030712;
+        --panel: rgba(11, 21, 38, 0.78);
+        --panel-solid: #0b1526;
+        --hairline: rgba(56, 189, 248, 0.16);
+        --hairline-strong: rgba(56, 189, 248, 0.42);
+        --cyan: #22d3ee;
+        --violet: #a78bfa;
+        --orange: #fb923c;
+        --safe: #34d399;
+        --warn: #fbbf24;
+        --danger: #f87171;
+        --text-hi: #eef2f7;
+        --text-mid: #b6c2d1;
+        --text-low: #6b7c93;
     }
 
-    .status-normal { color: #34d399 !important; font-weight: bold; text-shadow: 0 0 12px rgba(52, 211, 153, 0.5); }
-    .status-warning { color: #fbbf24 !important; font-weight: bold; text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
-    .status-danger { color: #f87171 !important; font-weight: bold; text-shadow: 0 0 12px rgba(248, 113, 113, 0.5); }
+    .stApp {
+        background:
+            radial-gradient(ellipse 900px 500px at 15% -10%, rgba(34,211,238,0.09), transparent 60%),
+            radial-gradient(ellipse 700px 500px at 100% 0%, rgba(167,139,250,0.06), transparent 55%),
+            var(--void);
+        color: var(--text-mid);
+        font-family: 'Inter', sans-serif;
+    }
+
+    [data-testid="stSidebar"] {
+        background-color: #050c18;
+        border-right: 1px solid var(--hairline);
+    }
+    [data-testid="stSidebar"] * { font-family: 'Inter', sans-serif; }
+
+    h1, h2, h3, h4 {
+        font-family: 'Space Grotesk', sans-serif !important;
+        color: var(--text-hi) !important;
+        letter-spacing: 0.2px;
+    }
+    p, span, label, .stMarkdown, li { color: var(--text-mid); }
+
+    /* ---------- header strip ---------- */
+    .hdr-eyebrow {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--cyan);
+        margin-bottom: 2px;
+    }
+    .hdr-title { font-size: 1.9rem; font-weight: 700; color: var(--text-hi); margin: 0 0 4px 0; }
+    .hdr-sub { color: var(--text-low); font-size: 0.92rem; }
+
+    .status-pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 10px 18px; border-radius: 999px;
+        font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.95rem;
+        border: 1px solid var(--pill-color, var(--safe));
+        color: var(--pill-color, var(--safe));
+        background: color-mix(in srgb, var(--pill-color, var(--safe)) 12%, transparent);
+        box-shadow: 0 0 22px color-mix(in srgb, var(--pill-color, var(--safe)) 35%, transparent);
+        float: right;
+    }
+    .status-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--pill-color, var(--safe));
+        box-shadow: 0 0 8px var(--pill-color, var(--safe));
+    }
+
+    /* ---------- generic panel ---------- */
+    .panel {
+        background: linear-gradient(155deg, rgba(20,35,64,0.55) 0%, rgba(6,12,24,0.85) 100%);
+        border: 1px solid var(--hairline);
+        border-radius: 16px;
+        padding: 20px 22px;
+        height: 100%;
+        backdrop-filter: blur(14px);
+    }
+    .panel-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.98rem; font-weight: 700; color: var(--text-hi);
+        display: flex; align-items: center; gap: 8px;
+        margin-bottom: 14px;
+    }
+    .panel-title .tag {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 500;
+        color: var(--text-low); letter-spacing: 1px; text-transform: uppercase;
+        border: 1px solid var(--hairline-strong); border-radius: 5px; padding: 2px 6px;
+    }
+
+    /* ---------- sensor gauge cards ---------- */
+    .gauge-card {
+        background: linear-gradient(155deg, rgba(20,35,64,0.55) 0%, rgba(6,12,24,0.85) 100%);
+        border: 1px solid var(--hairline);
+        border-radius: 14px;
+        padding: 16px 16px 14px 16px;
+    }
+    .gauge-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .gauge-label {
+        font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase;
+        color: var(--text-low); font-weight: 600;
+    }
+    .gauge-icon { font-size: 1.05rem; opacity: 0.85; }
+    .gauge-value {
+        font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.65rem;
+        line-height: 1.1; margin: 2px 0 12px 0;
+    }
+    .gauge-unit { font-size: 0.85rem; font-weight: 500; color: var(--text-low); margin-left: 3px; }
+    .gauge-track {
+        position: relative; height: 6px; border-radius: 4px; margin-bottom: 6px;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .gauge-marker {
+        position: absolute; top: -3px; width: 3px; height: 12px; border-radius: 2px;
+        background: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 2px #000;
+        transform: translateX(-50%);
+    }
+    .gauge-range {
+        display: flex; justify-content: space-between;
+        font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-low);
+    }
+
+    /* ---------- risk ring ---------- */
+    .risk-wrap { display: flex; align-items: center; gap: 22px; }
+    .risk-figure { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+    .risk-status-label { font-size: 0.95rem; font-weight: 600; margin-top: 2px; }
+    .risk-advice {
+        font-size: 0.83rem; color: var(--text-low); margin-top: 10px;
+        border-top: 1px solid var(--hairline); padding-top: 10px; line-height: 1.5;
+    }
+
+    /* ---------- recommendation checklist ---------- */
+    .check-row {
+        display: flex; gap: 12px; align-items: flex-start;
+        padding: 10px 0; border-bottom: 1px solid var(--hairline);
+    }
+    .check-row:last-child { border-bottom: none; }
+    .check-icon { font-size: 1rem; margin-top: 1px; }
+    .check-text { font-size: 0.88rem; color: var(--text-mid); line-height: 1.45; }
+    .check-text b { color: var(--text-hi); }
+
+    /* ---------- misc ---------- */
+    .data-badge {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+        color: var(--cyan); background: rgba(34,211,238,0.08);
+        border: 1px solid rgba(34,211,238,0.25); border-radius: 8px;
+        padding: 8px 14px; display: inline-block;
+    }
+    hr.divider { border: 0; height: 1px; background: var(--hairline); margin: 22px 0; }
 
     .stButton>button {
-        background: linear-gradient(135deg, #0284c7, #0ea5e9);
-        color: white;
-        border: 1px solid rgba(56, 189, 248, 0.5);
-        border-radius: 12px;
-        font-weight: 600;
-        padding: 0.6rem 1.2rem;
-        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4);
-        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #0f5f8a, #0ea5e9);
+        color: #f8fafc; border: 1px solid var(--hairline-strong);
+        border-radius: 10px; font-weight: 600; font-family: 'Inter', sans-serif;
+        padding: 0.6rem 1.2rem; box-shadow: 0 4px 18px rgba(14,165,233,0.35);
+        transition: all 0.2s ease;
     }
     .stButton>button:hover {
-        background: linear-gradient(135deg, #0ea5e9, #38bdf8);
-        color: #030712;
-        box-shadow: 0 6px 25px rgba(56, 189, 248, 0.8);
-        transform: translateY(-2px);
+        background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+        color: #04101f; box-shadow: 0 6px 24px rgba(34,211,238,0.55);
+        transform: translateY(-1px);
     }
-    
     .stAlert {
-        background: rgba(15, 28, 63, 0.8) !important;
-        border: 1px solid rgba(56, 189, 248, 0.3) !important;
-        color: #38bdf8 !important;
-        border-radius: 12px;
+        background: rgba(11,21,38,0.85) !important;
+        border: 1px solid var(--hairline-strong) !important;
+        color: var(--cyan) !important; border-radius: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -173,7 +284,7 @@ if live_data and isinstance(live_data, dict) and "ph" in live_data:
     temp = float(live_data.get("temp", sim_temp))
     do_val = float(live_data.get("do", sim_do))
     turbidity = float(live_data.get("turbidity", sim_turb))
-    data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database (`/devices/uno-r4/status`)"
+    data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database (/devices/uno-r4/status)"
 else:
     ph, tds, temp, do_val, turbidity = sim_ph, sim_tds, sim_temp, sim_do, sim_turb
     data_source_badge = "⚠️ ยังไม่มีข้อมูลสดใน Firebase (กำลังใช้ค่าจำลองจากแถบด้านข้าง)"
@@ -211,20 +322,23 @@ def calculate_risk(ph, tds, temp, do_val, turbidity):
 risk_score, risk_reasons = calculate_risk(ph, tds, temp, do_val, turbidity)
 
 if risk_score >= 60:
-    status_label = "🔴 เสี่ยงอันตราย (Danger)"
-    status_color = "status-danger"
+    status_label = "เสี่ยงอันตราย"
+    status_label_en = "DANGER"
+    status_color = "var(--danger)"
 elif risk_score >= 30:
-    status_label = "🟠 เฝ้าระวัง (Warning)"
-    status_color = "status-warning"
+    status_label = "เฝ้าระวัง"
+    status_label_en = "WARNING"
+    status_color = "var(--warn)"
 else:
-    status_label = "🟢 ปกติ (Normal)"
-    status_color = "status-normal"
+    status_label = "ปกติ"
+    status_label_en = "NORMAL"
+    status_color = "var(--safe)"
 
 now = datetime.now()
 current_time_str = now.strftime("%H:%M")
 current_date_str = now.strftime("%Y-%m-%d")
 
-thai_months = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", 
+thai_months = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
                "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
 thai_year = now.year + 543
 formatted_thai_date = f"{now.day} {thai_months[now.month]} พ.ศ. {thai_year} (เวลา {current_time_str} น.)"
@@ -270,113 +384,211 @@ if scheduled_slot and st.session_state.last_scheduled_alert != alert_key_name:
     if send_line_notification(sched_msg):
         st.session_state.last_scheduled_alert = alert_key_name
 
+# ============================================================================
+# UI HELPERS
+# ============================================================================
+
+def zone_color(value, zones):
+    """zones: list of (lo, hi, color_var) — returns the css color var the value falls in."""
+    for lo, hi, color in zones:
+        if lo <= value < hi:
+            return color
+    return zones[-1][2]
+
+def gradient_from_zones(zones, vmin, vmax):
+    span = vmax - vmin
+    stops = []
+    for lo, hi, color in zones:
+        p1 = max(0, min(100, (lo - vmin) / span * 100))
+        p2 = max(0, min(100, (hi - vmin) / span * 100))
+        stops.append(f"var({color}) {p1:.1f}%, var({color}) {p2:.1f}%")
+    return "linear-gradient(90deg, " + ", ".join(stops) + ")"
+
+def render_gauge_card(icon, label, value, unit, vmin, vmax, zones, fmt="{:.1f}"):
+    clipped = max(vmin, min(vmax, value))
+    pct = (clipped - vmin) / (vmax - vmin) * 100
+    color = zone_color(value, zones)
+    gradient = gradient_from_zones(zones, vmin, vmax)
+    st.markdown(f"""
+        <div class="gauge-card">
+            <div class="gauge-top">
+                <span class="gauge-label">{label}</span>
+                <span class="gauge-icon">{icon}</span>
+            </div>
+            <div class="gauge-value" style="color:{color}">{fmt.format(value)}<span class="gauge-unit">{unit}</span></div>
+            <div class="gauge-track" style="background:{gradient}">
+                <div class="gauge-marker" style="left:{pct:.1f}%"></div>
+            </div>
+            <div class="gauge-range"><span>{vmin}</span><span>{vmax}</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+
+def render_risk_ring(score, status_color_css, size=132, stroke=12):
+    r = (size - stroke) / 2
+    circumference = 2 * math.pi * r
+    dash = circumference * (score / 100)
+    return f"""
+    <svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" style="transform: rotate(-90deg); flex-shrink:0;">
+        <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="rgba(148,163,184,0.12)" stroke-width="{stroke}"/>
+        <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="{status_color_css}" stroke-width="{stroke}"
+            stroke-dasharray="{dash:.1f} {circumference:.1f}" stroke-linecap="round"/>
+    </svg>
+    """
+
 # --- จัดการแท็บหน้าเว็บ ---
 tab1, tab2 = st.tabs(["📊 EEC Water Overview (หน้าแรก)", "🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน"])
 
 with tab1:
-    st.title("💧 EEC Community Water Intelligence System")
-    st.caption("ระบบเฝ้าระวังและประเมินความเสี่ยงคุณภาพน้ำอัจฉริยะเพื่อการอุปโภค บริโภค และการเกษตรของชุมชน")
-    st.info(data_source_badge)
-    st.markdown("---")
-
-    col1, col2, col3 = st.columns([1, 1.5, 1], gap="medium")
-    
-    with col1:
+    hcol1, hcol2 = st.columns([3, 1])
+    with hcol1:
+        st.markdown('<div class="hdr-eyebrow">EEC · REAL-TIME WATER TELEMETRY</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hdr-title">💧 EEC Community Water Intelligence System</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hdr-sub">ระบบเฝ้าระวังและประเมินความเสี่ยงคุณภาพน้ำอัจฉริยะเพื่อการอุปโภค บริโภค และการเกษตรของชุมชน</div>', unsafe_allow_html=True)
+    with hcol2:
         st.markdown(f"""
-            <div class="bento-card">
-                <h4 style="color: #38bdf8; margin-top:0;">🔬 ภาพรวมค่าเซนเซอร์</h4>
-                <hr style="border: 0; height: 1px; background: rgba(56,189,248,0.2); margin: 12px 0;">
-                <p style="margin: 10px 0;"><b>pH Level:</b> {ph:.1f}</p>
-                <p style="margin: 10px 0;"><b>TDS:</b> {tds:.1f} ppm</p>
-                <p style="margin: 10px 0;"><b>Temp:</b> {temp:.1f} °C</p>
-                <p style="margin: 10px 0;"><b>DO:</b> {do_val:.1f} mg/L</p>
-                <p style="margin: 10px 0;"><b>Turbidity:</b> {turbidity:.1f} NTU</p>
+            <div style="text-align:right; padding-top: 8px;">
+                <span class="status-pill" style="--pill-color:{status_color}">
+                    <span class="status-dot"></span>{status_label} · {status_label_en}
+                </span>
             </div>
         """, unsafe_allow_html=True)
-        
+
+    st.markdown(f'<div class="data-badge">{data_source_badge}</div>', unsafe_allow_html=True)
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+
+    # ---- row 1: five sensor gauges ----
+    g1, g2, g3, g4, g5 = st.columns(5, gap="medium")
+    with g1:
+        render_gauge_card("⚗️", "pH LEVEL", ph, "", 0, 14,
+            [(0, 5.5, "--danger"), (5.5, 6.5, "--warn"), (6.5, 8.5, "--safe"), (8.5, 9.0, "--warn"), (9.0, 14, "--danger")])
+    with g2:
+        render_gauge_card("🧂", "TDS / EC", tds, "ppm", 0, 1200,
+            [(0, 600, "--safe"), (600, 1000, "--warn"), (1000, 1200, "--danger")])
+    with g3:
+        render_gauge_card("🌡️", "TEMPERATURE", temp, "°C", 10, 45,
+            [(10, 35, "--safe"), (35, 45, "--danger")])
+    with g4:
+        render_gauge_card("🫧", "DISSOLVED O₂", do_val, "mg/L", 0, 20,
+            [(0, 3, "--danger"), (3, 5, "--warn"), (5, 20, "--safe")])
+    with g5:
+        render_gauge_card("🌫️", "TURBIDITY", turbidity, "NTU", 0, 300,
+            [(0, 100, "--safe"), (100, 300, "--danger")])
+
+    st.write("")
+    col2, col3 = st.columns([1.6, 1], gap="medium")
+
     with col2:
         st.markdown("""
-            <div class="bento-card" style="margin-bottom: 0px;">
-                <h4 style="color: #38bdf8; margin-top:0;">📈 แนวโน้มคุณภาพน้ำ (Area Trend)</h4>
-            </div>
+            <div class="panel" style="margin-bottom: 0;">
+                <div class="panel-title">📈 แนวโน้มคุณภาพน้ำ <span class="tag">AREA TREND</span></div>
         """, unsafe_allow_html=True)
         chart_data_1 = pd.DataFrame(np.random.randn(10, 3) + [tds/100, do_val, turbidity/50], columns=['TDS', 'DO', 'Turbidity'])
-        st.area_chart(chart_data_1, color=["#0ea5e9", "#34d399", "#38bdf8"], height=160)
+        st.area_chart(chart_data_1, color=["#22d3ee", "#34d399", "#a78bfa"], height=200)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with col3:
-        analysis_text = "คุณภาพน้ำอยู่ในเกณฑ์ดี ปลอดภัย" if risk_score < 30 else ("เริ่มมีความผิดปกติ ควรเฝ้าระวัง" if risk_score < 60 else "วิกฤต! ควรตรวจสอบเร่งด่วน")
+        analysis_text = ("คุณภาพน้ำอยู่ในเกณฑ์ดี ปลอดภัยต่อการใช้งาน" if risk_score < 30
+                          else ("เริ่มมีความผิดปกติ ควรเฝ้าระวังอย่างใกล้ชิด" if risk_score < 60
+                                else "สถานะวิกฤต ควรตรวจสอบและดำเนินการเร่งด่วน"))
+        ring_svg = render_risk_ring(risk_score, status_color)
         st.markdown(f"""
-            <div class="bento-card">
-                <h4 style="color: #38bdf8; margin-top:0;">🤖 AI Risk Assessment</h4>
-                <h2 style="color: {'#34d399' if risk_score<30 else ('#fbbf24' if risk_score<60 else '#f87171')}; margin: 8px 0;">{risk_score}%</h2>
-                <p style="margin: 5px 0;">สถานะ: <span class='{status_color}'>{status_label}</span></p>
-                <hr style="border: 0; height: 1px; background: rgba(56,189,248,0.2); margin: 12px 0;">
-                <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 8px;">💡 <b>คำแนะนำ:</b> {analysis_text}</p>
+            <div class="panel">
+                <div class="panel-title">🤖 AI Risk Assessment <span class="tag">LIVE</span></div>
+                <div class="risk-wrap">
+                    <div style="position:relative; width:132px; height:132px;">
+                        {ring_svg}
+                        <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                            <span class="risk-figure" style="font-size:1.9rem; color:{status_color};">{risk_score}%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="risk-status-label" style="color:{status_color}">{status_label}</div>
+                        <div style="font-size:0.78rem; color:var(--text-low); font-family:'JetBrains Mono',monospace;">RISK INDEX</div>
+                    </div>
+                </div>
+                <div class="risk-advice">💡 <b style="color:var(--text-mid)">คำแนะนำ:</b> {analysis_text}</div>
             </div>
         """, unsafe_allow_html=True)
 
+    st.write("")
     col4, col5 = st.columns([1.2, 1], gap="medium")
-    
+
     with col4:
         st.markdown("""
-            <div class="bento-card" style="margin-bottom: 0px;">
-                <h4 style="color: #38bdf8; margin-top:0;">📊 การเปรียบเทียบพารามิเตอร์เชิงลึก</h4>
-            </div>
+            <div class="panel" style="margin-bottom: 0;">
+                <div class="panel-title">📊 การเปรียบเทียบพารามิเตอร์เชิงลึก <span class="tag">DEEP COMPARE</span></div>
         """, unsafe_allow_html=True)
         chart_data_2 = pd.DataFrame(np.random.randn(12, 2) * 5 + 50, columns=['Value A', 'Value B'])
-        st.line_chart(chart_data_2, color=["#0ea5e9", "#34d399"], height=180)
+        st.line_chart(chart_data_2, color=["#22d3ee", "#34d399"], height=190)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with col5:
         st.markdown("""
-            <div class="bento-card" style="margin-bottom: 0px;">
-                <h4 style="color: #38bdf8; margin-top:0;">📊 สถิติความแปรปรวนย้อนหลัง</h4>
-            </div>
+            <div class="panel" style="margin-bottom: 0;">
+                <div class="panel-title">📊 สถิติความแปรปรวนย้อนหลัง <span class="tag">VARIANCE</span></div>
         """, unsafe_allow_html=True)
         bar_data = pd.DataFrame(np.random.rand(8, 2) * 100, columns=['Series 1', 'Series 2'])
-        st.bar_chart(bar_data, color=["#0ea5e9", "#38bdf8"], height=180)
+        st.bar_chart(bar_data, color=["#22d3ee", "#a78bfa"], height=190)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
-    st.markdown("## 🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน")
-    st.markdown("แนวทางปฏิบัติเชิงรุกสำหรับผู้นำชุมชน คณะกรรมการประปาหมู่บ้าน และกลุ่มเกษตรกร")
-    st.markdown("---")
-    
+    st.markdown('<div class="hdr-eyebrow">DECISION SUPPORT</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-title" style="font-size:1.5rem;">🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-sub">แนวทางปฏิบัติเชิงรุกสำหรับผู้นำชุมชน คณะกรรมการประปาหมู่บ้าน และกลุ่มเกษตรกร</div>', unsafe_allow_html=True)
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+
     col_action1, col_action2 = st.columns(2, gap="large")
-    
+
     with col_action1:
-        st.markdown("""
-            <div class="bento-card">
-                <h3 style="color: #38bdf8; margin-top: 0; margin-bottom: 15px;">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน</h3>
-        """, unsafe_allow_html=True)
-        
         if risk_score < 30:
-            st.markdown("""
-            * 💧 **แจกจ่ายน้ำปกติ:** ระบบประปาหมู่บ้านใช้งานได้ตามปกติ
-            * 📊 **จัดเก็บข้อมูล:** บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง
-            """)
+            rows = [
+                ("💧", "<b>แจกจ่ายน้ำปกติ</b> — ระบบประปาหมู่บ้านใช้งานได้ตามปกติ"),
+                ("📊", "<b>จัดเก็บข้อมูล</b> — บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง"),
+            ]
         elif risk_score < 60:
-            st.markdown("""
-            * 📢 **แจ้งเตือนเกษตรกร:** สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง
-            * ⚙️ **ปรับระบบกรอง:** เพิ่มระยะเวลาการตกตะกอนในระบบประปา
-            * 🌊 **เติมออกซิเจน:** ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ
-            """)
+            rows = [
+                ("📢", "<b>แจ้งเตือนเกษตรกร</b> — สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง"),
+                ("⚙️", "<b>ปรับระบบกรอง</b> — เพิ่มระยะเวลาการตกตะกอนในระบบประปา"),
+                ("🌊", "<b>เติมออกซิเจน</b> — ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ"),
+            ]
         else:
-            st.markdown("""
-            * 🚫 **งดใช้น้ำชั่วคราว:** ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน
-            * 🚰 **ใช้แหล่งน้ำสำรอง:** เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน
-            """)
-            
-        st.markdown("</div>", unsafe_allow_html=True)
+            rows = [
+                ("🚫", "<b>งดใช้น้ำชั่วคราว</b> — ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน"),
+                ("🚰", "<b>ใช้แหล่งน้ำสำรอง</b> — เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน"),
+            ]
+        rows_html = "".join(
+            f'<div class="check-row"><span class="check-icon">{icon}</span><span class="check-text">{text}</span></div>'
+            for icon, text in rows
+        )
+        st.markdown(f"""
+            <div class="panel">
+                <div class="panel-title">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน <span class="tag">{status_label_en}</span></div>
+                {rows_html}
+            </div>
+        """, unsafe_allow_html=True)
+
+        if risk_reasons:
+            reasons_html = "".join(
+                f'<div class="check-row"><span class="check-icon">⚠️</span><span class="check-text">{r}</span></div>'
+                for r in risk_reasons
+            )
+            st.markdown(f"""
+                <div class="panel" style="margin-top:18px;">
+                    <div class="panel-title">🔍 สาเหตุที่ตรวจพบ <span class="tag">DETECTED</span></div>
+                    {reasons_html}
+                </div>
+            """, unsafe_allow_html=True)
 
     with col_action2:
         st.markdown("""
-            <div class="bento-card">
-                <h3 style="color: #38bdf8; margin-top: 0; margin-bottom: 10px;">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)</h3>
-                <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px;">
+            <div class="panel">
+                <div class="panel-title">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน <span class="tag">LINE</span></div>
+                <p style="color: var(--text-low); font-size: 0.88rem; line-height: 1.6; margin-bottom: 18px;">
                     ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลรายงานประจำวันทุกเวลา 05:00 น. / 18:00 น.
                 </p>
             </div>
         """, unsafe_allow_html=True)
-        
+
         if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
             test_msg = (
                 f"📢 [ทดสอบระบบ LINE น้ำชุมชน EEC]\n"
