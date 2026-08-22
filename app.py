@@ -31,7 +31,7 @@ st.markdown("""
         border-right: 1px solid #1e293b;
     }
     
-    /* ดีไซน์การ์ดเนื้อหาให้คลุมทับเนื้อหาภายในสวยงาม ไม่ว่างเปล่า */
+    /* ดีไซน์การ์ดเนื้อหาให้ครอบคลุมและสวยงาม */
     .tech-card {
         background: linear-gradient(135deg, #0b1a30 0%, #071120 100%);
         border: 1px solid #1e3a8a;
@@ -39,6 +39,7 @@ st.markdown("""
         border-radius: 16px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         margin-bottom: 20px;
+        height: 100%;
     }
     
     h1, h2, h3 {
@@ -266,7 +267,7 @@ with tab1:
     st.info(data_source_badge)
     st.markdown("---")
 
-    # แถวที่ 1: Live Sensor Metrics (อยู่ในกรอบการ์ดทั้งหมด)
+    # แถวที่ 1: Live Sensor Metrics
     st.markdown("### 🔬 Live Sensor Metrics (ข้อมูลเซนเซอร์ปัจจุบัน)")
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     
@@ -322,7 +323,6 @@ with tab2:
     col_action1, col_action2 = st.columns(2, gap="large")
     
     with col_action1:
-        # หุ้มเนื้อหาทั้งหมดภายใน .tech-card เพื่อป้องกันกล่องว่างเปล่า
         st.markdown('<div class="tech-card">', unsafe_allow_html=True)
         st.markdown("### 🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน")
         st.markdown("<br>", unsafe_allow_html=True)
@@ -339,7 +339,6 @@ with tab2:
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_action2:
-        # หุ้มเนื้อหาทั้งหมดภายใน .tech-card เช่นกัน
         st.markdown('<div class="tech-card">', unsafe_allow_html=True)
         st.markdown("### 📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)")
         st.info("ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลทุก 05:00 น. / 18:00 น.")
