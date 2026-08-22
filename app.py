@@ -353,6 +353,7 @@ with tab2:
                 </ul>
             """
 
+        # เพิ่ม unsafe_allow_html=True ที่ถูกต้องแล้ว
         st.markdown(f"""
             <div class="bento-card">
                 <h3 style="color: #38bdf8; margin-top: 0;">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน</h3>
