@@ -16,57 +16,75 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# --- High-Tech Bento Grid Dark Theme CSS ---
+# --- High-Tech Cyber-Water Glassmorphism CSS ---
 st.markdown("""
     <style>
     .stApp {
-        background-color: #070f1e;
+        background: linear-gradient(135deg, #030712 0%, #071124 50%, #020617 100%);
         color: #f8fafc;
         font-family: 'Segoe UI', sans-serif;
     }
     
     [data-testid="stSidebar"] {
-        background-color: #0b192c;
+        background-color: #050d1a;
         color: #ffffff;
-        border-right: 1px solid #1e3e62;
+        border-right: 1px solid rgba(56, 189, 248, 0.2);
     }
     
+    /* Bento Card สไตล์กระจกเงาเรืองแสงไฮเทค */
     .bento-card {
-        background: linear-gradient(135deg, #0f1c3f 0%, #0b1329 100%);
-        border: 1px solid #1d3557;
-        padding: 22px;
-        border-radius: 16px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        background: linear-gradient(135deg, rgba(15, 28, 63, 0.65) 0%, rgba(5, 13, 26, 0.85) 100%);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        padding: 24px;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(16px);
         margin-bottom: 20px;
         height: 100%;
+        transition: all 0.3s ease;
+    }
+    .bento-card:hover {
+        border-color: rgba(56, 189, 248, 0.7);
+        box-shadow: 0 15px 40px rgba(14, 165, 233, 0.25);
     }
     
     h1, h2, h3, h4 {
         color: #38bdf8 !important;
         font-weight: 700;
+        letter-spacing: 0.5px;
     }
     
     p, span, label, .stMarkdown, li {
         color: #cbd5e1 !important;
     }
 
-    .status-normal { color: #34d399 !important; font-weight: bold; }
-    .status-warning { color: #fbbf24 !important; font-weight: bold; }
-    .status-danger { color: #f87171 !important; font-weight: bold; }
+    .status-normal { color: #34d399 !important; font-weight: bold; text-shadow: 0 0 12px rgba(52, 211, 153, 0.5); }
+    .status-warning { color: #fbbf24 !important; font-weight: bold; text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
+    .status-danger { color: #f87171 !important; font-weight: bold; text-shadow: 0 0 12px rgba(248, 113, 113, 0.5); }
 
     .stButton>button {
         background: linear-gradient(135deg, #0284c7, #0ea5e9);
         color: white;
-        border: none;
-        border-radius: 10px;
+        border: 1px solid rgba(56, 189, 248, 0.5);
+        border-radius: 12px;
         font-weight: 600;
         padding: 0.6rem 1.2rem;
-        box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
-        transition: 0.3s;
+        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4);
+        transition: all 0.3s ease;
     }
     .stButton>button:hover {
         background: linear-gradient(135deg, #0ea5e9, #38bdf8);
-        color: #070f1e;
+        color: #030712;
+        box-shadow: 0 6px 25px rgba(56, 189, 248, 0.8);
+        transform: translateY(-2px);
+    }
+    
+    /* แต่งกล่องแจ้งเตือนข้อมูลระบบ */
+    .stAlert {
+        background: rgba(15, 28, 63, 0.8) !important;
+        border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        color: #38bdf8 !important;
+        border-radius: 12px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -126,7 +144,6 @@ def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, do_val, turb_val
     except Exception:
         return False
 
-# ตรวจสอบการเชื่อมต่อ Auth
 id_token = get_firebase_token()
 
 st.sidebar.title("🔥 สถานะ Firebase")
@@ -150,7 +167,6 @@ if st.sidebar.button("📤 ส่งค่าจำลองขึ้น Firebas
     else:
         st.sidebar.error("❌ บันทึกไม่สำเร็จ")
 
-# ดึงค่าล่าสุดจาก Firebase RTDB
 live_data = read_sensor_data(id_token)
 if live_data and isinstance(live_data, dict) and "ph" in live_data:
     ph = float(live_data.get("ph", sim_ph))
@@ -163,7 +179,6 @@ else:
     ph, tds, temp, do_val, turbidity = sim_ph, sim_tds, sim_temp, sim_do, sim_turb
     data_source_badge = "⚠️ ยังไม่มีข้อมูลสดใน Firebase (กำลังใช้ค่าจำลองจากแถบด้านข้าง)"
 
-# ฟังก์ชันคำนวณความเสี่ยง
 def calculate_risk(ph, tds, temp, do_val, turbidity):
     risk_score = 0
     reasons = []
@@ -206,7 +221,6 @@ else:
     status_label = "🟢 ปกติ (Normal)"
     status_color = "status-normal"
 
-# --- ระบบแจ้งเตือนอัตโนมัติ ---
 now = datetime.now()
 current_time_str = now.strftime("%H:%M")
 current_date_str = now.strftime("%Y-%m-%d")
@@ -266,18 +280,18 @@ with tab1:
     st.info(data_source_badge)
     st.markdown("---")
 
-    # --- แถวที่ 1 ของ Bento Grid ---
     col1, col2, col3 = st.columns([1, 1.5, 1], gap="medium")
     
     with col1:
         st.markdown(f"""
             <div class="bento-card">
                 <h4 style="color: #38bdf8; margin-top:0;">🔬 ภาพรวมค่าเซนเซอร์</h4>
-                <p style="margin: 6px 0;"><b>pH Level:</b> {ph:.1f}</p>
-                <p style="margin: 6px 0;"><b>TDS:</b> {tds:.1f} ppm</p>
-                <p style="margin: 6px 0;"><b>Temp:</b> {temp:.1f} °C</p>
-                <p style="margin: 6px 0;"><b>DO:</b> {do_val:.1f} mg/L</p>
-                <p style="margin: 6px 0;"><b>Turbidity:</b> {turbidity:.1f} NTU</p>
+                <hr style="border: 0; height: 1px; background: rgba(56,189,248,0.2); margin: 12px 0;">
+                <p style="margin: 10px 0;"><b>pH Level:</b> {ph:.1f}</p>
+                <p style="margin: 10px 0;"><b>TDS:</b> {tds:.1f} ppm</p>
+                <p style="margin: 10px 0;"><b>Temp:</b> {temp:.1f} °C</p>
+                <p style="margin: 10px 0;"><b>DO:</b> {do_val:.1f} mg/L</p>
+                <p style="margin: 10px 0;"><b>Turbidity:</b> {turbidity:.1f} NTU</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -295,13 +309,13 @@ with tab1:
         st.markdown(f"""
             <div class="bento-card">
                 <h4 style="color: #38bdf8; margin-top:0;">🤖 AI Risk Assessment</h4>
-                <h2 style="color: {'#34d399' if risk_score<30 else ('#fbbf24' if risk_score<60 else '#f87171')}; margin: 5px 0;">{risk_score}%</h2>
+                <h2 style="color: {'#34d399' if risk_score<30 else ('#fbbf24' if risk_score<60 else '#f87171')}; margin: 8px 0;">{risk_score}%</h2>
                 <p style="margin: 5px 0;">สถานะ: <span class='{status_color}'>{status_label}</span></p>
+                <hr style="border: 0; height: 1px; background: rgba(56,189,248,0.2); margin: 12px 0;">
                 <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 8px;">💡 <b>คำแนะนำ:</b> {analysis_text}</p>
             </div>
         """, unsafe_allow_html=True)
 
-    # --- แถวที่ 2 ของ Bento Grid ---
     col4, col5 = st.columns([1.2, 1], gap="medium")
     
     with col4:
@@ -332,11 +346,9 @@ with tab2:
     with col_action1:
         st.markdown("""
             <div class="bento-card">
-                <h3 style="color: #38bdf8; margin-top: 0;">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน</h3>
-                <br>
+                <h3 style="color: #38bdf8; margin-top: 0; margin-bottom: 15px;">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน</h3>
         """, unsafe_allow_html=True)
         
-        # ใช้ Markdown ปกติของ Streamlit แทนการซ้อน HTML ในตัวแปร
         if risk_score < 30:
             st.markdown("""
             * 💧 **แจกจ่ายน้ำปกติ:** ระบบประปาหมู่บ้านใช้งานได้ตามปกติ
@@ -359,9 +371,10 @@ with tab2:
     with col_action2:
         st.markdown("""
             <div class="bento-card">
-                <h3 style="color: #38bdf8; margin-top: 0;">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)</h3>
-                <p style="color: #94a3b8; font-size: 0.9rem;">ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลทุก 05:00 น. / 18:00 น.</p>
-                <br>
+                <h3 style="color: #38bdf8; margin-top: 0; margin-bottom: 10px;">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน (LINE)</h3>
+                <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px;">
+                    ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลรายงานประจำวันทุกเวลา 05:00 น. / 18:00 น.
+                </p>
             </div>
         """, unsafe_allow_html=True)
         
