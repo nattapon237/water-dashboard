@@ -162,9 +162,15 @@ hr.divider { border: 0; height: 1px; background: var(--hairline); margin: 22px 0
   color: #04101f; box-shadow: 0 6px 24px rgba(34,211,238,0.55);
   transform: translateY(-1px);
 }
+.stAlert {
+  background: rgba(11,21,38,0.85) !important;
+  border: 1px solid var(--hairline-strong) !important;
+  color: var(--cyan) !important; border-radius: 10px;
+}
 </style>
 """, unsafe_allow_html=True)
 
+# ฟังก์ชันส่งข้อความ LINE
 def send_line_notification(message):
     url = "https://api.line.me/v2/bot/message/push"
     headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}", "Content-Type": "application/json"}
@@ -175,6 +181,7 @@ def send_line_notification(message):
     except Exception:
         return False
 
+# 1. ฟังก์ชันรับ Auth Token จาก Firebase
 @st.cache_data(ttl=3000)
 def get_firebase_token():
     auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_WEB_API_KEY}"
@@ -186,6 +193,7 @@ def get_firebase_token():
     except Exception:
         return None
 
+# 2. ฟังก์ชันอ่านข้อมูลจาก Realtime Database
 def read_sensor_data(id_token):
     if not id_token:
         return None
@@ -198,13 +206,18 @@ def read_sensor_data(id_token):
     except Exception:
         return None
 
+# 3. ฟังก์ชันจำลองส่งข้อมูลขึ้น Firebase
 def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, do_val, turb_val):
     if not id_token:
         return False
     url = f"{FIREBASE_DB_URL}/devices/uno-r4/status.json?auth={id_token}"
     payload = {
-        "ph": ph_val, "tds": tds_val, "temp": temp_val,
-        "do": do_val, "turbidity": turb_val, "updatedAt": int(time.time())
+        "ph": ph_val,
+        "tds": tds_val,
+        "temp": temp_val,
+        "do": do_val,
+        "turbidity": turb_val,
+        "updatedAt": int(time.time())
     }
     try:
         res = requests.put(url, json=payload, timeout=5)
@@ -222,16 +235,18 @@ else:
 
 st.sidebar.markdown("---")
 st.sidebar.title("🎛️ เซนเซอร์ / Input Control")
-sim_ph = st.sidebar.slider("pH Level", 0.0, 14.0, 6.4, 0.1)
-sim_tds = st.sidebar.slider("EC / TDS (ppm)", 0.0, 1200.0, 158.1, 0.1)
-sim_temp = st.sidebar.slider("Temperature (°C)", 10.0, 45.0, 24.5, 0.5)
-sim_do = st.sidebar.slider("DO (mg/L)", 0.0, 20.0, 9.2, 0.1)
-sim_turb = st.sidebar.slider("Turbidity (NTU)", 0.0, 300.0, 0.0, 0.1)
+sim_ph = st.sidebar.slider("pH Level (ความเป็นกรด-ด่าง)", 0.0, 14.0, 6.4, 0.1)
+sim_tds = st.sidebar.slider("EC / TDS (ppm) (สารละลาย)", 0.0, 2000.0, 156.7, 0.1)
+sim_temp = st.sidebar.slider("Temperature (°C) (อุณหภูมิ)", 10.0, 50.0, 24.5, 0.5)
+sim_do = st.sidebar.slider("DO (mg/L) (ออกซิเจนละลายน้ำ)", 0.0, 20.0, 4.9, 0.1)
+sim_turb = st.sidebar.slider("Turbidity (NTU) (ความขุ่น)", 0.0, 1000.0, 67.0, 0.1)
 
 if st.sidebar.button("📤 ส่งค่าจำลองขึ้น Firebase", use_container_width=True):
     if write_mock_sensor_data(id_token, sim_ph, sim_tds, sim_temp, sim_do, sim_turb):
         st.sidebar.success("✅ บันทึกค่าขึ้น Firebase เรียบร้อย!")
         st.rerun()
+    else:
+        st.sidebar.error("❌ บันทึกไม่สำเร็จ")
 
 live_data = read_sensor_data(id_token)
 if live_data and isinstance(live_data, dict) and "ph" in live_data:
@@ -240,38 +255,110 @@ if live_data and isinstance(live_data, dict) and "ph" in live_data:
     temp = float(live_data.get("temp", sim_temp))
     do_val = float(live_data.get("do", sim_do))
     turbidity = float(live_data.get("turbidity", sim_turb))
-    data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database"
+    data_source_badge = "📡 ข้อมูลสดจาก Firebase Realtime Database (/devices/uno-r4/status)"
 else:
     ph, tds, temp, do_val, turbidity = sim_ph, sim_tds, sim_temp, sim_do, sim_turb
-    data_source_badge = "⚠️ ใช้ค่าจำลองจากแถบด้านข้าง (ยังไม่มีข้อมูลสด)"
+    data_source_badge = "⚠️ ยังไม่มีข้อมูลสดใน Firebase (กำลังใช้ค่าจำลองจากแถบด้านข้าง)"
 
 def calculate_risk(ph, tds, temp, do_val, turbidity):
-    score = 0
+    risk_score = 0
     reasons = []
-    if not (6.5 <= ph <= 8.5):
-        score += 30; reasons.append(f"pH ({ph}) อยู่นอกเกณฑ์มาตรฐาน")
-    if tds > 600:
-        score += 30; reasons.append(f"TDS ({tds:.1f} ppm) สูงเกินเกณฑ์")
-    if do_val < 5.0:
-        score += 25; reasons.append(f"DO ({do_val:.1f} mg/L) ต่ำเกินไป")
+    if ph < 5.5 or ph > 9.0:
+        risk_score += 35
+        reasons.append(f"pH ({ph}) อยู่นอกเกณฑ์มาตรฐานน้ำใช้อุปโภค-บริโภค")
+    elif ph < 6.5 or ph > 8.5:
+        risk_score += 15
+        reasons.append(f"pH ({ph}) เริ่มมีความเป็นกรด/ด่าง เบี่ยงเบนจากเกณฑ์ปกติ")
+
+    if tds > 1000:
+        risk_score += 30
+        reasons.append(f"EC/TDS ({tds:.1f} ppm) มีค่าความเค็ม/สารละลายสูงเกินเกณฑ์ประปาชุมชน")
+    elif tds > 600:
+        risk_score += 15
+        reasons.append(f"EC/TDS ({tds:.1f} ppm) มีแนวโน้มเพิ่มขึ้น เสี่ยงกระทบพืชสวนและการประปา")
+
+    if do_val < 3.0:
+        risk_score += 25
+        reasons.append(f"DO ({do_val:.1f} mg/L) อยู่ในเกณฑ์ต่ำ ออกซิเจนในน้ำไม่เพียงพอ")
+
+    if temp > 35.0:
+        risk_score += 10
+        reasons.append(f"อุณหภูมิ ({temp:.1f} °C) สูงเกินไป กระทบต่อระบบนิเวศแหล่งน้ำ")
     if turbidity > 100:
-        score += 15; reasons.append(f"ความขุ่น ({turbidity:.1f} NTU) สูงเกินไป")
-    return min(score, 99), reasons
+        risk_score += 15
+        reasons.append(f"ความขุ่น ({turbidity:.1f} NTU) สูงกว่าเกณฑ์ ต้องเพิ่มกระบวนการตกตะกอน")
+
+    return min(risk_score, 99), reasons
 
 risk_score, risk_reasons = calculate_risk(ph, tds, temp, do_val, turbidity)
 
 if risk_score >= 60:
-    status_label, status_label_en, status_color = "ไม่ดี (อันตราย)", "DANGER", "var(--danger)"
+    status_label = "เสี่ยงอันตราย"
+    status_label_en = "DANGER"
+    status_color = "var(--danger)"
 elif risk_score >= 30:
-    status_label, status_label_en, status_color = "ปานกลาง (เฝ้าระวัง)", "WARNING", "var(--warn)"
+    status_label = "เฝ้าระวัง"
+    status_label_en = "WARNING"
+    status_color = "var(--warn)"
 else:
-    status_label, status_label_en, status_color = "ดี (ปกติ / ปลอดภัย)", "GOOD", "var(--safe)"
+    status_label = "ปกติ"
+    status_label_en = "NORMAL"
+    status_color = "var(--safe)"
 
 now = datetime.now()
 current_time_str = now.strftime("%H:%M")
 current_date_str = now.strftime("%Y-%m-%d")
 
-# --- UI HELPERS ---
+thai_months = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+               "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+thai_year = now.year + 543
+formatted_thai_date = f"{now.day} {thai_months[now.month]} พ.ศ. {thai_year} (เวลา {current_time_str} น.)"
+
+if "last_danger_alert_date" not in st.session_state:
+    st.session_state.last_danger_alert_date = ""
+if "last_scheduled_alert" not in st.session_state:
+    st.session_state.last_scheduled_alert = ""
+
+if risk_score >= 60 and st.session_state.last_danger_alert_date != current_date_str:
+    danger_msg = (
+        f"🚨 [แจ้งเตือนวิกฤติด่วน!]\n"
+        f"📅 ประจำวันที่: {formatted_thai_date}\n"
+        f"------------------------------\n"
+        f"📊 ตรวจพบสถานะน้ำระดับอันตราย (Risk Score: {risk_score}%)\n"
+        f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm\n"
+        f"• DO: {do_val:.1f} mg/L | Temp: {temp:.1f} °C\n"
+        f"⚠️ สาเหตุหลัก:\n- " + "\n- ".join(risk_reasons) + "\n"
+        f"------------------------------\n"
+        f"กรุณาตรวจสอบระบบประปาหมู่บ้านและประกาศงดใช้น้ำด่วน!"
+    )
+    if send_line_notification(danger_msg):
+        st.session_state.last_danger_alert_date = current_date_str
+
+scheduled_slot = None
+if "05:00" <= current_time_str <= "05:05":
+    scheduled_slot = "05:00 รอบเช้า"
+elif "18:00" <= current_time_str <= "18:05":
+    scheduled_slot = "18:00 รอบเย็น"
+
+alert_key_name = f"{current_date_str}_{scheduled_slot}"
+if scheduled_slot and st.session_state.last_scheduled_alert != alert_key_name:
+    sched_msg = (
+        f"⏰ [รายงานประจำวัน - {scheduled_slot}]\n"
+        f"📅 วันที่: {formatted_thai_date}\n"
+        f"------------------------------\n"
+        f"สถานะน้ำชุมชน EEC ล่าสุด:\n"
+        f"• ดัชนีความเสี่ยง: {risk_score}% ({status_label})\n"
+        f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm | DO: {do_val:.1f} mg/L\n"
+        f"------------------------------\n"
+        f"💡 สรุปภาพรวม: {'ระบบปกติพร้อมใช้งาน' if risk_score < 30 else 'พบความผิดปกติ ควรตรวจสอบระบบกรองน้ำ'}"
+    )
+    if send_line_notification(sched_msg):
+        st.session_state.last_scheduled_alert = alert_key_name
+
+# ============================================================================
+# UI HELPERS
+# ============================================================================
+
 def zone_color(value, zones):
     for lo, hi, color in zones:
         if lo <= value < hi:
@@ -314,18 +401,19 @@ def render_risk_ring(score, status_color_css, size=132, stroke=12):
 <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="{status_color_css}" stroke-width="{stroke}" stroke-dasharray="{dash:.1f} {circumference:.1f}" stroke-linecap="round"/>
 </svg>"""
 
-tab1, tab2 = st.tabs(["📊 ภาพรวมคุณภาพน้ำ (Dashboard)", "🏡 ระบบสนับสนุนการตัดสินใจ"])
+# --- จัดการแท็บหน้าเว็บ ---
+tab1, tab2 = st.tabs(["📊 EEC Water Overview (หน้าแรก)", "🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน"])
 
 with tab1:
     hcol1, hcol2 = st.columns([3, 1])
     with hcol1:
-        st.markdown('<div class="hdr-eyebrow">EEC · WATER TELEMETRY</div>', unsafe_allow_html=True)
-        st.markdown('<div class="hdr-title">💧 ระบบตรวจสอบคุณภาพน้ำชุมชน</div>', unsafe_allow_html=True)
-        st.markdown('<div class="hdr-sub">แสดงสถานะความพร้อมและคุณภาพน้ำสำหรับการอุปโภคบริโภค</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hdr-eyebrow">EEC · REAL-TIME WATER TELEMETRY</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hdr-title">💧 EEC Community Water Intelligence System</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hdr-sub">ระบบเฝ้าระวังและประเมินความเสี่ยงคุณภาพน้ำอัจฉริยะเพื่อการอุปโภค บริโภค และการเกษตรของชุมชน</div>', unsafe_allow_html=True)
     with hcol2:
         pill_html = f"""<div style="text-align:right; padding-top: 8px;">
 <span class="status-pill" style="--pill-color:{status_color}">
-<span class="status-dot"></span>{status_label}
+<span class="status-dot"></span>{status_label} · {status_label_en}
 </span>
 </div>"""
         st.markdown(pill_html, unsafe_allow_html=True)
@@ -333,10 +421,10 @@ with tab1:
     st.markdown(f'<div class="data-badge">{data_source_badge}</div>', unsafe_allow_html=True)
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-    # 5 เกจวัดค่าพารามิเตอร์
+    # ---- row 1: five sensor gauges ----
     g1, g2, g3, g4, g5 = st.columns(5, gap="medium")
     with g1:
-        render_gauge_card("⚗️", "PH LEVEL", ph, "", 0, 14,
+        render_gauge_card("⚗️", "pH LEVEL", ph, "", 0, 14,
             [(0, 5.5, "--danger"), (5.5, 6.5, "--warn"), (6.5, 8.5, "--safe"), (8.5, 9.0, "--warn"), (9.0, 14, "--danger")])
     with g2:
         render_gauge_card("🧂", "TDS / EC", tds, "ppm", 0, 1200,
@@ -355,18 +443,18 @@ with tab1:
     col2, col3 = st.columns([1.6, 1], gap="medium")
 
     with col2:
-        st.markdown('<div class="panel" style="margin-bottom: 0;"><div class="panel-title">📈 แนวโน้มคุณภาพน้ำ (ดี / ไม่ดี) <span class="tag">TREND STATUS</span></div>', unsafe_allow_html=True)
-        chart_data_1 = pd.DataFrame({
-            'สถานะภาพน้ำ (ดี=สูง, ไม่ดี=ต่ำ)': np.random.uniform(70, 95, 10) if risk_score < 30 else np.random.uniform(20, 45, 10)
-        })
-        st.area_chart(chart_data_1, color=["#34d399" if risk_score < 30 else "#f87171"], height=200)
+        st.markdown('<div class="panel" style="margin-bottom: 0;"><div class="panel-title">📈 แนวโน้มคุณภาพน้ำ <span class="tag">AREA TREND</span></div>', unsafe_allow_html=True)
+        chart_data_1 = pd.DataFrame(np.random.randn(10, 3) + [tds/100, do_val, turbidity/50], columns=['TDS', 'DO', 'Turbidity'])
+        st.area_chart(chart_data_1, color=["#22d3ee", "#34d399", "#a78bfa"], height=200)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col3:
-        status_text_desc = "น้ำอยู่ในเกณฑ์ **ดี (ปลอดภัย)** สามารถใช้งานได้ตามปกติ" if risk_score < 30 else "น้ำอยู่ในเกณฑ์ **ไม่ดี (ต้องระวัง)** ควรตรวจสอบระบบกรอง"
+        analysis_text = ("คุณภาพน้ำอยู่ในเกณฑ์ดี ปลอดภัยต่อการใช้งาน" if risk_score < 30
+                         else ("เริ่มมีความผิดปกติ ควรเฝ้าระวังอย่างใกล้ชิด" if risk_score < 60
+                               else "สถานะวิกฤต ควรตรวจสอบและดำเนินการเร่งด่วน"))
         ring_svg = render_risk_ring(risk_score, status_color)
         risk_html = f"""<div class="panel">
-<div class="panel-title">🤖 สรุปภาพรวมคุณภาพน้ำ <span class="tag">EVALUATION</span></div>
+<div class="panel-title">🤖 AI Risk Assessment <span class="tag">LIVE</span></div>
 <div class="risk-wrap">
 <div style="position:relative; width:132px; height:132px;">
 {ring_svg}
@@ -376,21 +464,97 @@ with tab1:
 </div>
 <div>
 <div class="risk-status-label" style="color:{status_color}">{status_label}</div>
-<div style="font-size:0.78rem; color:var(--text-low); font-family:'JetBrains Mono',monospace;">STATUS SCORE</div>
+<div style="font-size:0.78rem; color:var(--text-low); font-family:'JetBrains Mono',monospace;">RISK INDEX</div>
 </div>
 </div>
-<div class="risk-advice">💡 <b>คำแนะนำ:</b> {status_text_desc}</div>
+<div class="risk-advice">💡 <b style="color:var(--text-mid)">คำแนะนำ:</b> {analysis_text}</div>
 </div>"""
         st.markdown(risk_html, unsafe_allow_html=True)
+
+    st.write("")
+    col4, col5 = st.columns([1.2, 1], gap="medium")
+
+    with col4:
+        st.markdown('<div class="panel" style="margin-bottom: 0;"><div class="panel-title">📊 การเปรียบเทียบพารามิเตอร์เชิงลึก <span class="tag">DEEP COMPARE</span></div>', unsafe_allow_html=True)
+        chart_data_2 = pd.DataFrame(np.random.randn(12, 2) * 5 + 50, columns=['Value A', 'Value B'])
+        st.line_chart(chart_data_2, color=["#22d3ee", "#34d399"], height=190)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with col5:
+        st.markdown('<div class="panel" style="margin-bottom: 0;"><div class="panel-title">📊 สถิติความแปรปรวนย้อนหลัง <span class="tag">VARIANCE</span></div>', unsafe_allow_html=True)
+        bar_data = pd.DataFrame(np.random.rand(8, 2) * 100, columns=['Series 1', 'Series 2'])
+        st.bar_chart(bar_data, color=["#22d3ee", "#a78bfa"], height=190)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
     st.markdown('<div class="hdr-eyebrow">DECISION SUPPORT</div>', unsafe_allow_html=True)
     st.markdown('<div class="hdr-title" style="font-size:1.5rem;">🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-sub">แนวทางปฏิบัติเชิงรุกสำหรับผู้นำชุมชน คณะกรรมการประปาหมู่บ้าน และกลุ่มเกษตรกร</div>', unsafe_allow_html=True)
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
-    if risk_score < 30:
-        st.success("✅ สถานะน้ำในระบบปกติ ดีเยี่ยม พร้อมแจกจ่ายเพื่ออุปโภคบริโภค")
-    else:
-        st.warning("⚠️ ตรวจพบความผิดปกติของค่าน้ำ กรุณาตรวจสอบระบบประปาหมู่บ้าน")
 
+    col_action1, col_action2 = st.columns(2, gap="large")
+
+    with col_action1:
+        if risk_score < 30:
+            rows = [
+                ("💧", "<b>แจกจ่ายน้ำปกติ</b> — ระบบประปาหมู่บ้านใช้งานได้ตามปกติ"),
+                ("📊", "<b>จัดเก็บข้อมูล</b> — บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง"),
+            ]
+        elif risk_score < 60:
+            rows = [
+                ("📢", "<b>แจ้งเตือนเกษตรกร</b> — สารละลาย/ความเค็มสูง ระวังการสูบน้ำเข้าแปลง"),
+                ("⚙️", "<b>ปรับระบบกรอง</b> — เพิ่มระยะเวลาการตกตะกอนในระบบประปา"),
+                ("🌊", "<b>เติมออกซิเจน</b> — ค่า DO ลดลง ตรวจสอบระบบบำบัดน้ำ"),
+            ]
+        else:
+            rows = [
+                ("🚫", "<b>งดใช้น้ำชั่วคราว</b> — ห้ามใช้น้ำเพื่อบริโภคและทำการเกษตรด่วน"),
+                ("🚰", "<b>ใช้แหล่งน้ำสำรอง</b> — เปิดใช้งานน้ำบาดาลหรือแหล่งสำรองแทน"),
+            ]
+        rows_html = "".join(
+            f'<div class="check-row"><span class="check-icon">{icon}</span><span class="check-text">{text}</span></div>'
+            for icon, text in rows
+        )
+        action_html = f"""<div class="panel">
+<div class="panel-title">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน <span class="tag">{status_label_en}</span></div>
+{rows_html}
+</div>"""
+        st.markdown(action_html, unsafe_allow_html=True)
+
+        if risk_reasons:
+            reasons_html = "".join(
+                f'<div class="check-row"><span class="check-icon">⚠️</span><span class="check-text">{r}</span></div>'
+                for r in risk_reasons
+            )
+            reasons_panel_html = f"""<div class="panel" style="margin-top:18px;">
+<div class="panel-title">🔍 สาเหตุที่ตรวจพบ <span class="tag">DETECTED</span></div>
+{reasons_html}
+</div>"""
+            st.markdown(reasons_panel_html, unsafe_allow_html=True)
+
+    with col_action2:
+        line_html = """<div class="panel">
+<div class="panel-title">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน <span class="tag">LINE</span></div>
+<p style="color: var(--text-low); font-size: 0.88rem; line-height: 1.6; margin-bottom: 18px;">
+ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลรายงานประจำวันทุกเวลา 05:00 น. / 18:00 น.
+</p>
+</div>"""
+        st.markdown(line_html, unsafe_allow_html=True)
+
+        if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
+            test_msg = (
+                f"📢 [ทดสอบระบบ LINE น้ำชุมชน EEC]\n"
+                f"📅 วันที่: {formatted_thai_date}\n"
+                f"------------------------------\n"
+                f"📊 Risk Score: {risk_score}% ({status_label})\n"
+                f"• pH: {ph:.1f} | TDS: {tds:.1f} ppm\n"
+                f"• DO: {do_val:.1f} mg/L | Temp: {temp:.1f} °C"
+            )
+            if send_line_notification(test_msg):
+                st.success("✅ ส่งข้อความทดสอบเข้า LINE สำเร็จ!")
+            else:
+                st.error("❌ ส่งไม่สำเร็จ")
+
+# หน่วงเวลาและรีเฟรชหน้าเว็บทุกๆ 60 วินาที
 time.sleep(60)
 st.rerun()
