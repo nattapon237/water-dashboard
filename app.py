@@ -140,7 +140,6 @@ p, span, label, .stMarkdown, li { color: var(--text-mid); }
   padding: 10px 0; border-bottom: 1px solid var(--hairline);
 }
 .check-row:last-child { border-bottom: none; }
-.check-icon { font-size: 1rem; margin-top: 1px; }
 .check-text { font-size: 0.88rem; color: var(--text-mid); line-height: 1.45; }
 .check-text b { color: var(--text-hi); }
 .data-badge {
@@ -403,63 +402,62 @@ with tab1:
         st.bar_chart(bar_data, color=["#22d3ee", "#a78bfa"], height=190)
         st.markdown("</div>", unsafe_allow_html=True)
 
+    st.write("")
+    col6, col7 = st.columns(2, gap="medium")
+    with col6:
+        st.markdown("""
+        <div class="panel">
+            <div class="panel-title">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน <span class="tag">NORMAL</span></div>
+            <div class="check-row">
+                <div class="check-icon">💧</div>
+                <div class="check-text"><b>แจกจ่ายน้ำปกติ</b> — ระบบประปาหมู่บ้านใช้งานได้ตามปกติ</div>
+            </div>
+            <div class="check-row">
+                <div class="check-icon">📊</div>
+                <div class="check-text"><b>จัดเก็บข้อมูล</b> — บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่อง</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col7:
+        st.markdown("""
+        <div class="panel">
+            <div class="panel-title">📲 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน <span class="tag">LINE</span></div>
+            <div style="font-size:0.88rem; color:var(--text-mid); margin-bottom: 16px;">
+                ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลรายงานประจำวันทุกเวลา 05:00 น. / 18:00 น.
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
+            success = send_line_notification(f"🚨 แจ้งเตือนสถานะน้ำ: {status_label}\n- pH: {ph}\n- TDS: {tds} ppm\n- Temp: {temp} °C\n- DO: {do_val} mg/L\n- ความขุ่น: {turbidity} NTU")
+            if success:
+                st.success("✅ ส่งข้อความเข้า LINE สำเร็จ!")
+            else:
+                st.error("❌ ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบ Token")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    if risk_reasons:
+        st.write("")
+        st.markdown("""
+        <div class="panel">
+            <div class="panel-title">🔍 สาเหตุที่ตรวจพบ <span class="tag">DETECTED</span></div>
+        """, unsafe_allow_html=True)
+        for rsn in risk_reasons:
+            st.markdown(f"""
+            <div class="check-row">
+                <div class="check-icon">⚠️</div>
+                <div class="check-text"><b>{rsn}</b></div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
 with tab2:
     st.markdown('<div class="hdr-eyebrow">DECISION SUPPORT</div>', unsafe_allow_html=True)
     st.markdown('<div class="hdr-title" style="font-size:1.5rem;">🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน</div>', unsafe_allow_html=True)
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
-
-    c_left, c_right = st.columns(2, gap="medium")
-    with c_left:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">🛠️ ข้อแนะนำการปฏิบัติงานสำหรับชุมชน <span class="tag">NORMAL</span></div>', unsafe_allow_html=True)
-        st.markdown("""
-        <div class="check-row">
-            <div class="check-icon">💧</div>
-            <div class="check-text"><b>แจกจ่ายน้ำปกติ</b> — ระบบประปาหมู่บ้านใช้งานได้ตามปกติ ตรวจสอบคุณภาพสม่ำเสมอ</div>
-        </div>
-        <div class="check-row">
-            <div class="check-icon">📊</div>
-            <div class="check-text"><b>จัดเก็บข้อมูล</b> — บันทึกค่าน้ำเข้าฐานข้อมูลชุมชนต่อเนื่องเพื่อวิเคราะห์แนวโน้ม</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.write("")
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">🔍 สาเหตุที่ตรวจพบ <span class="tag">DETECTED</span></div>', unsafe_allow_html=True)
-        if risk_reasons:
-            for r in risk_reasons:
-                st.markdown(f"""
-                <div class="check-row">
-                    <div class="check-icon">⚠️</div>
-                    <div class="check-text"><b>{r}</b></div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="check-row">
-                <div class="check-icon">✅</div>
-                <div class="check-text"><b>ไม่พบความผิดปกติ</b> ค่าพารามิเตอร์ทุกตัวอยู่ในเกณฑ์มาตรฐานความปลอดภัย</div>
-            </div>
-            """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with c_right:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title">📱 ระบบส่งแจ้งเตือนฉุกเฉินถึงผู้นำชุมชน <span class="tag">LINE</span></div>', unsafe_allow_html=True)
-        st.markdown(f"""
-        <p style="font-size: 0.9rem; line-height: 1.5; color: var(--text-mid);">
-        ตั้งค่าแจ้งเตือนอัตโนมัติ: แจ้งทันทีเมื่อสถานะเป็นวิกฤต และสรุปผลรายงานประจำวันทุกเวลา 05:00 น. / 18:00 น.
-        </p>
-        """, unsafe_allow_html=True)
-        
-        if st.button("🚀 ทดสอบส่งรายงานเข้า LINE ทันที", use_container_width=True):
-            test_msg = f"💧 [รายงานสถานะน้ำ EEC]\n- สถานะ: {status_label}\n- pH: {ph}\n- TDS: {tds} ppm\n- อุณหภูมิ: {temp}°C\n- วันที่: {current_date_str} เวลา {current_time_str}"
-            if send_line_notification(test_msg):
-                st.success("✅ ส่งข้อความทดสอบเข้า LINE สำเร็จ!")
-            else:
-                st.error("❌ ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบ Token")
-        st.markdown('</div>', unsafe_allow_html=True)
+    if risk_score < 30:
+        st.success("✅ สถานะน้ำในระบบปกติ ดีเยี่ยม พร้อมแจกจ่ายเพื่ออุปโภคบริโภค")
+    else:
+        st.warning("⚠️ ตรวจพบความผิดปกติของค่าน้ำ กรุณาตรวจสอบระบบประปาหมู่บ้าน")
 
 time.sleep(60)
 st.rerun()
