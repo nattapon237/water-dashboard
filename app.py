@@ -402,6 +402,16 @@ with tab1:
         st.bar_chart(bar_data, color=["#22d3ee", "#a78bfa"], height=190)
         st.markdown("</div>", unsafe_allow_html=True)
 
+with tab2:
+    st.markdown('<div class="hdr-eyebrow">DECISION SUPPORT</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-title" style="font-size:1.5rem;">🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน</div>', unsafe_allow_html=True)
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+    
+    if risk_score < 30:
+        st.success("✅ สถานะน้ำในระบบปกติ ดีเยี่ยม พร้อมแจกจ่ายเพื่ออุปโภคบริโภค")
+    else:
+        st.warning("⚠️ ตรวจพบความผิดปกติของค่าน้ำ กรุณาตรวจสอบระบบประปาหมู่บ้าน")
+
     st.write("")
     col6, col7 = st.columns(2, gap="medium")
     with col6:
@@ -449,15 +459,6 @@ with tab1:
             </div>
             """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
-
-with tab2:
-    st.markdown('<div class="hdr-eyebrow">DECISION SUPPORT</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hdr-title" style="font-size:1.5rem;">🏡 ระบบสนับสนุนการตัดสินใจสำหรับชุมชน</div>', unsafe_allow_html=True)
-    st.markdown('<hr class="divider">', unsafe_allow_html=True)
-    if risk_score < 30:
-        st.success("✅ สถานะน้ำในระบบปกติ ดีเยี่ยม พร้อมแจกจ่ายเพื่ออุปโภคบริโภค")
-    else:
-        st.warning("⚠️ ตรวจพบความผิดปกติของค่าน้ำ กรุณาตรวจสอบระบบประปาหมู่บ้าน")
 
 time.sleep(60)
 st.rerun()
