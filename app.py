@@ -160,7 +160,8 @@ def safe_float(value, default=0.0):
 def sensor_is_online(data):
     if not isinstance(data, dict):
         return False
-    sensor_keys = ["tds", "turbidity", "do"]
+    # ตรวจสอบว่ามีข้อมูลจากเซนเซอร์หรือไม่ (ใช้ orp แทน do)
+    sensor_keys = ["tds", "turbidity", "orp"]
     for key in sensor_keys:
         if key in data and data.get(key) is not None:
             try:
@@ -179,7 +180,7 @@ live_data = read_firebase()
 
 tds = safe_float(live_data.get("tds")) if isinstance(live_data, dict) else 0.0
 turbidity = safe_float(live_data.get("turbidity")) if isinstance(live_data, dict) else 0.0
-do_value = safe_float(live_data.get("do")) if isinstance(live_data, dict) else 0.0
+orp_value = safe_float(live_data.get("orp")) if isinstance(live_data, dict) else 0.0
 
 sensor_online = sensor_is_online(live_data)
 
@@ -192,7 +193,7 @@ if sensor_online:
         "เวลา": now.strftime("%H:%M:%S"),
         "TDS": tds,
         "Turbidity": turbidity,
-        "DO": do_value
+        "ORP": orp_value
     })
     st.session_state.history = st.session_state.history[-60:]
 
@@ -203,13 +204,16 @@ if sensor_online:
 
 TDS_MAX = 1000.0
 TURBIDITY_MAX = 100.0
-DO_MIN = 4.0
+# เกณฑ์ขั้นต่ำและสูงสุดสำหรับแม่น้ำ/เกษตรกรรม (อิงจากปลา/กุ้ง และ พืช)
+ORP_MIN = 150.0 
+ORP_MAX = 400.0 
 
 risk = []
 if sensor_online:
     if tds > TDS_MAX: risk.append(f"TDS สูง {tds:.1f} ppm")
     if turbidity > TURBIDITY_MAX: risk.append(f"ความขุ่นสูง {turbidity:.1f} NTU")
-    if do_value < DO_MIN: risk.append(f"DO ต่ำ {do_value:.2f} mg/L")
+    if orp_value < ORP_MIN: risk.append(f"ORP ต่ำเกินไป {orp_value:.1f} mV")
+    elif orp_value > ORP_MAX: risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f} mV")
 
 water_normal = (sensor_online and len(risk) == 0)
 
@@ -235,7 +239,7 @@ with st.sidebar:
     st.subheader("📊 Parameters")
     st.write("🧂 TDS")
     st.write("🌫️ Turbidity")
-    st.write("🫧 DO")
+    st.write("⚡ ORP")
 
     st.divider()
     st.write("🔄 Auto Refresh")
@@ -278,7 +282,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     col1.metric("🧂 TDS", f"{tds:.1f} ppm")
     col2.metric("🌫️ Turbidity", f"{turbidity:.1f} NTU")
-    col3.metric("🫧 DO", f"{do_value:.2f} mg/L")
+    col3.metric("⚡ ORP", f"{orp_value:.1f} mV")
 
     st.divider()
     st.subheader("🤖 สถานะคุณภาพน้ำ")
@@ -294,7 +298,7 @@ with tab1:
     st.subheader("📈 กราฟค่าจากเซนเซอร์")
     if len(st.session_state.history) > 0:
         graph_df = pd.DataFrame(st.session_state.history).set_index("เวลา")
-        selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "Turbidity", "DO"], key="graph_parameter")
+        selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "Turbidity", "ORP"], key="graph_parameter")
         st.line_chart(graph_df[[selected_parameter]], use_container_width=True)
     else:
         st.info("⏳ รอข้อมูลจากเซนเซอร์...")
@@ -312,25 +316,51 @@ with tab2:
         st.warning("🔴 ยังไม่มีข้อมูลจากเซนเซอร์")
     else:
         st.subheader("📊 ผลวิเคราะห์ปัจจุบัน")
+        
+        # TDS Analysis
         if tds <= TDS_MAX: st.success(f"🧂 TDS {tds:.1f} ppm — อยู่ในเกณฑ์")
         else: st.warning(f"⚠️ TDS {tds:.1f} ppm — ควรเฝ้าระวัง")
 
+        # Turbidity Analysis
         if turbidity <= TURBIDITY_MAX: st.success(f"🌫️ Turbidity {turbidity:.1f} NTU — อยู่ในเกณฑ์")
         else: st.warning(f"⚠️ Turbidity {turbidity:.1f} NTU — ความขุ่นสูง")
 
-        if do_value >= DO_MIN: st.success(f"🫧 DO {do_value:.2f} mg/L — อยู่ในเกณฑ์")
-        else: st.warning(f"⚠️ DO {do_value:.2f} mg/L — ออกซิเจนละลายต่ำ")
+        # ORP Analysis (Based on user criteria)
+        if 150 <= orp_value <= 400:
+            st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม (ปลา/กุ้ง และ พืช)")
+        elif orp_value > 400 and orp_value <= 650:
+            st.info(f"⚡ ORP {orp_value:.1f} mV — น้ำมีค่าการออกซิไดซ์สูง")
+        elif orp_value > 650:
+            st.warning(f"⚠️ ORP {orp_value:.1f} mV — สูงมาก (เทียบเท่าน้ำผ่านการฆ่าเชื้อ ไม่เหมาะกับการเกษตรทั่วไป)")
+        elif orp_value >= 50 and orp_value < 150:
+            st.warning(f"⚠️ ORP {orp_value:.1f} mV — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
+        else:
+            st.error(f"🔴 ORP {orp_value:.1f} mV — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
 
         st.divider()
+
+        st.subheader("📌 เกณฑ์การใช้งานค่า ORP (อ้างอิง)")
+        # แสดงตารางเกณฑ์ ORP
+        orp_criteria = pd.DataFrame([
+            {"ช่วงค่า (mV)": "+150 ถึง +250", "การใช้งาน": "เพาะเลี้ยงสัตว์น้ำ (ปลา/กุ้ง)", "ประโยชน์/ผลลัพธ์": "น้ำสะอาด สมดุล อัตรารอดตายสูง สัตว์น้ำไม่เครียด"},
+            {"ช่วงค่า (mV)": "+200 ถึง +400", "การใช้งาน": "ปลูกพืช/ไฮโดรโปนิกส์", "ประโยชน์/ผลลัพธ์": "รากพืชแข็งแรง ดูดซึมปุ๋ยได้ดี ป้องกันรากเน่า"},
+            {"ช่วงค่า (mV)": "> +650", "การใช้งาน": "ฆ่าเชื้อระบบน้ำการเกษตร", "ประโยชน์/ผลลัพธ์": "กำจัดเชื้อโรค แบคทีเรีย และสาหร่ายในน้ำ"},
+            {"ช่วงค่า (mV)": "+50 ถึง +200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "จุลินทรีย์ย่อยสลายของเสียได้ดี น้ำไม่เน่าเหม็น"},
+            {"ช่วงค่า (mV)": "-50 ถึง -200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (ไม่เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "กำจัดสารประกอบไนโตรเจน บำบัดตะกอนเลน"}
+        ])
+        st.table(orp_criteria)
+        
+        st.divider()
+        
         st.subheader("🌱 แนวทางการใช้น้ำ")
         if len(risk) == 0:
-            st.success("✅ สามารถนำข้อมูลไปประกอบการวางแผนใช้น้ำเพื่อการเกษตรได้")
+            st.success("✅ สามารถนำข้อมูลไปประกอบการวางแผนใช้น้ำเพื่อการเกษตรและประมงได้")
         else:
-            st.warning("⚠️ พบค่าที่ควรเฝ้าระวัง ไม่ควรตัดสินใจจากค่าการวัดเพียงครั้งเดียว")
+            st.warning("⚠️ พบค่าที่ควรเฝ้าระวัง ไม่ควรตัดสินใจจากค่าการวัดเพียงครั้งเดียว ควรตรวจสอบความผิดปกติเพิ่มเติม")
 
 
 # ============================================================
-# TAB 3: REPORT / CLUE (พร้อมแจ้งเตือน LINE รูปแบบใหม่)
+# TAB 3: REPORT / CLUE
 # ============================================================
 
 with tab3:
@@ -360,7 +390,7 @@ with tab3:
     with col_lon:
         report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", placeholder="เช่น 101.1700")
 
-    # เปลี่ยนจากการกรอก URL เป็นการอัปโหลดไฟล์รูปภาพ
+    # อัปโหลดไฟล์รูปภาพ
     uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
 
     if st.button("📤 บันทึกข้อมูลแจ้งเบาะแส", use_container_width=True):
@@ -392,7 +422,7 @@ with tab3:
 
         st.session_state["last_report"] = report_data
 
-        # --- จัดรูปแบบข้อความแจ้งเตือนตามภาพ ---
+        # --- จัดรูปแบบข้อความแจ้งเตือน ---
         msg = (
             f"🚨 แจ้งเบาะแส ({report_type})!\n"
             f"📝 รายละเอียดพฤติกรรม: {detail_text}\n"
