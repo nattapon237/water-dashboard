@@ -251,7 +251,7 @@ current_date_str = now_th.strftime("%Y-%m-%d")
 current_hour = now_th.hour
 current_minute = now_th.minute
 
-# 1. แจ้งเตือนด่วนทันทีเมื่อค่าเกินเกณฑ์สีแดง (Critical Alert) โดยไม่ให้ส่งซ้ำติดกันถี่เกินไป (หน่วงเวลา 15 นาทีต่อ 1 เคสวิกฤต)
+# 1. แจ้งเตือนด่วนทันทีเมื่อค่าเกินเกณฑ์สีแดง (Critical Alert)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = None
 
@@ -260,7 +260,7 @@ if is_critical and sensor_online:
     if st.session_state.last_alert_time is None or (now_time - st.session_state.last_alert_time).total_seconds() > 900:
         alert_msg = (
             f"🚨 ⚠️ แจ้งเตือนวิกฤตคุณภาพน้ำ (ค่าเกินเกณฑ์สีแดง)!\n"
-            f"📍 จุดตรวจวัด: แม่น้ำบางปะกง\n"
+            f"📍 จุดตรวจวัด: คลองสวน\n"
             f"⏰ เวลา: {now_time.strftime('%d/%m/%Y %H:%M:%S')}\n"
             f"----------------------------------\n"
             f"🧂 TDS: {tds:.1f} ppm\n"
@@ -283,7 +283,7 @@ if current_hour in target_hours and current_minute <= 2:
     if st.session_state.last_auto_report_key != report_slot_key:
         auto_msg = (
             f"📊 รายงานคุณภาพน้ำอัตโนมัติ (ทุก 3 ชม.)\n"
-            f"📍 จุดตรวจวัด: แม่น้ำบางปะกง\n"
+            f"📍 จุดตรวจวัด: คลองสวน\n"
             f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
             f"----------------------------------\n"
             f"🧂 TDS: {tds:.1f} ppm\n"
@@ -346,7 +346,7 @@ tab1, tab2, tab3 = st.tabs([
 with tab1:
     st.caption("EEC · AGRI-WATER INTELLIGENCE")
     st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
-    st.write("📍 จุดตรวจวัด : แม่น้ำบางปะกง")
+    st.write("📍 จุดตรวจวัด : คลองสวน")
     st.caption("ESP32 → Firebase → Dashboard")
 
     st.divider()
@@ -469,25 +469,25 @@ with tab2:
 
 with tab3:
     st.title("📍 แจ้งเบาะแส")
-    st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ")
+    st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ (ย่านคลองสวน)")
 
     st.markdown(
         """
         <div class="water-card">
         <h3>📢 แจ้งปัญหาคุณภาพน้ำ</h3>
-        ใช้สำหรับบันทึกข้อมูลเมื่อพบความผิดปกติของแม่น้ำบางปะกง หรือพบการลักลอบทิ้งขยะ
+        ใช้สำหรับบันทึกข้อมูลเมื่อพบความผิดปกติของแหล่งน้ำบริเวณคลองสวน
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    st.subheader("🗺️ ตำแหน่งทุ่นตรวจวัดคุณภาพน้ำ (แม่น้ำบางปะกง)")
+    st.subheader("🗺️ ตำแหน่งทุ่นตรวจวัดคุณภาพน้ำ (คลองสวน)")
     map_data = pd.DataFrame({
-        'lat': [13.7185],
-        'lon': [101.0772]
+        'lat': [13.6692425],
+        'lon': [100.9673371]
     })
-    st.map(map_data, zoom=11)
-    st.caption("📍 พิกัดจุดติดตั้งทุ่น: แม่น้ำบางปะกง (ฉะเชิงเทรา)")
+    st.map(map_data, zoom=14)
+    st.caption("📍 พิกัดจุดติดตั้งทุ่น: คลองสวน (13.6692425, 100.9673371)")
 
     st.divider()
 
@@ -500,9 +500,9 @@ with tab3:
 
     col_lat, col_lon = st.columns(2)
     with col_lat:
-        report_lat = st.text_input("พิกัด GPS (ละติจูด)", placeholder="เช่น 13.6900")
+        report_lat = st.text_input("พิกัด GPS (ละติจูด)", placeholder="เช่น 13.6692425")
     with col_lon:
-        report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", placeholder="เช่น 101.1700")
+        report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", placeholder="เช่น 100.9673371")
 
     uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
 
