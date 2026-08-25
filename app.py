@@ -3,8 +3,6 @@ import pandas as pd
 import requests
 import datetime
 import pytz
-import folium
-from streamlit_folium import st_folium
 
 # ==========================================
 # CONFIGURATION
@@ -17,7 +15,7 @@ FIREBASE_URL = "https://your-firebase-database-url.firebaseio.com"
 # ==========================================
 # BASE64 IMAGE
 # ==========================================
-# นำ Base64 ที่แนบมาใส่ตัวแปร
+# นำ Base64 ที่แนบมาใส่ตัวแปร (สามารถนำโค้ด Base64 ยาวๆ ของจริงมาวางแทนที่ตรงนี้ได้เลย)
 WATER_SENSOR_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAABagAAAQ+CAYAAAA6bNi7AAAQAElEQVR4AwV5A/V7v2z9e/u18c2/2P/Tz3s9X67X+c/n1+f99n+a/z87v/wL9sD2B0+3/6/v199z/6f/3/7c/b39wAAAABJRU5ErkJggg==" 
 WATER_SENSOR_IMAGE = "data:image/png;base64," + WATER_SENSOR_IMAGE_BASE64
 
@@ -297,7 +295,7 @@ with tab2:
         st.info("รอข้อมูลจาก Sensor")
 
 with tab3:
-    # 7. Map จุดติดตั้ง Sensor
+    # 7. Map จุดติดตั้ง Sensor (ใช้ st.map ของ Streamlit แทน)
     st.markdown("""
         <h3 style='color: #0F172A;'>📍 จุดติดตั้ง Sensor</h3>
         <p class="secondary-text">ตำแหน่งปัจจุบันของทุ่นตรวจวัดคุณภาพน้ำอัจฉริยะ</p>
@@ -306,27 +304,24 @@ with tab3:
     map_lat = 13.689108
     map_lon = 101.079153
     
-    m = folium.Map(location=[map_lat, map_lon], zoom_start=15, tiles="OpenStreetMap")
+    # สร้าง DataFrame สำหรับบอกพิกัดให้ st.map
+    map_data = pd.DataFrame({
+        'lat': [map_lat],
+        'lon': [map_lon]
+    })
     
-    popup_html = f"""
-    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1E293B; min-width: 150px;">
-        <b>จุดตรวจวัดคุณภาพน้ำ 01</b><br>
-        <hr style="margin: 5px 0; border-color: #E2E8F0;">
-        pH: {ph_val if ph_val is not None else '--'}<br>
-        TDS: {tds_val if tds_val is not None else '--'} ppm<br>
-        ORP: {orp_val if orp_val is not None else '--'} mV<br>
+    # แสดงข้อมูลของจุดติดตั้งในรูปแบบ Card แทน Popup ของ folium
+    st.markdown(f"""
+    <div class="light-card" style="text-align: left; margin-bottom: 15px;">
+        <b style="color: #0F172A; font-size: 18px;">📍 จุดตรวจวัดคุณภาพน้ำ 01</b><br>
+        <hr style="margin: 10px 0; border-color: #E2E8F0;">
+        <span style="color: #64748B;">pH:</span> <b style="color: #0284C7;">{ph_val if ph_val is not None else '--'}</b><br>
+        <span style="color: #64748B;">TDS:</span> <b style="color: #0284C7;">{tds_val if tds_val is not None else '--'} ppm</b><br>
+        <span style="color: #64748B;">ORP:</span> <b style="color: #0284C7;">{orp_val if orp_val is not None else '--'} mV</b><br>
         <br>
-        สถานะ: <b>{'Online' if sensor_online else 'Offline'}</b>
+        <span style="color: #64748B;">สถานะ:</span> <b>{'🟢 Online' if sensor_online else '🔴 Offline'}</b>
     </div>
-    """
+    """, unsafe_allow_html=True)
     
-    folium.Marker(
-        [map_lat, map_lon],
-        popup=folium.Popup(popup_html, max_width=250),
-        tooltip="📍 Sensor Station 01",
-        icon=folium.Icon(color="blue", icon="info-sign")
-    ).add_to(m)
-    
-    st.markdown('<div class="light-card" style="padding: 10px;">', unsafe_allow_html=True)
-    st_folium(m, height=400, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    # วาดแผนที่
+    st.map(map_data, zoom=14, use_container_width=True)
