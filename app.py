@@ -127,7 +127,7 @@ def calculate_water_quality(ph, tds, temp, do_val, turbidity):
         reasons.append(f"อุณหภูมิ ({temp:.1f} °C) สูงเกิน (<35)")
 
     if len(reasons) > 0:
-        return 0, "ผิดปกติ (ไม่ปลอดภัย)", "var(--danger)", reasons, "❌ ห้ามนำไปรดพืชผลหรือเติมลงบ่อปลาเด็ดขาด"
+        return 0, "น้ำไม่ปลอดภัย", "var(--danger)", reasons, "❌ ห้ามนำไปรดพืชผลหรือเติมลงบ่อปลาเด็ดขาด"
     else:
         return 100, "ปกติ (ปลอดภัย)", "var(--safe)", [], "✅ น้ำปลอดภัย สามารถใช้รดน้ำพืชผลและให้สัตว์น้ำได้"
 
