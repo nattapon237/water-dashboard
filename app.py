@@ -160,7 +160,7 @@ def safe_float(value, default=0.0):
 def sensor_is_online(data):
     if not isinstance(data, dict):
         return False
-    sensor_keys = ["tds", "ph", "orp"]
+    sensor_keys = ["tds", "ph", "do"]
     for key in sensor_keys:
         if key in data and data.get(key) is not None:
             try:
@@ -179,7 +179,8 @@ live_data = read_firebase()
 
 tds = safe_float(live_data.get("tds")) if isinstance(live_data, dict) else 250.0
 ph_value = safe_float(live_data.get("ph")) if isinstance(live_data, dict) else 7.2
-orp_value = safe_float(live_data.get("orp")) if isinstance(live_data, dict) else 220.0
+# ดึงค่าจาก node "do" บน Firebase ที่ ESP32 ส่งค่า ORP แปลงมาเก็บไว้
+orp_value = safe_float(live_data.get("do")) if isinstance(live_data, dict) else 220.0
 
 sensor_online = sensor_is_online(live_data)
 
@@ -218,8 +219,8 @@ risk = []
 if sensor_online:
     if tds > TDS_MAX: risk.append(f"TDS สูง {tds:.1f} ppm")
     if ph_value < PH_MIN_NATURE or ph_value > PH_MAX_NATURE: risk.append(f"pH ผิดปกติ {ph_value:.2f}")
-    if orp_value < ORP_MIN: risk.append(f"ORP ต่ำเกินไป {orp_value:.1f} mV")
-    elif orp_value > ORP_MAX: risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f} mV")
+    if orp_value < ORP_MIN: risk.append(f"ORP ต่ำเกินไป {orp_value:.1f}")
+    elif orp_value > ORP_MAX: risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f}")
 
 water_normal = (sensor_online and len(risk) == 0)
 
@@ -288,7 +289,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     col1.metric("🧂 TDS", f"{tds:.1f} ppm")
     col2.metric("⚗️ pH", f"{ph_value:.2f}")
-    col3.metric("⚡ ORP", f"{orp_value:.1f} mV")
+    col3.metric("⚡ ORP", f"{orp_value:.1f}")
 
     st.divider()
     st.subheader("🤖 สถานะคุณภาพน้ำ")
@@ -337,15 +338,15 @@ with tab2:
 
     # ORP Analysis
     if 150 <= orp_value <= 400:
-        st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม (ปลา/กุ้ง และ พืช)")
+        st.success(f"⚡ ORP {orp_value:.1f} — เหมาะสม (ปลา/กุ้ง และ พืช)")
     elif orp_value > 400 and orp_value <= 650:
-        st.info(f"⚡ ORP {orp_value:.1f} mV — น้ำมีค่าการออกซิไดซ์สูง")
+        st.info(f"⚡ ORP {orp_value:.1f} — น้ำมีค่าการออกซิไดซ์สูง")
     elif orp_value > 650:
-        st.warning(f"⚠️ ORP {orp_value:.1f} mV — สูงมาก (เทียบเท่าน้ำผ่านการฆ่าเชื้อ ไม่เหมาะกับการเกษตรทั่วไป)")
+        st.warning(f"⚠️ ORP {orp_value:.1f} — สูงมาก (เทียบเท่าน้ำผ่านการฆ่าเชื้อ ไม่เหมาะกับการเกษตรทั่วไป)")
     elif orp_value >= 50 and orp_value < 150:
-        st.warning(f"⚠️ ORP {orp_value:.1f} mV — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
+        st.warning(f"⚠️ ORP {orp_value:.1f} — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
     else:
-        st.error(f"🔴 ORP {orp_value:.1f} mV — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
+        st.error(f"🔴 ORP {orp_value:.1f} — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
 
     st.divider()
 
