@@ -380,7 +380,7 @@ with tab2:
     <div class="panel">
         <div class="panel-title">📍 แจ้งเบาะแสคนทิ้งขยะเทียบทุ่น <span class="tag">BUOY LOC</span></div>
         <div style="font-size:0.84rem; color:var(--text-mid); margin-bottom: 10px;">
-            ระบุตำแหน่งเทียบจากทุ่นตรวจวัดน้ำ พร้อมแนบรูปถ่ายส่งเข้า LINE ผู้นำชุมชน
+            ระบุตำแหน่งเทียบจากทุ่นตรวจวัดน้ำ พร้อมแนบรูปถ่ายส่งเข้า LINE ผู้นำชุมชุม
         </div>
     """, unsafe_allow_html=True)
     
