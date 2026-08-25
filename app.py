@@ -172,16 +172,15 @@ def sensor_is_online(data):
 
 
 # ============================================================
-# PROCESS DATA
+# PROCESS DATA (ปรับค่าปกติชั่วคราว)
 # ============================================================
 
-live_data = read_firebase()
+# ใช้ค่าจำลองที่อยู่ในเกณฑ์ปกติ
+tds = 300.0
+orp_value = 250.0
+ph_value = 7.2
 
-tds = safe_float(live_data.get("tds")) if isinstance(live_data, dict) else 250.0
-orp_value = safe_float(live_data.get("orp")) if isinstance(live_data, dict) else 220.0
-ph_value = safe_float(live_data.get("ph")) if isinstance(live_data, dict) else 7.0
-
-sensor_online = sensor_is_online(live_data)
+sensor_online = True  # บังคับสถานะเซนเซอร์ให้เป็นออนไลน์
 
 # สร้างข้อมูลย้อนหลังจำลองระหว่างวันที่ 22-24 ส.ค. 2569 สำหรับกราฟ
 if "historical_august" not in st.session_state:
