@@ -12,133 +12,18 @@ TH_TZ = pytz.timezone('Asia/Bangkok')
 
 st.set_page_config(page_title="EEC Community Water Intelligence System - Agriculture", page_icon="🌾", layout="wide")
 
+# โหลด CSS จากไฟล์ style.css ภายนอก เพื่อป้องกันโค้ดหลุดแสดงผลบนหน้าจอ
+try:
+    with open("style.css", "r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except FileNotFoundError:
+    pass
+
 FIREBASE_WEB_API_KEY = "AIzaSyAK_swKTrfzsH-_BKHLU40ilTWfyNBqNHA"
 FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatabase.app"
 
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
-
-st.markdown("""
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-:root {
-  --void: #030712;
-  --panel: rgba(11, 21, 38, 0.78);
-  --hairline: rgba(56, 189, 248, 0.16);
-  --hairline-strong: rgba(56, 189, 248, 0.42);
-  --cyan: #22d3ee;
-  --safe: #34d399;
-  --danger: #f87171;
-  --text-hi: #eef2f7;
-  --text-mid: #b6c2d1;
-  --text-low: #6b7c93;
-}
-.stApp {
-  background: radial-gradient(ellipse 900px 500px at 15% -10%, rgba(52,211,153,0.08), transparent 60%), radial-gradient(ellipse 700px 500px at 100% 0%, rgba(34,211,238,0.06), transparent 55%), var(--void);
-  color: var(--text-mid);
-  font-family: 'Inter', sans-serif;
-}
-[data-testid="stStatusWidget"] { display: none !important; }
-[data-testid="stSidebar"] {
-  background-color: #050c18;
-  border-right: 1px solid var(--hairline);
-}
-[data-testid="stSidebar"] * { font-family: 'Inter', sans-serif; }
-h1, h2, h3, h4 {
-  font-family: 'Space Grotesk', sans-serif !important;
-  color: var(--text-hi) !important;
-  letter-spacing: 0.2px;
-}
-p, span, label, .stMarkdown, li { color: var(--text-mid); }
-
-.hdr-eyebrow {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--safe); margin-bottom: 2px;
-}
-.hdr-title { font-size: 1.5rem; font-weight: 700; color: var(--text-hi); margin: 0 0 4px 0; }
-.hdr-sub { color: var(--text-low); font-size: 0.85rem; line-height: 1.4; }
-
-.status-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 14px; border-radius: 999px;
-  font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.85rem;
-  border: 1px solid var(--pill-color, var(--safe));
-  color: var(--pill-color, var(--safe));
-  background: color-mix(in srgb, var(--pill-color, var(--safe)) 12%, transparent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--pill-color, var(--safe)) 30%, transparent);
-}
-.status-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--pill-color, var(--safe));
-  box-shadow: 0 0 6px var(--pill-color, var(--safe));
-}
-
-.panel {
-  background: linear-gradient(155deg, rgba(20,35,64,0.55) 0%, rgba(6,12,24,0.85) 100%);
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 12px;
-  backdrop-filter: blur(14px);
-}
-.panel-title {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.92rem; font-weight: 700; color: var(--text-hi);
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  margin-bottom: 12px;
-}
-.panel-title .tag {
-  font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 500;
-  color: var(--text-low); letter-spacing: 0.8px; text-transform: uppercase;
-  border: 1px solid var(--hairline-strong); border-radius: 4px; padding: 2px 5px;
-}
-
-.gauge-card {
-  background: linear-gradient(155deg, rgba(20,35,64,0.55) 0%, rgba(6,12,24,0.85) 100%);
-  border: 1px solid var(--hairline);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 10px;
-}
-.gauge-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-.gauge-label { font-size: 0.68rem; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-low); font-weight: 600; }
-.gauge-icon { font-size: 0.95rem; opacity: 0.85; }
-.gauge-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.45rem; line-height: 1.1; margin: 2px 0 10px 0; }
-.gauge-unit { font-size: 0.78rem; font-weight: 500; color: var(--text-low); margin-left: 2px; }
-.gauge-track { position: relative; height: 5px; border-radius: 4px; margin-bottom: 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
-.gauge-marker { position: absolute; top: -3px; width: 3px; height: 11px; border-radius: 2px; background: #fff; transform: translateX(-50%); }
-.gauge-range { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-low); }
-
-.risk-advice {
-  font-size: 0.84rem; color: var(--text-hi); margin-top: 10px;
-  border-top: 1px solid var(--hairline); padding-top: 10px; line-height: 1.5;
-}
-.check-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--hairline); }
-.check-row:last-child { border-bottom: none; }
-.check-text { font-size: 0.84rem; color: var(--text-mid); line-height: 1.4; }
-.check-text b { color: var(--text-hi); }
-hr.divider { border: 0; height: 1px; background: var(--hairline); margin: 16px 0; }
-
-.stButton>button {
-  background: linear-gradient(135deg, #065f46, #10b981);
-  color: #f8fafc; border: 1px solid rgba(52,211,153,0.4);
-  border-radius: 10px; font-weight: 600; font-family: 'Inter', sans-serif;
-  padding: 0.6rem 1rem; width: 100%; box-shadow: 0 4px 16px rgba(16,185,129,0.3);
-  transition: all 0.2s ease;
-}
-.stButton>button:hover {
-  background: linear-gradient(135deg, #10b981, #34d399);
-  color: #04101f; box-shadow: 0 6px 20px rgba(52,211,153,0.5);
-}
-
-.stTabs [data-baseweb="tab-list"] { gap: 8px; }
-.stTabs [data-baseweb="tab"] {
-  height: 44px; white-space: pre-wrap; background-color: rgba(11, 21, 38, 0.5);
-  border-radius: 8px 8px 0px 0px; font-size: 0.85rem; font-weight: 600; color: var(--text-mid);
-}
-</style>
-""", unsafe_allow_html=True)
 
 def send_line_notification(message, image_url=None):
     url = "https://api.line.me/v2/bot/message/push"
@@ -380,7 +265,7 @@ with tab2:
     <div class="panel">
         <div class="panel-title">📍 แจ้งเบาะแสคนทิ้งขยะเทียบทุ่น <span class="tag">BUOY LOC</span></div>
         <div style="font-size:0.84rem; color:var(--text-mid); margin-bottom: 10px;">
-            ระบุตำแหน่งเทียบจากทุ่นตรวจวัดน้ำ พร้อมแนบรูปถ่ายส่งเข้า LINE ผู้นำชุมชุม
+            ระบุตำแหน่งเทียบจากทุ่นตรวจวัดน้ำ พร้อมแนบรูปถ่ายส่งเข้า LINE ผู้นำชุมชน
         </div>
     """, unsafe_allow_html=True)
     
