@@ -5,6 +5,7 @@ import requests
 import json
 import time
 import math
+import base64
 from datetime import datetime, timedelta
 import pytz
 import altair as alt
@@ -26,7 +27,30 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE (ส่งแบบข้อความพร้อมลิงก์หลักฐาน)
+# Google Apps Script Web App URL สำหรับอัปโหลดรูปภาพเข้า Google Drive อัตโนมัติ
+GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyn2ty8P73SvsRu-YQJSwIKFUpN3TDGpkRqHJt3y9VqroBSGjz6rGte4lHdjQAP-WQheg/exec"
+
+def upload_image_to_drive(uploaded_file):
+    if not uploaded_file:
+        return None
+    try:
+        bytes_data = uploaded_file.getvalue()
+        base64_data = base64.b64encode(bytes_data).decode('utf-8')
+        payload = {
+            "filename": uploaded_file.name,
+            "mimeType": uploaded_file.type,
+            "base64Data": base64_data
+        }
+        res = requests.post(GOOGLE_APPS_SCRIPT_URL, json=payload, timeout=30)
+        if res.status_code == 200:
+            res_json = res.json()
+            if res_json.get("status") == "success":
+                return res_json.get("url")
+    except Exception as e:
+        print(f"Error uploading to Drive: {e}")
+    return None
+
+# ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE
 def send_line_notification(message):
     url = "https://api.line.me/v2/bot/message/push"
     headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}", "Content-Type": "application/json"}
@@ -346,7 +370,7 @@ with tab3:
     <div class="panel">
         <div class="panel-title">📍 ฟอร์มแจ้งเบาะแสผ่านพิกัด GPS <span class="tag">GPS REPORT</span></div>
         <div style="font-size:0.84rem; color:var(--text-mid); margin-bottom: 10px;">
-            ระบุพิกัดละติจูด ลองจิจูด หรือดูตำแหน่งบน Google Maps พร้อมแนบลิงก์หลักฐานส่งเข้า LINE ผู้นำชุมชน
+            ระบุพิกัดละติจูด ลองจิจูด หรือดูตำแหน่งบน Google Maps พร้อมแนบรูปภาพหลักฐาน ระบบจะอัปเข้า Google Drive และส่ง LINE ให้ทันที
         </div>
     """, unsafe_allow_html=True)
 
@@ -373,22 +397,25 @@ with tab3:
     gmap_url = f"https://www.google.com/maps?q={lat},{lon}"
     st.markdown(f"🔗 [คลิกเพื่อเปิดดูตำแหน่งนี้ใน Google Maps]({gmap_url})", unsafe_allow_html=True)
 
-    # ช่องกรอกลิงก์รูปภาพหลักฐาน (เช่น ลิงก์แชร์จาก Google Drive)
-    image_link = st.text_input(
-        "🔗 ลิงก์รูปภาพหลักฐาน (เช่น ลิงก์แชร์จาก Google Drive)", 
-        placeholder="https://drive.google.com/file/d/...",
-        key="rep_img_link"
-    )
+    # อัปโหลดรูปภาพหลักฐานจากเครื่อง
+    uploaded_file = st.file_uploader("📸 แนบรูปภาพหลักฐาน", type=["jpg", "jpeg", "png"], key="rep_file")
 
     if st.button("🚀 ส่งพิกัด GPS และแจ้ง LINE", use_container_width=True):
-        with st.spinner("กำลังส่งข้อมูลเข้า LINE..."):
+        with st.spinner("กำลังอัปโหลดรูปภาพเข้า Google Drive และส่งเข้า LINE..."):
             
+            # อัปโหลดรูปเข้า Google Drive อัตโนมัติ
+            drive_image_url = "ไม่ได้แนบรูปภาพ"
+            if uploaded_file is not None:
+                uploaded_url = upload_image_to_drive(uploaded_file)
+                if uploaded_url:
+                    drive_image_url = uploaded_url
+
             line_msg = (
                 f"🚨 แจ้งเบาะแส ({report_type})!\n"
                 f"📝 รายละเอียดพฤติกรรม: {detail_desc if detail_desc else 'ไม่ได้ระบุ'}\n"
                 f"🌐 พิกัด GPS: {lat}, {lon}\n"
                 f"🗺️ Google Maps: {gmap_url}\n"
-                f"🖼️ ลิงก์หลักฐานภาพถ่าย: {image_link if image_link else 'ไม่ได้แนบลิงก์'}\n"
+                f"🖼️ ภาพถ่ายหลักฐาน (Google Drive): {drive_image_url}\n"
                 f"⏰ เวลาแจ้ง: {now_th.strftime('%d/%m/%Y %H:%M:%S')} (ICT)\n"
                 f"⚠️ โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
             )
@@ -396,16 +423,16 @@ with tab3:
             success = send_line_notification(line_msg)
             
             if success:
-                st.success("✅ ส่งพิกัดและข้อมูลเข้า LINE สำเร็จ!")
+                st.success("✅ อัปโหลดรูปเข้า Google Drive และส่งแจ้งเตือนเข้า LINE สำเร็จ!")
                 time.sleep(1.5)
                 
-                # ล้างค่าใน Session State และเคลียร์ฟอร์ม
-                for key in ["rep_desc", "rep_img_link"]:
+                # ล้างค่าใน Session State
+                for key in ["rep_desc", "rep_file"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
             else:
-                st.error("❌ ส่งไม่สำเร็จ กรุณาตรวจสอบ LINE Token")
+                st.error("❌ ส่งไม่สำเร็จ กรุณาตรวจสอบ LINE Token หรือการเชื่อมต่อ")
                 
     st.markdown("</div>", unsafe_allow_html=True)
 
