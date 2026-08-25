@@ -178,7 +178,6 @@ def get_firebase_token():
     except Exception:
         return None
 
-# ตั้ง Cache ระยะเวลา 5 นาที (300 วินาที) เพื่อดึงข้อมูลสดจาก Firebase ตามรอบเวลา
 @st.cache_data(ttl=300)
 def read_sensor_data(id_token):
     if not id_token:
@@ -202,7 +201,6 @@ def write_mock_sensor_data(id_token, ph_val, tds_val, temp_val, do_val, turb_val
     }
     try:
         res = requests.put(url, json=payload, timeout=5)
-        # เคลียร์แคชข้อมูลเซนเซอร์เพื่อให้ระบบโหลดค่าใหม่ทันทีที่มีการเขียนข้อมูล
         st.cache_data.clear()
         return res.status_code == 200
     except Exception:
@@ -434,6 +432,5 @@ with tab2:
             """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-# หน่วงเวลา 300 วินาที (5 นาที) ก่อนรีเฟรชหน้าเว็บอัตโนมัติเพื่อดึงค่าล่าสุด
 time.sleep(300)
 st.rerun()
