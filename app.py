@@ -175,7 +175,8 @@ def render_risk_ring(score, status_color_css, size=110, stroke=10):
 <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="{status_color_css}" stroke-width="{stroke}" stroke-dasharray="{dash:.1f} {circumference:.1f}" stroke-linecap="round"/>
 </svg>"""
 
-tab1, tab2 = st.tabs(["📊 ภาพรวมน้ำ (Dashboard)", "💧 คำแนะนำการใช้น้ำและการแจ้งเบาะแส"])
+# แบ่งออกเป็น 3 แท็บอย่างชัดเจน
+tab1, tab2, tab3 = st.tabs(["📊 ภาพรวมน้ำ (Dashboard)", "💧 คำแนะนำการใช้น้ำ", "📍 แจ้งเบาะแส"])
 
 with tab1:
     st.markdown('<div class="hdr-eyebrow">EEC · AGRI-WATER INTELLIGENCE</div>', unsafe_allow_html=True)
@@ -251,8 +252,8 @@ with tab1:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
-    st.markdown('<div class="hdr-eyebrow">WATER USAGE ADVICE & REPORT</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hdr-title" style="font-size:1.3rem;">💧 คำแนะนำการใช้น้ำและการแจ้งเบาะแส</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-eyebrow">WATER USAGE ADVICE</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-title" style="font-size:1.3rem;">💧 คำแนะนำการใช้น้ำ</div>', unsafe_allow_html=True)
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
     
     if water_score == 100:
@@ -294,12 +295,29 @@ with tab2:
     </div>
     """, unsafe_allow_html=True)
 
-    st.write("")
+    if risk_reasons:
+        st.write("")
+        st.markdown("""
+        <div class="panel">
+            <div class="panel-title">🔍 รายละเอียดความผิดปกติ <span class="tag">REASONS</span></div>
+        """, unsafe_allow_html=True)
+        for rsn in risk_reasons:
+            st.markdown(f"""
+            <div class="check-row">
+                <div class="check-icon">❌</div>
+                <div class="check-text"><b style="color:var(--danger);">{rsn}</b></div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # 3. ฟอร์มแจ้งเบาะแสพิกัด GPS (มีช่องกรอกรายละเอียดบุคคลทำอะไร)
+with tab3:
+    st.markdown('<div class="hdr-eyebrow">INCIDENT REPORTING</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-title" style="font-size:1.3rem;">📍 แจ้งเบาะแสทิ้งขยะ / ปล่อยน้ำเสีย</div>', unsafe_allow_html=True)
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+
     st.markdown("""
     <div class="panel">
-        <div class="panel-title">📍 แจ้งเบาะแสทิ้งขยะ / ปล่อยน้ำเสีย (ระบุพิกัด GPS) <span class="tag">GPS REPORT</span></div>
+        <div class="panel-title">📍 ฟอร์มแจ้งเบาะแสผ่านพิกัด GPS <span class="tag">GPS REPORT</span></div>
         <div style="font-size:0.84rem; color:var(--text-mid); margin-bottom: 10px;">
             ระบุพิกัดละติจูด ลองจิจูด หรือดูตำแหน่งบน Google Maps พร้อมส่งเข้า LINE ผู้นำชุมชน
         </div>
@@ -307,7 +325,6 @@ with tab2:
 
     report_type = st.selectbox("📝 ประเภทการกระทำผิด", ["ทิ้งขยะลงแม่น้ำ", "ปล่อยน้ำเสียลงแม่น้ำ", "อื่นๆ"])
     
-    # ช่องกรอกรายละเอียดเพิ่มเติมว่าบุคคลนี้ทำอะไร
     detail_desc = st.text_area(
         "✍️ รายละเอียดเพิ่มเติม (บุคคลนี้กำลังทำอะไรอยู่ / พฤติกรรมที่พบ)", 
         placeholder="เช่น กำลังขนถังขยะมาทิ้งลงริมตลิ่ง, หรือเปิดวาล์วปล่อยน้ำเสียลงแม่น้ำ..."
@@ -351,21 +368,6 @@ with tab2:
         else:
             st.error("❌ ส่งไม่สำเร็จ ตรวจสอบ LINE Token")
     st.markdown("</div>", unsafe_allow_html=True)
-
-    if risk_reasons:
-        st.write("")
-        st.markdown("""
-        <div class="panel">
-            <div class="panel-title">🔍 รายละเอียดความผิดปกติ <span class="tag">REASONS</span></div>
-        """, unsafe_allow_html=True)
-        for rsn in risk_reasons:
-            st.markdown(f"""
-            <div class="check-row">
-                <div class="check-icon">❌</div>
-                <div class="check-text"><b style="color:var(--danger);">{rsn}</b></div>
-            </div>
-            """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
 time.sleep(300)
 st.rerun()
