@@ -8,20 +8,16 @@ import math
 from datetime import datetime, timedelta
 import pytz
 
-# ตั้งค่า Timezone เป็นประเทศไทย (Asia/Bangkok)
 TH_TZ = pytz.timezone('Asia/Bangkok')
 
 st.set_page_config(page_title="EEC Community Water Intelligence System - Agriculture", page_icon="🌾", layout="wide")
 
-# --- Firebase Configuration (cwis-c2ea8) ---
 FIREBASE_WEB_API_KEY = "AIzaSyAK_swKTrfzsH-_BKHLU40ilTWfyNBqNHA"
 FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatabase.app"
 
-# LINE API Configuration
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-# --- High-Tech Cyber-Water Agri Mobile-Friendly Glassmorphism CSS ---
 st.markdown("""
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -147,19 +143,10 @@ hr.divider { border: 0; height: 1px; background: var(--hairline); margin: 16px 0
 def send_line_notification(message, image_url=None):
     url = "https://api.line.me/v2/bot/message/push"
     headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}", "Content-Type": "application/json"}
-    
     messages = []
     if image_url:
-        messages.append({
-            "type": "image",
-            "originalContentUrl": image_url,
-            "previewImageUrl": image_url
-        })
-    messages.append({
-        "type": "text",
-        "text": message
-    })
-    
+        messages.append({"type": "image", "originalContentUrl": image_url, "previewImageUrl": image_url})
+    messages.append({"type": "text", "text": message})
     payload = {"to": TARGET_USER_ID, "messages": messages}
     try:
         res = requests.post(url, headers=headers, data=json.dumps(payload), timeout=5)
@@ -260,7 +247,6 @@ def calculate_water_quality(ph, tds, temp, do_val, turbidity):
 
 water_score, status_label, status_color, risk_reasons, action_advice = calculate_water_quality(ph, tds, temp, do_val, turbidity)
 
-# --- UI HELPERS ---
 def zone_color(value, zones):
     for lo, hi, color in zones:
         if lo <= value < hi:
