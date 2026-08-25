@@ -7,13 +7,13 @@ import time
 import math
 from datetime import datetime, timedelta
 import pytz
-import altair as alt  # เพิ่มการ import altair สำหรับปรับแต่งกราฟ
+import altair as alt  # ไลบรารีสำหรับปรับแต่งกราฟ
 
 TH_TZ = pytz.timezone('Asia/Bangkok')
 
 st.set_page_config(page_title="EEC Community Water Intelligence System - Agriculture", page_icon="🌾", layout="wide")
 
-# โหลด CSS จากไฟล์ style.css ภายนอก เพื่อป้องกันโค้ดหลุดแสดงผลบนหน้าจอ
+# โหลด CSS จากไฟล์ style.css ภายนอก
 try:
     with open("style.css", "r", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -229,7 +229,7 @@ with tab1:
 </div>"""
     st.markdown(risk_html, unsafe_allow_html=True)
 
-    # กราฟแนวโน้ม (แก้ไขแล้ว: แกน X แนวนอน, แกน Y คงที่ 0-100)
+    # กราฟแนวโน้ม (แกน X แนวนอน, แกน Y คงที่ 0-100)
     st.markdown('<div class="panel"><div class="panel-title">📈 กราฟแนวโน้มย้อนหลัง <span class="tag">TREND</span></div>', unsafe_allow_html=True)
     
     time_index = [(now_th - timedelta(minutes=i*10)).strftime("%H:%M") for i in range(8)][::-1]
@@ -242,10 +242,9 @@ with tab1:
     
     line_color = "#34d399" if water_score == 100 else "#f87171"
     
-    # ใช้ Altair จัดการเรื่องสเกลและองศาของตัวหนังสือ
     chart = alt.Chart(chart_df).mark_line(point=True).encode(
-        x=alt.X('เวลา', sort=None, axis=alt.Axis(labelAngle=0, title=None)), # บังคับตัวหนังสือแนวนอน
-        y=alt.Y('ความปลอดภัย (%)', scale=alt.Scale(domain=[0, 100])),       # บังคับสเกล 0-100
+        x=alt.X('เวลา', sort=None, axis=alt.Axis(labelAngle=0, title=None)),
+        y=alt.Y('ความปลอดภัย (%)', scale=alt.Scale(domain=[0, 100])),
         color=alt.value(line_color)
     ).properties(height=180)
     
@@ -264,43 +263,85 @@ with tab2:
 
     st.write("")
     
+    # 1. ข้อปฏิบัติสำหรับภาคเกษตร
     st.markdown("""
     <div class="panel">
-        <div class="panel-title">🛠️ ข้อปฏิบัติสำหรับเกษตรกร <span class="tag">ACTION</span></div>
+        <div class="panel-title">🛠️ ข้อปฏิบัติสำหรับภาคเกษตร <span class="tag">AGRICULTURE</span></div>
         <div class="check-row">
             <div class="check-icon">🚫</div>
-            <div class="check-text"><b>หยุดสูบน้ำเข้าแปลง:</b> ปิดวาล์วทันทีหากพบสถานะเตือนสีแดง</div>
+            <div class="check-text"><b>หยุดสูบน้ำเข้าแปลง:</b> ปิดวาล์วและระบบชลประทานทันทีหากพบสถานะเตือนสีแดง</div>
         </div>
         <div class="check-row">
             <div class="check-icon">⚙️</div>
-            <div class="check-text"><b>ตรวจระบบบำบัด:</b> ตรวจสอบถังพักและค่ากรด-ด่างก่อนใช้งาน</div>
+            <div class="check-text"><b>ตรวจระบบกรอง/บำบัด:</b> ตรวจสอบค่า pH และความขุ่นในถังพักน้ำก่อนนำไปรดพืชผล</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
+    st.write("")
+
+    # 2. ข้อปฏิบัติสำหรับภาคชุมชน
     st.markdown("""
     <div class="panel">
-        <div class="panel-title">📍 แจ้งเบาะแสคนทิ้งขยะเทียบทุ่น <span class="tag">BUOY LOC</span></div>
+        <div class="panel-title">🏘️ ข้อปฏิบัติสำหรับภาคชุมชน <span class="tag">COMMUNITY</span></div>
+        <div class="check-row">
+            <div class="check-icon">⚠️</div>
+            <div class="check-text"><b>งดใช้น้ำดิบชั่วคราว:</b> หลีกเลี่ยงการใช้น้ำจากแหล่งน้ำสาธารณะเพื่อการอุปโภคหรือซักล้าง</div>
+        </div>
+        <div class="check-row">
+            <div class="check-icon">📢</div>
+            <div class="check-text"><b>ติดตามประกาศผู้นำชุมชน:</b> รอฟังประกาศสถานการณ์น้ำและแจ้งเตือนการแจกจ่ายน้ำสะอาด</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.write("")
+
+    # 3. ฟอร์มแจ้งเบาะแสพิกัด GPS (รองรับขยะและน้ำเสีย พร้อม Google Maps)
+    st.markdown("""
+    <div class="panel">
+        <div class="panel-title">📍 แจ้งเบาะแสทิ้งขยะ / ปล่อยน้ำเสีย (ระบุพิกัด GPS) <span class="tag">GPS REPORT</span></div>
         <div style="font-size:0.84rem; color:var(--text-mid); margin-bottom: 10px;">
-            ระบุตำแหน่งเทียบจากทุ่นตรวจวัดน้ำ พร้อมแนบรูปถ่ายส่งเข้า LINE ผู้นำชุมชน
+            ระบุพิกัดละติจูด ลองจิจูด หรือดูตำแหน่งบน Google Maps พร้อมส่งเข้า LINE ผู้นำชุมชน
         </div>
     """, unsafe_allow_html=True)
-    
-    direction_from_buoy = st.selectbox("🧭 ทิศทางเทียบจากทุ่น", ["เหนือ (North)", "ใต้ (South)", "ตะวันออก (East)", "ตะวันตก (West)", "เหนือ-ตะวันออก (NE)", "เหนือ-ตะวันตก (NW)", "ใต้-ตะวันออก (SE)", "ใต้-ตะวันตก (SW)"])
-    distance_from_buoy = st.number_input("📏 ระยะห่าง (เมตร)", min_value=1, max_value=2000, value=50, step=10)
+
+    report_type = st.selectbox("📝 ประเภทการกระทำผิด", ["ทิ้งขยะลงแม่น้ำ", "ปล่อยน้ำเสียลงแม่น้ำ", "อื่นๆ"])
+
+    default_lat = 13.7563
+    default_lon = 100.5018
+
+    col_lat, col_lon = st.columns(2)
+    with col_lat:
+        lat = st.number_input("🌐 ละติจูด (Latitude)", value=default_lat, format="%.6f", step=0.0001)
+    with col_lon:
+        lon = st.number_input("🌐 ลองจิจูด (Longitude)", value=default_lon, format="%.6f", step=0.0001)
+
+    map_df = pd.DataFrame({'lat': [lat], 'lon': [lon]})
+    st.markdown("🗺️ **ตำแหน่งบนแผนที่:**")
+    st.map(map_df, zoom=15)
+
+    gmap_url = f"https://www.google.com/maps?q={lat},{lon}"
+    st.markdown(f"🔗 [คลิกเพื่อเปิดดูตำแหน่งนี้ใน Google Maps]({gmap_url})", unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("📷 แนบภาพถ่ายหลักฐาน", type=["png", "jpg", "jpeg"])
     if uploaded_file is not None:
         st.image(uploaded_file, caption="ภาพหลักฐานที่เลือก", use_container_width=True)
 
-    if st.button("🚀 ส่งพิกัดและภาพแจ้ง LINE", use_container_width=True):
-        line_msg = f"🚨 แจ้งเบาะแสทิ้งขยะ!\n📍 พิกัด: ห่างจากทุ่นตรวจวัดน้ำไปทางทิศ{direction_from_buoy} ประมาณ {distance_from_buoy} เมตร\n⏰ เวลาแจ้ง: {now_th.strftime('%d/%m/%Y %H:%M:%S')} (ICT)\n⚠️ โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
+    if st.button("🚀 ส่งพิกัด GPS และภาพแจ้ง LINE", use_container_width=True):
+        line_msg = (
+            f"🚨 แจ้งเบาะแส ({report_type})!\n"
+            f"🌐 พิกัด GPS: {lat}, {lon}\n"
+            f"🗺️ Google Maps: {gmap_url}\n"
+            f"⏰ เวลาแจ้ง: {now_th.strftime('%d/%m/%Y %H:%M:%S')} (ICT)\n"
+            f"⚠️ โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
+        )
         
         sample_image_url = "https://images.unsplash.com/photo-1530587191325-3db32d826c11" if uploaded_file else None
         
         success = send_line_notification(line_msg, image_url=sample_image_url)
         if success:
-            st.success("✅ ส่งข้อมูลเข้า LINE สำเร็จ!")
+            st.success("✅ ส่งพิกัดและข้อมูลเข้า LINE สำเร็จ!")
         else:
             st.error("❌ ส่งไม่สำเร็จ ตรวจสอบ LINE Token")
     st.markdown("</div>", unsafe_allow_html=True)
