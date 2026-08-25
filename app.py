@@ -20,6 +20,38 @@ st.set_page_config(
 
 
 # ============================================================
+# LIGHT THEME
+# ============================================================
+
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: #ffffff;
+    }
+
+    [data-testid="stSidebar"] {
+        background: #f7f9fc;
+    }
+
+    [data-testid="stMetric"] {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 14px;
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# ============================================================
 # TIMEZONE
 # ============================================================
 
@@ -30,23 +62,22 @@ TH_TZ = pytz.timezone("Asia/Bangkok")
 # FIREBASE CONFIG
 # ============================================================
 
-FIREBASE_WEB_API_KEY = "AIzaSyAK_swKTrfzsH-_BKHLU40ilTWfyNBqNHA"
+FIREBASE_WEB_API_KEY = (
+    "AIzaSyAK_swKTrfzsH-_BKHLU40ilTWfyNBqNHA"
+)
 
 FIREBASE_DB_URL = (
     "https://cwis-c2ea8-default-rtdb."
     "asia-southeast1.firebasedatabase.app"
 )
 
-
-# ============================================================
-# FIREBASE SENSOR PATH
-# ============================================================
-
-FIREBASE_SENSOR_PATH = "/devices/uno-r4/status"
+FIREBASE_SENSOR_PATH = (
+    "/devices/uno-r4/status"
+)
 
 
 # ============================================================
-# SENSOR OFFLINE TIMEOUT
+# SENSOR SETTINGS
 # ============================================================
 
 SENSOR_OFFLINE_TIMEOUT = 30
@@ -60,7 +91,9 @@ LINE_ACCESS_TOKEN = (
     "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLyLGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 )
 
-TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
+TARGET_USER_ID = (
+    "Ue3bb509d1606296f491836151927b063"
+)
 
 
 # ============================================================
@@ -75,7 +108,7 @@ GOOGLE_APPS_SCRIPT_URL = (
 
 
 # ============================================================
-# FIREBASE AUTHENTICATION
+# FIREBASE AUTH
 # ============================================================
 
 @st.cache_data(ttl=3000)
@@ -106,7 +139,10 @@ def get_firebase_token():
 
     except Exception as e:
 
-        print("Firebase Auth Error:", e)
+        print(
+            "Firebase Auth Error:",
+            e
+        )
 
         return None
 
@@ -118,6 +154,7 @@ def get_firebase_token():
 def read_sensor_data(id_token):
 
     if not id_token:
+
         return None
 
     url = (
@@ -158,14 +195,13 @@ def read_sensor_data(id_token):
 
 def write_mock_sensor_data(
     id_token,
-    ph_value,
     tds_value,
-    temp_value,
-    do_value,
-    turbidity_value
+    turbidity_value,
+    do_value
 ):
 
     if not id_token:
+
         return False
 
     url = (
@@ -176,15 +212,13 @@ def write_mock_sensor_data(
 
     payload = {
 
-        "ph": ph_value,
+        "tds": float(tds_value),
 
-        "tds": tds_value,
+        "turbidity": float(
+            turbidity_value
+        ),
 
-        "temp": temp_value,
-
-        "do": do_value,
-
-        "turbidity": turbidity_value,
+        "do": float(do_value),
 
         "updatedAt": int(
             time.time()
@@ -194,7 +228,7 @@ def write_mock_sensor_data(
 
     try:
 
-        response = requests.put(
+        response = requests.patch(
             url,
             json=payload,
             timeout=5
@@ -273,16 +307,21 @@ def send_line_notification(message):
 # GOOGLE DRIVE UPLOAD
 # ============================================================
 
-def upload_image_to_drive(uploaded_file):
+def upload_image_to_drive(
+    uploaded_file
+):
 
     if not uploaded_file:
+
         return None
 
     try:
 
         import base64
 
-        bytes_data = uploaded_file.getvalue()
+        bytes_data = (
+            uploaded_file.getvalue()
+        )
 
         base64_data = (
             base64
@@ -313,9 +352,14 @@ def upload_image_to_drive(uploaded_file):
 
             result = response.json()
 
-            if result.get("status") == "success":
+            if (
+                result.get("status")
+                == "success"
+            ):
 
-                return result.get("url")
+                return result.get(
+                    "url"
+                )
 
     except Exception as e:
 
@@ -332,21 +376,12 @@ def upload_image_to_drive(uploaded_file):
 # ============================================================
 
 def calculate_water_quality(
-    ph,
     tds,
-    temp,
     do_value,
     turbidity
 ):
 
     reasons = []
-
-
-    if not 6.5 <= ph <= 8.5:
-
-        reasons.append(
-            f"pH ({ph:.2f}) อยู่นอกเกณฑ์ 6.5–8.5"
-        )
 
 
     if tds > 1000:
@@ -370,13 +405,6 @@ def calculate_water_quality(
         )
 
 
-    if temp > 35:
-
-        reasons.append(
-            f"อุณหภูมิ ({temp:.1f} °C) สูงเกิน 35 °C"
-        )
-
-
     if reasons:
 
         return (
@@ -394,118 +422,90 @@ def calculate_water_quality(
 
 
 # ============================================================
-# GAUGE
+# SENSOR CARD
 # ============================================================
 
-def sensor_gauge(
-    label,
+def sensor_card(
+    title,
     value,
-    minimum,
-    maximum,
-    unit
+    unit,
+    icon
 ):
 
-    col1, col2 = st.columns(
-        [3, 1]
-    )
+    with st.container(
+        border=True
+    ):
 
-    with col1:
-
-        st.write(
-            f"**{label}**"
+        st.subheader(
+            f"{icon} {title}"
         )
-
-        percentage = (
-            (value - minimum)
-            /
-            (maximum - minimum)
-        )
-
-        percentage = max(
-            0,
-            min(
-                1,
-                percentage
-            )
-        )
-
-        st.progress(
-            percentage
-        )
-
-    with col2:
 
         st.metric(
-            label="ค่า",
+            label="ค่าปัจจุบัน",
             value=f"{value:.2f} {unit}"
         )
 
 
 # ============================================================
-# MAP: RIVER BANG PAKONG
+# BANG PAKONG MAP
 # ============================================================
 
-BANG_PAKONG_POINTS = pd.DataFrame(
+# จุดตรวจวัดเพียง 1 จุด
+BANG_PAKONG_SENSOR = pd.DataFrame(
     [
-        {"lat": 13.690, "lon": 101.071},
-        {"lat": 13.690, "lon": 101.120},
-        {"lat": 13.690, "lon": 101.170},
-        {"lat": 13.690, "lon": 101.220},
-        {"lat": 13.680, "lon": 101.270},
+        {
+            "lat": 13.6900,
+            "lon": 101.1700
+        }
     ]
 )
 
 
 # ============================================================
-# SENSOR HISTORY FOR CHART
+# SENSOR HISTORY
 # ============================================================
 
-if "water_history" not in st.session_state:
+if (
+    "water_history"
+    not in st.session_state
+):
 
     st.session_state.water_history = []
 
 
-def add_history_point(
-    ph,
+def add_history(
     tds,
-    temp,
-    do_value,
-    turbidity
+    turbidity,
+    do_value
 ):
 
-    now_label = datetime.now(
+    now = datetime.now(
         TH_TZ
-    ).strftime("%H:%M:%S")
-
-    point = {
-
-        "เวลา":
-            now_label,
-
-        "pH":
-            float(ph),
-
-        "TDS":
-            float(tds),
-
-        "Temperature":
-            float(temp),
-
-        "DO":
-            float(do_value),
-
-        "Turbidity":
-            float(turbidity)
-
-    }
+    ).strftime(
+        "%H:%M:%S"
+    )
 
     history = (
         st.session_state.water_history
     )
 
+    point = {
+
+        "เวลา": now,
+
+        "TDS": float(tds),
+
+        "Turbidity":
+            float(turbidity),
+
+        "DO":
+            float(do_value)
+
+    }
+
     if (
         not history
-        or history[-1]["เวลา"] != now_label
+        or history[-1]["เวลา"] != now
     ):
 
         history.append(point)
@@ -517,96 +517,70 @@ def add_history_point(
 
 
 # ============================================================
-# RENDER CHART
+# CHART
 # ============================================================
 
-def render_water_charts():
+def render_chart():
 
-    if not st.session_state.water_history:
+    history = (
+        st.session_state.water_history
+    )
+
+    if not history:
 
         st.info(
-            "ยังไม่มีข้อมูลสำหรับกราฟ "
-            "กรุณารอข้อมูลจากเซนเซอร์ "
-            "หรือส่งค่าทดสอบ"
+            "ยังไม่มีข้อมูลสำหรับกราฟ"
         )
 
         return
 
 
-    chart_df = pd.DataFrame(
-        st.session_state.water_history
+    df = pd.DataFrame(
+        history
     )
 
 
-    chart_df = chart_df.set_index(
+    df = df.set_index(
         "เวลา"
     )
 
 
     st.subheader(
-        "📈 กราฟคุณภาพน้ำแบบเรียลไทม์"
+        "📈 กราฟคุณภาพน้ำ"
     )
 
 
-    metric = st.selectbox(
+    selected = st.selectbox(
 
-        "เลือกค่าที่ต้องการแสดงกราฟ",
+        "เลือกค่าที่ต้องการดู",
 
         [
-            "pH",
             "TDS",
-            "Temperature",
-            "DO",
-            "Turbidity"
+            "Turbidity",
+            "DO"
         ],
 
-        key="chart_metric"
+        key="water_chart"
 
     )
 
 
     st.line_chart(
-        chart_df[[metric]],
+
+        df[[selected]],
+
         use_container_width=True
-    )
-
-
-# ============================================================
-# RENDER BANG PAKONG MAP
-# ============================================================
-
-def render_bang_pakong_map():
-
-    st.subheader(
-        "🗺️ แผนที่แม่น้ำบางปะกง"
-    )
-
-
-    st.caption(
-        "พื้นที่อ้างอิงสำหรับระบบตรวจวัดคุณภาพน้ำ"
-    )
-
-
-    st.map(
-
-        BANG_PAKONG_POINTS,
-
-        latitude="lat",
-
-        longitude="lon",
-
-        size=180,
-
-        zoom=10
 
     )
 
 
 # ============================================================
-# GET FIREBASE TOKEN
+# GET TOKEN
 # ============================================================
 
-id_token = get_firebase_token()
+id_token = (
+    get_firebase_token()
+)
 
 
 # ============================================================
@@ -616,14 +590,17 @@ id_token = get_firebase_token()
 with st.sidebar:
 
     st.title(
-        "🔥 Firebase"
+        "💧 Water Monitor"
     )
+
+
+    st.divider()
 
 
     if id_token:
 
         st.success(
-            "🟢 เชื่อมต่อ Firebase สำเร็จ"
+            "🟢 Firebase เชื่อมต่อแล้ว"
         )
 
     else:
@@ -655,116 +632,57 @@ with st.sidebar:
     st.divider()
 
 
-    st.title(
-        "🎛️ Sensor Test"
+    st.subheader(
+        "🎛️ ทดสอบเซนเซอร์"
     )
 
 
-    sim_ph = st.slider(
-
-        "pH Level",
-
-        0.0,
-
-        14.0,
-
-        7.0,
-
-        0.1
-
-    )
-
-
-    sim_tds = st.slider(
-
+    test_tds = st.slider(
         "TDS (ppm)",
-
         0.0,
-
         1200.0,
-
         250.0,
-
         1.0
-
     )
 
 
-    sim_temp = st.slider(
-
-        "Temperature (°C)",
-
-        10.0,
-
-        45.0,
-
-        28.0,
-
-        0.5
-
-    )
-
-
-    sim_do = st.slider(
-
-        "DO (mg/L)",
-
-        0.0,
-
-        20.0,
-
-        6.5,
-
-        0.1
-
-    )
-
-
-    sim_turbidity = st.slider(
-
+    test_turbidity = st.slider(
         "Turbidity (NTU)",
-
         0.0,
-
-        300.0,
-
+        1000.0,
         15.0,
-
         1.0
+    )
 
+
+    test_do = st.slider(
+        "DO (mg/L)",
+        0.0,
+        14.0,
+        6.5,
+        0.1
     )
 
 
     if st.button(
-
-        "📤 ส่งค่าทดสอบเข้า Firebase",
-
+        "📤 ส่งค่าทดสอบ",
         use_container_width=True
-
     ):
 
-
-        success = write_mock_sensor_data(
-
-            id_token,
-
-            sim_ph,
-
-            sim_tds,
-
-            sim_temp,
-
-            sim_do,
-
-            sim_turbidity
-
+        success = (
+            write_mock_sensor_data(
+                id_token,
+                test_tds,
+                test_turbidity,
+                test_do
+            )
         )
 
 
         if success:
 
             st.success(
-                "✅ ส่งข้อมูลสำเร็จ"
+                "ส่งข้อมูลสำเร็จ"
             )
 
             st.rerun()
@@ -772,12 +690,12 @@ with st.sidebar:
         else:
 
             st.error(
-                "❌ ส่งข้อมูลไม่สำเร็จ"
+                "ส่งข้อมูลไม่สำเร็จ"
             )
 
 
 # ============================================================
-# READ LIVE FIREBASE
+# READ SENSOR
 # ============================================================
 
 live_data = read_sensor_data(
@@ -786,18 +704,14 @@ live_data = read_sensor_data(
 
 
 # ============================================================
-# DEFAULT VALUES
+# DEFAULT
 # ============================================================
 
-ph = sim_ph
+tds = test_tds
 
-tds = sim_tds
+turbidity = test_turbidity
 
-temp = sim_temp
-
-do_value = sim_do
-
-turbidity = sim_turbidity
+do_value = test_do
 
 sensor_connected = False
 
@@ -807,14 +721,12 @@ seconds_since_update = None
 
 
 # ============================================================
-# PROCESS FIREBASE DATA
+# PROCESS DATA
 # ============================================================
 
 if (
 
-    live_data is not None
-
-    and isinstance(
+    isinstance(
         live_data,
         dict
     )
@@ -823,31 +735,10 @@ if (
 
     try:
 
-        if "ph" in live_data:
-
-            ph = float(
-                live_data["ph"]
-            )
-
-
         if "tds" in live_data:
 
             tds = float(
                 live_data["tds"]
-            )
-
-
-        if "temp" in live_data:
-
-            temp = float(
-                live_data["temp"]
-            )
-
-
-        if "do" in live_data:
-
-            do_value = float(
-                live_data["do"]
             )
 
 
@@ -858,17 +749,20 @@ if (
             )
 
 
-        sensor_keys = [
+        if "do" in live_data:
 
-            "ph",
+            do_value = float(
+                live_data["do"]
+            )
+
+
+        sensor_keys = [
 
             "tds",
 
-            "temp",
+            "turbidity",
 
-            "do",
-
-            "turbidity"
+            "do"
 
         ]
 
@@ -888,69 +782,55 @@ if (
 
         if "updatedAt" in live_data:
 
-            try:
+            timestamp = float(
+                live_data["updatedAt"]
+            )
 
-                timestamp = float(
-                    live_data["updatedAt"]
+
+            if (
+                timestamp
+                > 100000000000
+            ):
+
+                timestamp /= 1000
+
+
+            last_update = (
+                datetime
+                .fromtimestamp(
+                    timestamp,
+                    TH_TZ
                 )
-
-
-                if timestamp > 100000000000:
-
-                    timestamp = (
-                        timestamp / 1000
-                    )
-
-
-                last_update = (
-
-                    datetime.fromtimestamp(
-
-                        timestamp,
-
-                        TH_TZ
-
-                    ).strftime(
-                        "%d/%m/%Y %H:%M:%S"
-                    )
-
+                .strftime(
+                    "%d/%m/%Y %H:%M:%S"
                 )
+            )
 
 
-                seconds_since_update = (
-
-                    time.time()
-
-                    - timestamp
-
-                )
-
-
-            except Exception:
-
-                last_update = None
-
-                seconds_since_update = None
+            seconds_since_update = (
+                time.time()
+                - timestamp
+            )
 
 
         # ====================================================
-        # ONLINE / OFFLINE
+        # ONLINE
         # ====================================================
 
         if has_sensor_data:
 
-            if seconds_since_update is None:
+            if (
+                seconds_since_update
+                is None
+            ):
 
                 sensor_connected = True
 
             else:
 
                 sensor_connected = (
-
                     seconds_since_update
-
                     <= SENSOR_OFFLINE_TIMEOUT
-
                 )
 
 
@@ -963,7 +843,18 @@ if (
 
 
 # ============================================================
-# WATER QUALITY RESULT
+# HISTORY
+# ============================================================
+
+add_history(
+    tds,
+    turbidity,
+    do_value
+)
+
+
+# ============================================================
+# WATER QUALITY
 # ============================================================
 
 (
@@ -972,11 +863,7 @@ if (
     risk_reasons
 ) = calculate_water_quality(
 
-    ph,
-
     tds,
-
-    temp,
 
     do_value,
 
@@ -986,38 +873,15 @@ if (
 
 
 # ============================================================
-# SAVE HISTORY
-# ============================================================
-
-add_history_point(
-
-    ph,
-
-    tds,
-
-    temp,
-
-    do_value,
-
-    turbidity
-
-)
-
-
-# ============================================================
-# MAIN TABS
+# TABS
 # ============================================================
 
 tab_dashboard, tab_advice, tab_report = st.tabs(
 
     [
-
         "📊 ภาพรวมน้ำ",
-
         "💧 คำแนะนำการใช้น้ำ",
-
         "📍 แจ้งเบาะแส"
-
     ]
 
 )
@@ -1039,43 +903,43 @@ with tab_dashboard:
     )
 
 
+    st.write(
+        "📍 จุดตรวจวัด : แม่น้ำบางปะกง"
+    )
+
+
     # ========================================================
     # SENSOR STATUS
     # ========================================================
 
     if sensor_connected:
 
-        if seconds_since_update is not None:
+        if (
+            seconds_since_update
+            is not None
+        ):
 
             age = int(
-
                 max(
-
                     0,
-
                     seconds_since_update
-
                 )
-
             )
 
 
             st.success(
 
-                f"🟢 SENSOR ONLINE · "
+                "🟢 SENSOR ONLINE · "
 
-                f"อัปเดตเมื่อ {age} วินาทีที่แล้ว"
+                f"อัปเดตเมื่อ {age} "
+                "วินาทีที่แล้ว"
 
             )
 
         else:
 
             st.success(
-
-                "🟢 SENSOR ONLINE · "
-
-                "รับข้อมูลจาก Firebase แล้ว"
-
+                "🟢 SENSOR ONLINE"
             )
 
     else:
@@ -1089,22 +953,10 @@ with tab_dashboard:
         )
 
 
-    # ========================================================
-    # TIME
-    # ========================================================
-
     if last_update:
 
         st.caption(
-
             f"ข้อมูลล่าสุด: {last_update}"
-
-        )
-
-    else:
-
-        st.caption(
-            "ยังไม่มีเวลาข้อมูลล่าสุด"
         )
 
 
@@ -1116,290 +968,190 @@ with tab_dashboard:
     # ========================================================
 
     st.subheader(
-        "📡 ค่าคุณภาพน้ำ"
+        "📡 ค่าคุณภาพน้ำปัจจุบัน"
     )
 
 
-    col1, col2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
 
 
-    with col1:
+    with c1:
 
-        with st.container(border=True):
-
-            sensor_gauge(
-
-                "⚗️ pH LEVEL",
-
-                ph,
-
-                0,
-
-                14,
-
-                ""
-
-            )
+        sensor_card(
+            "TDS",
+            tds,
+            "ppm",
+            "🧂"
+        )
 
 
-        with st.container(border=True):
+    with c2:
 
-            sensor_gauge(
-
-                "🌡️ TEMPERATURE",
-
-                temp,
-
-                10,
-
-                45,
-
-                "°C"
-
-            )
+        sensor_card(
+            "Turbidity",
+            turbidity,
+            "NTU",
+            "🌫️"
+        )
 
 
-        with st.container(border=True):
+    with c3:
 
-            sensor_gauge(
-
-                "🌫️ TURBIDITY",
-
-                turbidity,
-
-                0,
-
-                300,
-
-                "NTU"
-
-            )
-
-
-    with col2:
-
-        with st.container(border=True):
-
-            sensor_gauge(
-
-                "🧂 TDS / EC",
-
-                tds,
-
-                0,
-
-                1200,
-
-                "ppm"
-
-            )
-
-
-        with st.container(border=True):
-
-            sensor_gauge(
-
-                "🫧 DISSOLVED OXYGEN",
-
-                do_value,
-
-                0,
-
-                20,
-
-                "mg/L"
-
-            )
+        sensor_card(
+            "Dissolved Oxygen",
+            do_value,
+            "mg/L",
+            "🫧"
+        )
 
 
     # ========================================================
-    # WATER EVALUATION
+    # OTHER VALUES
     # ========================================================
 
     st.divider()
 
 
     st.subheader(
-        "🤖 ผลประเมินน้ำเพื่อเกษตรกรรม"
+        "📋 ข้อมูลเซนเซอร์"
     )
 
 
-    if water_safe:
-
-        st.success(
-
-            "✅ น้ำปลอดภัย "
-
-            "สามารถใช้รดน้ำพืชผลและให้สัตว์น้ำได้"
-
-        )
-
-    else:
-
-        st.error(
-
-            "❌ น้ำไม่ปลอดภัย "
-
-            "ควรหลีกเลี่ยงการนำไปใช้งาน"
-
-        )
-
-
-        st.warning(
-
-            "⚠️ ควรตรวจสอบแหล่งกำเนิดมลพิษ "
-
-            "และตรวจวัดซ้ำ"
-
-        )
-
-
-        if risk_reasons:
-
-            st.write(
-                "**สาเหตุที่ตรวจพบ:**"
-            )
-
-
-            for reason in risk_reasons:
-
-                st.write(
-
-                    f"• {reason}"
-
-                )
-
-
-    # ========================================================
-    # SUMMARY
-    # ========================================================
-
-    st.divider()
-
-
-    st.subheader(
-        "📊 สรุปค่าปัจจุบัน"
-    )
-
-
-    c1, c2, c3, c4, c5 = st.columns(5)
+    c1, c2 = st.columns(2)
 
 
     with c1:
 
         st.metric(
-
             "pH",
-
-            f"{ph:.2f}"
-
+            "--",
+            help=(
+                "ESP32 ตัวนี้ยังไม่ได้ส่งค่า pH"
+            )
         )
 
 
     with c2:
 
         st.metric(
-
-            "TDS",
-
-            f"{tds:.1f} ppm"
-
-        )
-
-
-    with c3:
-
-        st.metric(
-
             "Temperature",
-
-            f"{temp:.1f} °C"
-
-        )
-
-
-    with c4:
-
-        st.metric(
-
-            "DO",
-
-            f"{do_value:.2f} mg/L"
-
-        )
-
-
-    with c5:
-
-        st.metric(
-
-            "Turbidity",
-
-            f"{turbidity:.1f} NTU"
-
+            "--",
+            help=(
+                "ESP32 ตัวนี้ยังไม่ได้ส่งค่า Temperature"
+            )
         )
 
 
     # ========================================================
-    # MAP + CHART
+    # WATER STATUS
     # ========================================================
 
     st.divider()
 
 
-    map_col, chart_col = st.columns(
-        [1, 1]
+    st.subheader(
+        "🤖 ผลประเมินคุณภาพน้ำ"
     )
 
 
-    with map_col:
+    if water_safe:
 
-        render_bang_pakong_map()
+        st.success(
+            "✅ น้ำอยู่ในเกณฑ์ปกติ"
+        )
+
+    else:
+
+        st.error(
+            "❌ น้ำมีค่าบางตัวอยู่นอกเกณฑ์"
+        )
 
 
-    with chart_col:
+        if risk_reasons:
 
-        render_water_charts()
+            for reason in risk_reasons:
+
+                st.write(
+                    f"• {reason}"
+                )
+
+
+    # ========================================================
+    # MAP
+    # ========================================================
+
+    st.divider()
+
+
+    st.subheader(
+        "🗺️ ตำแหน่งจุดตรวจวัด"
+    )
+
+
+    st.caption(
+        "แสดงจุดตรวจวัดเพียง 1 จุด "
+        "บริเวณแม่น้ำบางปะกง"
+    )
+
+
+    st.map(
+
+        BANG_PAKONG_SENSOR,
+
+        latitude="lat",
+
+        longitude="lon",
+
+        size=250,
+
+        zoom=10
+
+    )
+
+
+    # ========================================================
+    # CHART
+    # ========================================================
+
+    st.divider()
+
+
+    render_chart()
 
 
     # ========================================================
     # FIREBASE DEBUG
     # ========================================================
 
+    st.divider()
+
+
     with st.expander(
         "🔧 Firebase Debug"
     ):
 
         st.write(
-            "Firebase Database:"
+            "Firebase Database"
         )
 
 
         st.code(
-
-            FIREBASE_DB_URL,
-
-            language=None
-
+            FIREBASE_DB_URL
         )
 
 
         st.write(
-            "Firebase Path:"
+            "Firebase Path"
         )
 
 
         st.code(
-
-            FIREBASE_SENSOR_PATH,
-
-            language=None
-
+            FIREBASE_SENSOR_PATH
         )
 
 
         st.write(
-            "ข้อมูลที่ได้รับ:"
+            "ข้อมูลที่ได้รับ"
         )
 
 
@@ -1424,11 +1176,8 @@ with tab_dashboard:
 
 
     if st.button(
-
         "🔄 รีเฟรชข้อมูล",
-
         use_container_width=True
-
     ):
 
         st.rerun()
@@ -1458,18 +1207,16 @@ with tab_advice:
 
 
         st.markdown(
-
             """
-สามารถนำไปใช้สำหรับ
+สามารถนำข้อมูลไปใช้ประกอบการพิจารณา
 
-- 🌱 รดน้ำพืชผล
-- 🌾 ระบบเกษตรกรรม
-- 🐟 แหล่งน้ำสำหรับสัตว์น้ำ
-- 💧 ระบบจัดการน้ำในชุมชน
+- 🌱 การจัดการน้ำเพื่อเกษตรกรรม
+- 🌾 การติดตามคุณภาพแหล่งน้ำ
+- 🐟 การเฝ้าระวังแหล่งน้ำ
+- 💧 การจัดการน้ำในชุมชน
 
-ควรตรวจวัดคุณภาพน้ำอย่างสม่ำเสมอ
+ควรตรวจวัดอย่างสม่ำเสมอ
 """
-
         )
 
     else:
@@ -1480,16 +1227,13 @@ with tab_advice:
 
 
         st.markdown(
-
             """
 ### 🚨 ข้อควรระวัง
 
-- ❌ ไม่ควรนำไปใช้รดพืชผลโดยตรง
-- ❌ ไม่ควรนำไปเติมในบ่อปลา
+- ❌ ควรหลีกเลี่ยงการใช้น้ำโดยตรง
 - ⚠️ ควรตรวจสอบแหล่งกำเนิดมลพิษ
-- 🔄 ควรตรวจวัดซ้ำหลังแก้ไขปัญหา
+- 🔄 ควรตรวจวัดซ้ำ
 """
-
         )
 
 
@@ -1507,30 +1251,21 @@ with tab_advice:
 
             "Parameter": [
 
-                "pH",
-
                 "TDS",
 
                 "DO",
 
-                "Turbidity",
-
-                "Temperature"
+                "Turbidity"
 
             ],
 
-
             "เกณฑ์": [
-
-                "6.5 – 8.5",
 
                 "< 1,000 ppm",
 
                 "> 4.0 mg/L",
 
-                "< 100 NTU",
-
-                "< 35 °C"
+                "< 100 NTU"
 
             ]
 
@@ -1562,9 +1297,7 @@ with tab_report:
     st.info(
 
         "หากพบแหล่งน้ำที่มีสี กลิ่น "
-
         "หรือสภาพผิดปกติ สามารถแจ้งข้อมูล "
-
         "เพื่อใช้ประกอบการตรวจสอบได้"
 
     )
@@ -1575,15 +1308,10 @@ with tab_report:
         "📷 อัปโหลดรูปภาพ",
 
         type=[
-
             "jpg",
-
             "jpeg",
-
             "png",
-
             "webp"
-
         ]
 
     )
@@ -1594,13 +1322,9 @@ with tab_report:
         "รายละเอียด",
 
         placeholder=(
-
             "เช่น พบคราบน้ำมัน "
-
             "น้ำมีสีผิดปกติ มีกลิ่น "
-
             "หรือพบการปล่อยน้ำเสีย"
-
         ),
 
         height=150
@@ -1611,24 +1335,16 @@ with tab_report:
     if uploaded_file:
 
         st.image(
-
             uploaded_file,
-
             caption="รูปภาพที่เลือก",
-
             use_container_width=True
-
         )
 
 
     if st.button(
-
         "📤 ส่งข้อมูลแจ้งเบาะแส",
-
         use_container_width=True
-
     ):
-
 
         if not report_detail.strip():
 
@@ -1644,19 +1360,13 @@ with tab_report:
             if uploaded_file:
 
                 with st.spinner(
-
                     "กำลังอัปโหลดรูปภาพ..."
-
                 ):
 
                     image_url = (
-
                         upload_image_to_drive(
-
                             uploaded_file
-
                         )
-
                     )
 
 
@@ -1668,7 +1378,7 @@ with tab_report:
 
                 f"{report_detail}\n\n"
 
-                f"เวลา: "
+                "เวลา: "
 
                 f"{datetime.now(TH_TZ).strftime('%d/%m/%Y %H:%M:%S')}"
 
@@ -1687,23 +1397,17 @@ with tab_report:
 
 
             if send_line_notification(
-
                 message
-
             ):
 
                 st.success(
-
                     "✅ ส่งข้อมูลแจ้งเบาะแสสำเร็จ"
-
                 )
 
             else:
 
                 st.error(
-
                     "❌ ไม่สามารถส่งข้อมูลได้"
-
                 )
 
 
