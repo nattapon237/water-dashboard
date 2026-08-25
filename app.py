@@ -1,6 +1,7 @@
 # ============================================================
 # EEC COMMUNITY WATER INTELLIGENCE SYSTEM
 # ระบบตรวจสอบคุณภาพน้ำอัจฉริยะ
+# White Theme + Firebase Realtime Database
 # ============================================================
 
 import streamlit as st
@@ -9,8 +10,11 @@ import json
 import time
 import math
 import base64
+import textwrap
+
 from datetime import datetime
 import pytz
+
 
 # ============================================================
 # PAGE CONFIG
@@ -23,11 +27,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+
 # ============================================================
 # TIMEZONE
 # ============================================================
 
 TH_TZ = pytz.timezone("Asia/Bangkok")
+
 
 # ============================================================
 # FIREBASE CONFIGURATION
@@ -40,6 +46,7 @@ FIREBASE_DB_URL = (
     "asia-southeast1.firebasedatabase.app"
 )
 
+
 # ============================================================
 # LINE CONFIGURATION
 # ============================================================
@@ -49,6 +56,7 @@ LINE_ACCESS_TOKEN = (
 )
 
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
+
 
 # ============================================================
 # GOOGLE APPS SCRIPT
@@ -60,15 +68,21 @@ GOOGLE_APPS_SCRIPT_URL = (
     "exec"
 )
 
+
 # ============================================================
-# WHITE THEME CSS
+# WHITE THEME
 # ============================================================
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 
+/* ============================================================
+   GLOBAL
+============================================================ */
+
 html, body, [class*="css"] {
-    font-family: Arial, sans-serif;
+    font-family: Arial, "Tahoma", sans-serif;
 }
 
 .stApp {
@@ -76,9 +90,10 @@ html, body, [class*="css"] {
     color: #1e293b;
 }
 
-/* =========================
+
+/* ============================================================
    SIDEBAR
-========================= */
+============================================================ */
 
 section[data-testid="stSidebar"] {
     background: #ffffff;
@@ -89,9 +104,10 @@ section[data-testid="stSidebar"] * {
     color: #1e293b !important;
 }
 
-/* =========================
+
+/* ============================================================
    HEADER
-========================= */
+============================================================ */
 
 .hdr-eyebrow {
     color: #0284c7;
@@ -114,9 +130,10 @@ section[data-testid="stSidebar"] * {
     margin-top: 8px;
 }
 
-/* =========================
-   STATUS
-========================= */
+
+/* ============================================================
+   STATUS PILL
+============================================================ */
 
 .status-pill {
     display: inline-flex;
@@ -129,7 +146,7 @@ section[data-testid="stSidebar"] * {
     color: #334155;
     font-size: 13px;
     font-weight: 700;
-    box-shadow: 0 2px 8px rgba(15,23,42,0.05);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
 }
 
 .status-dot {
@@ -139,9 +156,10 @@ section[data-testid="stSidebar"] * {
     background: var(--pill-color);
 }
 
-/* =========================
+
+/* ============================================================
    GAUGE CARD
-========================= */
+============================================================ */
 
 .gauge-card {
     background: #ffffff;
@@ -149,7 +167,7 @@ section[data-testid="stSidebar"] * {
     border-radius: 18px;
     padding: 20px;
     margin-bottom: 15px;
-    box-shadow: 0 4px 15px rgba(15,23,42,0.05);
+    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.05);
 }
 
 .gauge-top {
@@ -173,12 +191,14 @@ section[data-testid="stSidebar"] * {
     font-size: 34px;
     font-weight: 800;
     margin: 12px 0;
+    line-height: 1.1;
 }
 
 .gauge-unit {
     font-size: 14px;
     color: #64748b;
     margin-left: 5px;
+    font-weight: 600;
 }
 
 .gauge-track {
@@ -186,16 +206,18 @@ section[data-testid="stSidebar"] * {
     height: 10px;
     border-radius: 20px;
     overflow: visible;
+    margin-top: 8px;
 }
 
 .gauge-marker {
     position: absolute;
-    top: -4px;
-    width: 4px;
-    height: 18px;
+    top: -5px;
+    width: 5px;
+    height: 20px;
     background: #0f172a;
-    border-radius: 4px;
+    border-radius: 5px;
     transform: translateX(-50%);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
 
 .gauge-range {
@@ -206,9 +228,10 @@ section[data-testid="stSidebar"] * {
     margin-top: 7px;
 }
 
-/* =========================
+
+/* ============================================================
    PANEL
-========================= */
+============================================================ */
 
 .panel {
     background: #ffffff;
@@ -216,7 +239,7 @@ section[data-testid="stSidebar"] * {
     border-radius: 18px;
     padding: 22px;
     margin-top: 15px;
-    box-shadow: 0 4px 15px rgba(15,23,42,0.05);
+    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.05);
 }
 
 .panel-title {
@@ -236,9 +259,10 @@ section[data-testid="stSidebar"] * {
     margin-left: 5px;
 }
 
-/* =========================
+
+/* ============================================================
    SAFE / DANGER
-========================= */
+============================================================ */
 
 .advice-safe {
     background: #ecfdf5;
@@ -258,9 +282,10 @@ section[data-testid="stSidebar"] * {
     font-weight: 700;
 }
 
-/* =========================
+
+/* ============================================================
    INFO BOX
-========================= */
+============================================================ */
 
 .info-box {
     background: #ffffff;
@@ -283,9 +308,10 @@ section[data-testid="stSidebar"] * {
     margin-top: 4px;
 }
 
-/* =========================
+
+/* ============================================================
    DIVIDER
-========================= */
+============================================================ */
 
 .divider {
     border: none;
@@ -293,28 +319,77 @@ section[data-testid="stSidebar"] * {
     margin: 20px 0;
 }
 
-/* =========================
+
+/* ============================================================
+   TABS
+============================================================ */
+
+button[data-baseweb="tab"] {
+    color: #475569;
+    font-weight: 700;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #0284c7;
+}
+
+
+/* ============================================================
    FOOTER
-========================= */
+============================================================ */
 
 .footer {
     text-align: center;
     color: #94a3b8;
     font-size: 12px;
-    padding: 25px;
+    padding: 30px 10px;
 }
 
-/* =========================
+
+/* ============================================================
    BUTTON
-========================= */
+============================================================ */
 
 .stButton > button {
     border-radius: 10px;
     font-weight: 700;
 }
 
+
+/* ============================================================
+   METRIC
+============================================================ */
+
+[data-testid="stMetric"] {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    padding: 15px;
+    border-radius: 12px;
+}
+
+
+/* ============================================================
+   FILE UPLOADER
+============================================================ */
+
+[data-testid="stFileUploader"] {
+    background: #ffffff;
+    border-radius: 12px;
+}
+
+
+/* ============================================================
+   TABLE
+============================================================ */
+
+table {
+    background: #ffffff !important;
+}
+
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True
+)
 
 
 # ============================================================
@@ -345,7 +420,9 @@ def get_firebase_token():
 
         return None
 
-    except Exception:
+    except Exception as e:
+
+        print("Firebase Auth Error:", e)
 
         return None
 
@@ -378,8 +455,9 @@ def read_sensor_data(id_token):
             if isinstance(data, dict):
                 return data
 
-    except Exception:
-        pass
+    except Exception as e:
+
+        print("Firebase Read Error:", e)
 
     return None
 
@@ -431,7 +509,9 @@ def write_mock_sensor_data(
 
         return response.status_code == 200
 
-    except Exception:
+    except Exception as e:
+
+        print("Firebase Write Error:", e)
 
         return False
 
@@ -480,7 +560,9 @@ def send_line_notification(message):
 
         return response.status_code == 200
 
-    except Exception:
+    except Exception as e:
+
+        print("LINE Error:", e)
 
         return False
 
@@ -531,14 +613,15 @@ def upload_image_to_drive(uploaded_file):
 
                 return result.get("url")
 
-    except Exception:
-        pass
+    except Exception as e:
+
+        print("Google Drive Error:", e)
 
     return None
 
 
 # ============================================================
-# GET FIREBASE
+# FIREBASE TOKEN
 # ============================================================
 
 id_token = get_firebase_token()
@@ -576,14 +659,13 @@ st.sidebar.info(
 
 
 # ============================================================
-# SIDEBAR SENSOR CONTROL
+# SENSOR TEST
 # ============================================================
 
 st.sidebar.markdown("---")
 
-st.sidebar.title(
-    "🎛️ Sensor Test"
-)
+st.sidebar.title("🎛️ Sensor Test")
+
 
 sim_ph = st.sidebar.slider(
     "pH Level",
@@ -593,6 +675,7 @@ sim_ph = st.sidebar.slider(
     0.1
 )
 
+
 sim_tds = st.sidebar.slider(
     "TDS (ppm)",
     0.0,
@@ -600,6 +683,7 @@ sim_tds = st.sidebar.slider(
     250.0,
     1.0
 )
+
 
 sim_temp = st.sidebar.slider(
     "Temperature (°C)",
@@ -609,6 +693,7 @@ sim_temp = st.sidebar.slider(
     0.5
 )
 
+
 sim_do = st.sidebar.slider(
     "DO (mg/L)",
     0.0,
@@ -616,6 +701,7 @@ sim_do = st.sidebar.slider(
     6.5,
     0.1
 )
+
 
 sim_turb = st.sidebar.slider(
     "Turbidity (NTU)",
@@ -627,7 +713,7 @@ sim_turb = st.sidebar.slider(
 
 
 # ============================================================
-# SEND MOCK DATA
+# SEND TEST DATA
 # ============================================================
 
 if st.sidebar.button(
@@ -660,7 +746,7 @@ if st.sidebar.button(
 
 
 # ============================================================
-# READ LIVE SENSOR
+# READ LIVE DATA
 # ============================================================
 
 live_data = read_sensor_data(
@@ -694,52 +780,47 @@ if (
 
     try:
 
-        if "ph" in live_data:
-
-            ph = float(
-                live_data.get(
-                    "ph",
-                    sim_ph
-                )
+        ph = float(
+            live_data.get(
+                "ph",
+                sim_ph
             )
+        )
 
-        if "tds" in live_data:
-
-            tds = float(
-                live_data.get(
-                    "tds",
-                    sim_tds
-                )
+        tds = float(
+            live_data.get(
+                "tds",
+                sim_tds
             )
+        )
 
-        if "temp" in live_data:
-
-            temp = float(
-                live_data.get(
-                    "temp",
-                    sim_temp
-                )
+        temp = float(
+            live_data.get(
+                "temp",
+                sim_temp
             )
+        )
 
-        if "do" in live_data:
-
-            do_val = float(
-                live_data.get(
-                    "do",
-                    sim_do
-                )
+        do_val = float(
+            live_data.get(
+                "do",
+                sim_do
             )
+        )
 
-        if "turbidity" in live_data:
-
-            turbidity = float(
-                live_data.get(
-                    "turbidity",
-                    sim_turb
-                )
+        turbidity = float(
+            live_data.get(
+                "turbidity",
+                sim_turb
             )
+        )
 
         sensor_connected = True
+
+
+        # ================================================
+        # LAST UPDATE
+        # ================================================
 
         if "updatedAt" in live_data:
 
@@ -760,7 +841,9 @@ if (
 
                 last_update = None
 
-    except Exception:
+    except Exception as e:
+
+        print("Sensor Data Error:", e)
 
         sensor_connected = False
 
@@ -779,15 +862,15 @@ def calculate_water_quality(
 
     reasons = []
 
+
     # pH
-    if not (
-        6.5 <= ph <= 8.5
-    ):
+    if not (6.5 <= ph <= 8.5):
 
         reasons.append(
             f"pH ({ph:.2f}) "
             "อยู่นอกเกณฑ์ 6.5–8.5"
         )
+
 
     # TDS
     if tds > 1000:
@@ -797,6 +880,7 @@ def calculate_water_quality(
             "สูงเกิน 1,000 ppm"
         )
 
+
     # DO
     if do_val < 4.0:
 
@@ -804,6 +888,7 @@ def calculate_water_quality(
             f"DO ({do_val:.1f} mg/L) "
             "ต่ำกว่า 4.0 mg/L"
         )
+
 
     # Turbidity
     if turbidity > 100:
@@ -813,6 +898,7 @@ def calculate_water_quality(
             "สูงเกิน 100 NTU"
         )
 
+
     # Temperature
     if temp > 35:
 
@@ -821,6 +907,8 @@ def calculate_water_quality(
             "สูงเกิน 35 °C"
         )
 
+
+    # RESULT
     if reasons:
 
         return (
@@ -843,7 +931,7 @@ def calculate_water_quality(
 
 
 # ============================================================
-# CALCULATE
+# CALCULATE WATER QUALITY
 # ============================================================
 
 (
@@ -862,7 +950,7 @@ def calculate_water_quality(
 
 
 # ============================================================
-# GAUGE RENDER
+# GAUGE CARD
 # ============================================================
 
 def render_gauge_card(
@@ -875,10 +963,19 @@ def render_gauge_card(
     zones
 ):
 
+    # ================================================
+    # CLIP VALUE
+    # ================================================
+
     clipped = max(
         vmin,
         min(vmax, value)
     )
+
+
+    # ================================================
+    # PERCENT
+    # ================================================
 
     pct = (
         (clipped - vmin)
@@ -888,6 +985,11 @@ def render_gauge_card(
         100
     )
 
+
+    # ================================================
+    # COLOR
+    # ================================================
+
     color = "#dc2626"
 
     for low, high, zone_color in zones:
@@ -895,66 +997,92 @@ def render_gauge_card(
         if low <= value <= high:
 
             color = zone_color
+
             break
 
+
+    # ================================================
+    # HTML
+    #
+    # IMPORTANT:
+    # textwrap.dedent() แก้ปัญหา HTML
+    # ถูก Streamlit แสดงเป็น Code Block
+    # ================================================
+
+    html = f"""
+<div class="gauge-card">
+
+    <div class="gauge-top">
+
+        <span class="gauge-label">
+            {label}
+        </span>
+
+        <span class="gauge-icon">
+            {icon}
+        </span>
+
+    </div>
+
+    <div
+        class="gauge-value"
+        style="color:{color};"
+    >
+
+        {value:.1f}
+
+        <span class="gauge-unit">
+            {unit}
+        </span>
+
+    </div>
+
+    <div
+        class="gauge-track"
+        style="
+            background:
+            linear-gradient(
+                90deg,
+                #dcfce7 0%,
+                #bbf7d0 100%
+            );
+        "
+    >
+
+        <div
+            class="gauge-marker"
+            style="left:{pct:.1f}%"
+        ></div>
+
+    </div>
+
+    <div class="gauge-range">
+
+        <span>{vmin}</span>
+
+        <span>{vmax}</span>
+
+    </div>
+
+</div>
+"""
+
+
+    # ================================================
+    # REMOVE INDENT
+    # ================================================
+
+    html = textwrap.dedent(
+        html
+    ).strip()
+
+
+    # ================================================
+    # RENDER HTML
+    # ================================================
+
     st.markdown(
-        f"""
-        <div class="gauge-card">
-
-            <div class="gauge-top">
-
-                <span class="gauge-label">
-                    {label}
-                </span>
-
-                <span class="gauge-icon">
-                    {icon}
-                </span>
-
-            </div>
-
-            <div
-                class="gauge-value"
-                style="color:{color}"
-            >
-
-                {value:.1f}
-
-                <span class="gauge-unit">
-                    {unit}
-                </span>
-
-            </div>
-
-            <div
-                class="gauge-track"
-                style="
-                    background:
-                    linear-gradient(
-                        90deg,
-                        #dcfce7 0%,
-                        #bbf7d0 100%
-                    );
-                "
-            >
-
-                <div
-                    class="gauge-marker"
-                    style="left:{pct:.1f}%"
-                ></div>
-
-            </div>
-
-            <div class="gauge-range">
-
-                <span>{vmin}</span>
-
-                <span>{vmax}</span>
-
-            </div>
-
-        </div>
-        """,
+        html,
         unsafe_allow_html=True
     )
 
@@ -973,10 +1101,14 @@ tab1, tab2, tab3 = st.tabs(
 
 
 # ============================================================
-# TAB 1
+# TAB 1 - DASHBOARD
 # ============================================================
 
 with tab1:
+
+    # ================================================
+    # HEADER
+    # ================================================
 
     st.markdown(
         '<div class="hdr-eyebrow">'
@@ -985,12 +1117,18 @@ with tab1:
         unsafe_allow_html=True
     )
 
+
     st.markdown(
         '<div class="hdr-title">'
         '💧 ระบบตรวจสอบคุณภาพน้ำ'
         '</div>',
         unsafe_allow_html=True
     )
+
+
+    # ================================================
+    # UPDATE TEXT
+    # ================================================
 
     if last_update:
 
@@ -1004,68 +1142,91 @@ with tab1:
             "กำลังรอข้อมูลจากเซนเซอร์"
         )
 
+
     st.markdown(
-        f'''
+        f"""
         <div class="hdr-sub">
+
             เวลาไทย:
             {now_th.strftime("%d/%m/%Y %H:%M:%S")}
-            · {update_text}
+
+            ·
+
+            {update_text}
+
         </div>
-        ''',
+        """,
         unsafe_allow_html=True
     )
 
+
     st.write("")
 
-    # ================================
-    # CONNECTION
-    # ================================
+
+    # ================================================
+    # SENSOR STATUS
+    # ================================================
 
     if sensor_connected:
 
         st.markdown(
-            '''
+            """
             <span
                 class="status-pill"
                 style="--pill-color:#16a34a"
             >
+
                 <span class="status-dot"></span>
+
                 🟢 รับข้อมูลจากเซนเซอร์แล้ว
+
             </span>
-            ''',
+            """,
             unsafe_allow_html=True
         )
 
     else:
 
         st.markdown(
-            '''
+            """
             <span
                 class="status-pill"
                 style="--pill-color:#f59e0b"
             >
+
                 <span class="status-dot"></span>
+
                 🟡 กำลังใช้ค่าทดสอบ
+
             </span>
-            ''',
+            """,
             unsafe_allow_html=True
         )
+
 
     st.markdown(
         '<hr class="divider">',
         unsafe_allow_html=True
     )
 
-    # ================================
-    # SENSOR GAUGES
-    # ================================
+
+    # ====================================================
+    # SENSOR GAUGE
+    # ====================================================
 
     col1, col2 = st.columns(
         2,
         gap="small"
     )
 
+
+    # ====================================================
+    # LEFT
+    # ====================================================
+
     with col1:
+
+        # pH
 
         render_gauge_card(
             "⚗️",
@@ -1075,11 +1236,26 @@ with tab1:
             0,
             14,
             [
-                (0, 6.49, "#dc2626"),
-                (6.5, 8.5, "#16a34a"),
-                (8.51, 14, "#dc2626")
+                (
+                    0,
+                    6.49,
+                    "#dc2626"
+                ),
+                (
+                    6.5,
+                    8.5,
+                    "#16a34a"
+                ),
+                (
+                    8.51,
+                    14,
+                    "#dc2626"
+                )
             ]
         )
+
+
+        # Temperature
 
         render_gauge_card(
             "🌡️",
@@ -1089,10 +1265,21 @@ with tab1:
             10,
             45,
             [
-                (10, 35, "#16a34a"),
-                (35.01, 45, "#dc2626")
+                (
+                    10,
+                    35,
+                    "#16a34a"
+                ),
+                (
+                    35.01,
+                    45,
+                    "#dc2626"
+                )
             ]
         )
+
+
+        # Turbidity
 
         render_gauge_card(
             "🌫️",
@@ -1102,12 +1289,27 @@ with tab1:
             0,
             300,
             [
-                (0, 100, "#16a34a"),
-                (100.01, 300, "#dc2626")
+                (
+                    0,
+                    100,
+                    "#16a34a"
+                ),
+                (
+                    100.01,
+                    300,
+                    "#dc2626"
+                )
             ]
         )
 
+
+    # ====================================================
+    # RIGHT
+    # ====================================================
+
     with col2:
+
+        # TDS
 
         render_gauge_card(
             "🧂",
@@ -1117,10 +1319,21 @@ with tab1:
             0,
             1200,
             [
-                (0, 1000, "#16a34a"),
-                (1000.01, 1200, "#dc2626")
+                (
+                    0,
+                    1000,
+                    "#16a34a"
+                ),
+                (
+                    1000.01,
+                    1200,
+                    "#dc2626"
+                )
             ]
         )
+
+
+        # DO
 
         render_gauge_card(
             "🫧",
@@ -1130,48 +1343,67 @@ with tab1:
             0,
             20,
             [
-                (0, 3.99, "#dc2626"),
-                (4, 20, "#16a34a")
+                (
+                    0,
+                    3.99,
+                    "#dc2626"
+                ),
+                (
+                    4,
+                    20,
+                    "#16a34a"
+                )
             ]
         )
 
-    # ================================
+
+    # ====================================================
     # EVALUATION
-    # ================================
+    # ====================================================
 
     st.markdown(
         '<div class="panel">',
         unsafe_allow_html=True
     )
 
+
     st.markdown(
-        '''
+        """
         <div class="panel-title">
+
             🤖 ผลประเมินน้ำเพื่อเกษตรกรรม
+
             <span class="tag">
                 EVALUATION
             </span>
+
         </div>
-        ''',
+        """,
         unsafe_allow_html=True
     )
+
 
     if risk_reasons:
 
         st.markdown(
-            f'''
+            f"""
             <div class="advice-danger">
+
                 {action_advice}
+
             </div>
-            ''',
+            """,
             unsafe_allow_html=True
         )
 
+
         st.write("")
+
 
         st.markdown(
             "**⚠️ สาเหตุที่ตรวจพบ**"
         )
+
 
         for reason in risk_reasons:
 
@@ -1179,50 +1411,63 @@ with tab1:
                 f"• {reason}"
             )
 
+
     else:
 
         st.markdown(
-            f'''
+            f"""
             <div class="advice-safe">
+
                 {action_advice}
+
             </div>
-            ''',
+            """,
             unsafe_allow_html=True
         )
 
+
         st.write("")
+
 
         st.markdown(
             "• ทุกค่าอยู่ในเกณฑ์มาตรฐานปกติ"
         )
+
 
     st.markdown(
         '</div>',
         unsafe_allow_html=True
     )
 
-    # ================================
-    # CURRENT VALUES
-    # ================================
+
+    # ====================================================
+    # FIREBASE DATA
+    # ====================================================
 
     st.markdown(
         '<div class="panel">',
         unsafe_allow_html=True
     )
 
+
     st.markdown(
-        '''
+        """
         <div class="panel-title">
+
             📡 ค่าที่ได้รับจาก Firebase
+
             <span class="tag">
                 REAL-TIME DATA
             </span>
+
         </div>
-        ''',
+        """,
         unsafe_allow_html=True
     )
 
+
     c1, c2, c3, c4, c5 = st.columns(5)
+
 
     with c1:
 
@@ -1231,12 +1476,14 @@ with tab1:
             f"{ph:.2f}"
         )
 
+
     with c2:
 
         st.metric(
             "TDS",
             f"{tds:.1f} ppm"
         )
+
 
     with c3:
 
@@ -1245,12 +1492,14 @@ with tab1:
             f"{temp:.1f} °C"
         )
 
+
     with c4:
 
         st.metric(
             "DO",
             f"{do_val:.1f} mg/L"
         )
+
 
     with c5:
 
@@ -1259,6 +1508,7 @@ with tab1:
             f"{turbidity:.1f} NTU"
         )
 
+
     st.markdown(
         '</div>',
         unsafe_allow_html=True
@@ -1266,7 +1516,7 @@ with tab1:
 
 
 # ============================================================
-# TAB 2
+# TAB 2 - WATER RECOMMENDATION
 # ============================================================
 
 with tab2:
@@ -1278,6 +1528,7 @@ with tab2:
         unsafe_allow_html=True
     )
 
+
     st.markdown(
         '<div class="hdr-title">'
         '💧 คำแนะนำการใช้น้ำ'
@@ -1285,71 +1536,90 @@ with tab2:
         unsafe_allow_html=True
     )
 
+
     st.write("")
+
 
     if water_score >= 100:
 
         st.markdown(
-            '''
+            """
             <div class="advice-safe">
+
                 ✅ คุณภาพน้ำอยู่ในเกณฑ์ปกติ
+
             </div>
-            ''',
+            """,
             unsafe_allow_html=True
         )
 
+
         st.write("")
 
-        st.markdown("""
-        ### 🌱 สามารถใช้น้ำได้
 
-        - ใช้รดน้ำพืชผล
-        - ใช้ในระบบเกษตรกรรม
-        - สามารถใช้กับแหล่งน้ำสำหรับสัตว์น้ำ
-        - ควรตรวจวัดคุณภาพน้ำอย่างสม่ำเสมอ
-        """)
+        st.markdown(
+            """
+### 🌱 สามารถใช้น้ำได้
+
+- ใช้รดน้ำพืชผล
+- ใช้ในระบบเกษตรกรรม
+- สามารถใช้กับแหล่งน้ำสำหรับสัตว์น้ำ
+- ควรตรวจวัดคุณภาพน้ำอย่างสม่ำเสมอ
+"""
+        )
 
     else:
 
         st.markdown(
-            '''
+            """
             <div class="advice-danger">
+
                 ⚠️ ควรหลีกเลี่ยงการใช้น้ำ
+
             </div>
-            ''',
+            """,
             unsafe_allow_html=True
         )
 
+
         st.write("")
 
-        st.markdown("""
-        ### 🚨 ข้อควรระวัง
 
-        - ไม่ควรนำไปใช้รดพืชผล
-        - ไม่ควรนำไปเติมในบ่อปลา
-        - ควรตรวจสอบแหล่งกำเนิดมลพิษ
-        - ควรตรวจวัดซ้ำหลังจากแก้ไขปัญหา
-        """)
+        st.markdown(
+            """
+### 🚨 ข้อควรระวัง
+
+- ไม่ควรนำไปใช้รดพืชผล
+- ไม่ควรนำไปเติมในบ่อปลา
+- ควรตรวจสอบแหล่งกำเนิดมลพิษ
+- ควรตรวจวัดซ้ำหลังจากแก้ไขปัญหา
+"""
+        )
+
 
     st.markdown("---")
+
 
     st.markdown(
         "### 📊 เกณฑ์การประเมิน"
     )
 
-    st.markdown("""
-    | Parameter | เกณฑ์ |
-    |---|---|
-    | pH | 6.5 – 8.5 |
-    | TDS | < 1,000 ppm |
-    | DO | > 4.0 mg/L |
-    | Turbidity | < 100 NTU |
-    | Temperature | < 35 °C |
-    """)
+
+    st.markdown(
+        """
+| Parameter | เกณฑ์ |
+|---|---|
+| pH | 6.5 – 8.5 |
+| TDS | < 1,000 ppm |
+| DO | > 4.0 mg/L |
+| Turbidity | < 100 NTU |
+| Temperature | < 35 °C |
+"""
+    )
 
 
 # ============================================================
-# TAB 3
+# TAB 3 - REPORT
 # ============================================================
 
 with tab3:
@@ -1361,6 +1631,7 @@ with tab3:
         unsafe_allow_html=True
     )
 
+
     st.markdown(
         '<div class="hdr-title">'
         '📍 แจ้งเบาะแสแหล่งน้ำ'
@@ -1368,13 +1639,16 @@ with tab3:
         unsafe_allow_html=True
     )
 
+
     st.write("")
+
 
     st.info(
         "หากพบแหล่งน้ำที่มีสี กลิ่น "
         "หรือสภาพผิดปกติ สามารถอัปโหลดภาพ "
         "เพื่อใช้เป็นข้อมูลประกอบการตรวจสอบได้"
     )
+
 
     uploaded_file = st.file_uploader(
         "📷 อัปโหลดรูปภาพ",
@@ -1386,6 +1660,7 @@ with tab3:
         ]
     )
 
+
     report_detail = st.text_area(
         "รายละเอียด",
         placeholder=(
@@ -1394,6 +1669,7 @@ with tab3:
         )
     )
 
+
     if st.button(
         "📤 ส่งข้อมูลแจ้งเบาะแส",
         use_container_width=True
@@ -1401,16 +1677,23 @@ with tab3:
 
         image_url = None
 
+
         if uploaded_file:
 
-            image_url = upload_image_to_drive(
-                uploaded_file
-            )
+            with st.spinner(
+                "กำลังอัปโหลดรูปภาพ..."
+            ):
+
+                image_url = upload_image_to_drive(
+                    uploaded_file
+                )
+
 
         message = (
             "📍 แจ้งเบาะแสแหล่งน้ำ\n\n"
             f"รายละเอียด:\n{report_detail}\n\n"
         )
+
 
         if image_url:
 
@@ -1418,7 +1701,10 @@ with tab3:
                 f"รูปภาพ:\n{image_url}"
             )
 
-        if send_line_notification(message):
+
+        if send_line_notification(
+            message
+        ):
 
             st.success(
                 "✅ ส่งข้อมูลแจ้งเบาะแสสำเร็จ"
@@ -1438,8 +1724,13 @@ with tab3:
 st.markdown(
     """
     <div class="footer">
+
         EEC Community Water Intelligence System
-        · Agriculture Water Monitoring
+
+        <br>
+
+        Agriculture Water Monitoring
+
     </div>
     """,
     unsafe_allow_html=True
@@ -1447,9 +1738,14 @@ st.markdown(
 
 
 # ============================================================
-# AUTO REFRESH
+# REFRESH BUTTON
 # ============================================================
 
-time.sleep(5)
+st.sidebar.markdown("---")
 
-st.rerun()
+if st.sidebar.button(
+    "🔄 รีเฟรชข้อมูล",
+    use_container_width=True
+):
+
+    st.rerun()
