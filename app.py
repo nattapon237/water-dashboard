@@ -26,6 +26,10 @@ st.markdown(
     """
     <style>
 
+    /* ========================================================
+       MAIN APP
+       ======================================================== */
+
     .stApp {
         background-color: #f8fafc !important;
         color: #172033 !important;
@@ -39,6 +43,15 @@ st.markdown(
         background-color: #ffffff !important;
     }
 
+    .main {
+        background-color: #f8fafc !important;
+    }
+
+
+    /* ========================================================
+       SIDEBAR
+       ======================================================== */
+
     [data-testid="stSidebar"] {
         background-color: #ffffff !important;
         border-right: 1px solid #e2e8f0 !important;
@@ -48,12 +61,24 @@ st.markdown(
         color: #172033 !important;
     }
 
-    h1, h2, h3, h4, h5, h6 {
+
+    /* ========================================================
+       TEXT
+       ======================================================== */
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
         color: #172033 !important;
         font-weight: 700 !important;
     }
 
-    p, label, .stMarkdown {
+    p,
+    label,
+    .stMarkdown {
         color: #334155 !important;
     }
 
@@ -61,6 +86,11 @@ st.markdown(
     [data-testid="stCaptionContainer"] * {
         color: #64748b !important;
     }
+
+
+    /* ========================================================
+       METRIC
+       ======================================================== */
 
     [data-testid="stMetric"] {
         background-color: #ffffff !important;
@@ -82,6 +112,11 @@ st.markdown(
         font-weight: 700 !important;
     }
 
+
+    /* ========================================================
+       SELECTBOX
+       ======================================================== */
+
     [data-baseweb="select"] {
         background-color: #ffffff !important;
     }
@@ -89,6 +124,11 @@ st.markdown(
     [data-baseweb="select"] * {
         color: #172033 !important;
     }
+
+
+    /* ========================================================
+       BUTTON
+       ======================================================== */
 
     .stButton > button {
         background-color: #ffffff !important;
@@ -104,22 +144,42 @@ st.markdown(
         border-color: #7dd3fc !important;
     }
 
+
+    /* ========================================================
+       EXPANDER
+       ======================================================== */
+
     [data-testid="stExpander"] {
         background-color: #ffffff !important;
         border: 1px solid #e2e8f0 !important;
         border-radius: 14px !important;
     }
 
+
+    /* ========================================================
+       DATAFRAME
+       ======================================================== */
+
     [data-testid="stDataFrame"] {
         background-color: #ffffff !important;
         border-radius: 12px !important;
     }
+
+
+    /* ========================================================
+       MAP
+       ======================================================== */
 
     [data-testid="stDeckGlJsonChart"] {
         border-radius: 16px !important;
         overflow: hidden !important;
         border: 1px solid #e2e8f0 !important;
     }
+
+
+    /* ========================================================
+       DIVIDER
+       ======================================================== */
 
     hr {
         border-color: #e2e8f0 !important;
@@ -132,17 +192,24 @@ st.markdown(
 
 
 # ============================================================
-# CONFIG
+# TIMEZONE
 # ============================================================
 
 TH_TZ = pytz.timezone("Asia/Bangkok")
+
+
+# ============================================================
+# FIREBASE
+# ============================================================
 
 FIREBASE_DB_URL = (
     "https://cwis-c2ea8-default-rtdb."
     "asia-southeast1.firebasedatabase.app"
 )
 
-FIREBASE_SENSOR_PATH = "/devices/uno-r4/status"
+FIREBASE_SENSOR_PATH = (
+    "/devices/uno-r4/status"
+)
 
 FIREBASE_URL = (
     FIREBASE_DB_URL
@@ -159,7 +226,7 @@ REFRESH_SECONDS = 2
 
 
 # ============================================================
-# FIREBASE READ
+# READ FIREBASE
 # ============================================================
 
 def read_firebase():
@@ -175,33 +242,35 @@ def read_firebase():
 
             return response.json()
 
-        else:
-
-            return None
+        return None
 
     except Exception as e:
 
-        print("Firebase Error:", e)
+        print(
+            "Firebase Error:",
+            e
+        )
 
         return None
 
 
 # ============================================================
-# CHECK SENSOR
+# CHECK SENSOR ONLINE
 # ============================================================
 
 def sensor_is_online(data):
 
     if not isinstance(data, dict):
+
         return False
 
-    keys = [
+    sensor_keys = [
         "tds",
         "turbidity",
         "do"
     ]
 
-    for key in keys:
+    for key in sensor_keys:
 
         if key in data:
 
@@ -223,7 +292,7 @@ def sensor_is_online(data):
 
 
 # ============================================================
-# READ VALUES
+# READ CURRENT SENSOR DATA
 # ============================================================
 
 live_data = read_firebase()
@@ -234,7 +303,10 @@ turbidity = 0.0
 do_value = 0.0
 
 
-if isinstance(live_data, dict):
+if isinstance(
+    live_data,
+    dict
+):
 
     try:
 
@@ -295,13 +367,15 @@ if "history" not in st.session_state:
 
 if sensor_online:
 
-    now = datetime.now(
+    current_time = datetime.now(
         TH_TZ
     )
 
     st.session_state.history.append(
         {
-            "เวลา": now.strftime("%H:%M:%S"),
+            "เวลา": current_time.strftime(
+                "%H:%M:%S"
+            ),
             "TDS": tds,
             "Turbidity": turbidity,
             "DO": do_value
@@ -315,10 +389,11 @@ if sensor_online:
 
 
 # ============================================================
-# WATER QUALITY
+# WATER QUALITY ANALYSIS
 # ============================================================
 
 risk = []
+
 
 if tds > 1000:
 
@@ -326,11 +401,13 @@ if tds > 1000:
         f"TDS สูง {tds:.1f} ppm"
     )
 
+
 if turbidity > 100:
 
     risk.append(
         f"ความขุ่นสูง {turbidity:.1f} NTU"
     )
+
 
 if do_value < 4:
 
@@ -347,13 +424,18 @@ water_normal = (
 
 
 # ============================================================
-# MAP
+# BANG PAKONG MAP
+# แสดงเพียง 1 จุด
 # ============================================================
 
 bangpakong_map = pd.DataFrame(
     {
-        "lat": [13.6900],
-        "lon": [101.1700]
+        "lat": [
+            13.6900
+        ],
+        "lon": [
+            101.1700
+        ]
     }
 )
 
@@ -373,6 +455,11 @@ with st.sidebar:
     )
 
     st.divider()
+
+
+    # --------------------------------------------------------
+    # SENSOR STATUS
+    # --------------------------------------------------------
 
     st.subheader(
         "📡 Sensor Status"
@@ -398,7 +485,13 @@ with st.sidebar:
             "ไม่พบค่าจาก Firebase"
         )
 
+
     st.divider()
+
+
+    # --------------------------------------------------------
+    # AUTO REFRESH
+    # --------------------------------------------------------
 
     st.write(
         "🔄 Auto Refresh"
@@ -408,7 +501,13 @@ with st.sidebar:
         "อัปเดตทุก 2 วินาที"
     )
 
+
     st.divider()
+
+
+    # --------------------------------------------------------
+    # TIME
+    # --------------------------------------------------------
 
     st.write(
         "🕒 เวลา"
@@ -424,7 +523,7 @@ with st.sidebar:
 
 
 # ============================================================
-# MAIN
+# HEADER
 # ============================================================
 
 st.caption(
@@ -441,19 +540,21 @@ st.write(
 
 
 # ============================================================
-# ONLINE STATUS
+# SENSOR ONLINE STATUS
 # ============================================================
 
 if sensor_online:
 
     st.success(
-        "🟢 SENSOR ONLINE · รับค่าจากเซนเซอร์แล้ว"
+        "🟢 SENSOR ONLINE · "
+        "รับค่าจากเซนเซอร์แล้ว"
     )
 
 else:
 
     st.error(
-        "🔴 SENSOR OFFLINE · ไม่พบข้อมูลจากเซนเซอร์"
+        "🔴 SENSOR OFFLINE · "
+        "ไม่พบข้อมูลจากเซนเซอร์"
     )
 
 
@@ -461,12 +562,13 @@ st.divider()
 
 
 # ============================================================
-# SENSOR VALUES
+# CURRENT SENSOR VALUES
 # ============================================================
 
 st.subheader(
     "📡 ค่าจากเซนเซอร์แบบ Real-time"
 )
+
 
 col1, col2, col3 = st.columns(3)
 
@@ -499,7 +601,7 @@ st.divider()
 
 
 # ============================================================
-# QUALITY STATUS
+# WATER QUALITY STATUS
 # ============================================================
 
 st.subheader(
@@ -513,11 +615,13 @@ if not sensor_online:
         "⏳ กำลังรอข้อมูลจากเซนเซอร์"
     )
 
+
 elif water_normal:
 
     st.success(
         "✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ"
     )
+
 
 else:
 
@@ -544,8 +648,9 @@ st.subheader(
 )
 
 st.caption(
-    "แสดงเพียง 1 จุด"
+    "แสดงตำแหน่งจุดตรวจวัดเพียง 1 จุด"
 )
+
 
 st.map(
     bangpakong_map,
@@ -568,7 +673,9 @@ st.subheader(
 )
 
 
-if len(st.session_state.history) > 0:
+if len(
+    st.session_state.history
+) > 0:
 
     graph_df = pd.DataFrame(
         st.session_state.history
@@ -579,7 +686,7 @@ if len(st.session_state.history) > 0:
     )
 
 
-    selected = st.selectbox(
+    selected_parameter = st.selectbox(
         "เลือกค่าที่ต้องการดู",
         [
             "TDS",
@@ -590,9 +697,12 @@ if len(st.session_state.history) > 0:
 
 
     st.line_chart(
-        graph_df[[selected]],
+        graph_df[
+            [selected_parameter]
+        ],
         use_container_width=True
     )
+
 
 else:
 
@@ -605,7 +715,7 @@ st.divider()
 
 
 # ============================================================
-# FIREBASE DATA
+# FIREBASE DEBUG
 # ============================================================
 
 with st.expander(
@@ -620,9 +730,11 @@ with st.expander(
         FIREBASE_URL
     )
 
+
     st.write(
         "ข้อมูลปัจจุบัน"
     )
+
 
     if live_data is not None:
 
@@ -633,8 +745,11 @@ with st.expander(
     else:
 
         st.error(
-            "ไม่สามารถอ่าน Firebase ได้"
+            "ไม่สามารถอ่านข้อมูลจาก Firebase ได้"
         )
+
+
+st.divider()
 
 
 # ============================================================
@@ -643,7 +758,8 @@ with st.expander(
 
 st.caption(
     "🕒 อ่านข้อมูลล่าสุด : "
-    + datetime.now(
+    +
+    datetime.now(
         TH_TZ
     ).strftime(
         "%d/%m/%Y %H:%M:%S"
