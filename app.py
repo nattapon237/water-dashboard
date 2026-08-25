@@ -26,41 +26,19 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
 TARGET_USER_ID = "Ue3bb509d1606296f491836151927b063"
 
-def send_line_notification(message, image_url=None):
+# ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE (ส่งแบบข้อความพร้อมลิงก์หลักฐาน)
+def send_line_notification(message):
     url = "https://api.line.me/v2/bot/message/push"
     headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}", "Content-Type": "application/json"}
-    messages = []
-    
-    # หากมี image_url ที่เป็น Public URL จริง จะถูกแนบส่งไปแสดงเป็นรูปภาพใน LINE
-    if image_url:
-        messages.append({
-            "type": "image", 
-            "originalContentUrl": image_url, 
-            "previewImageUrl": image_url
-        })
-        
-    messages.append({"type": "text", "text": message})
+    messages = [
+        {"type": "text", "text": message}
+    ]
     payload = {"to": TARGET_USER_ID, "messages": messages}
     try:
         res = requests.post(url, headers=headers, data=json.dumps(payload), timeout=10)
         return res.status_code == 200
     except Exception:
         return False
-
-def upload_image_to_imgur(uploaded_file):
-    if uploaded_file is None:
-        return None
-    url = "https://api.imgur.com/3/image"
-    client_id = "5e98e578fa9ea7d"  # Client ID สาธารณะสำหรับทดสอบ
-    headers = {"Authorization": f"Client-ID {client_id}"}
-    try:
-        files = {"image": uploaded_file.getvalue()}
-        response = requests.post(url, headers=headers, files=files, timeout=15)
-        if response.status_code == 200:
-            return response.json()["data"]["link"]
-    except Exception:
-        pass
-    return None
 
 @st.cache_data(ttl=3000)
 def get_firebase_token():
@@ -368,7 +346,7 @@ with tab3:
     <div class="panel">
         <div class="panel-title">📍 ฟอร์มแจ้งเบาะแสผ่านพิกัด GPS <span class="tag">GPS REPORT</span></div>
         <div style="font-size:0.84rem; color:var(--text-mid); margin-bottom: 10px;">
-            ระบุพิกัดละติจูด ลองจิจูด หรือดูตำแหน่งบน Google Maps พร้อมส่งเข้า LINE ผู้นำชุมชน
+            ระบุพิกัดละติจูด ลองจิจูด หรือดูตำแหน่งบน Google Maps พร้อมแนบลิงก์หลักฐานส่งเข้า LINE ผู้นำชุมชน
         </div>
     """, unsafe_allow_html=True)
 
@@ -395,38 +373,39 @@ with tab3:
     gmap_url = f"https://www.google.com/maps?q={lat},{lon}"
     st.markdown(f"🔗 [คลิกเพื่อเปิดดูตำแหน่งนี้ใน Google Maps]({gmap_url})", unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader("📷 แนบภาพถ่ายหลักฐาน", type=["png", "jpg", "jpeg"], key="rep_file")
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="ภาพหลักฐานที่เลือก", use_container_width=True)
+    # ช่องกรอกลิงก์รูปภาพหลักฐาน (เช่น ลิงก์แชร์จาก Google Drive)
+    image_link = st.text_input(
+        "🔗 ลิงก์รูปภาพหลักฐาน (เช่น ลิงก์แชร์จาก Google Drive)", 
+        placeholder="https://drive.google.com/file/d/...",
+        key="rep_img_link"
+    )
 
-    if st.button("🚀 ส่งพิกัด GPS และภาพแจ้ง LINE", use_container_width=True):
-        with st.spinner("กำลังอัปโหลดรูปภาพและส่งข้อมูลเข้า LINE..."):
-            
-            # อัปโหลดรูปภาพขึ้น Imgur เพื่อแปลงเป็น Public URL
-            image_public_url = upload_image_to_imgur(uploaded_file)
+    if st.button("🚀 ส่งพิกัด GPS และแจ้ง LINE", use_container_width=True):
+        with st.spinner("กำลังส่งข้อมูลเข้า LINE..."):
             
             line_msg = (
                 f"🚨 แจ้งเบาะแส ({report_type})!\n"
                 f"📝 รายละเอียดพฤติกรรม: {detail_desc if detail_desc else 'ไม่ได้ระบุ'}\n"
                 f"🌐 พิกัด GPS: {lat}, {lon}\n"
                 f"🗺️ Google Maps: {gmap_url}\n"
+                f"🖼️ ลิงก์หลักฐานภาพถ่าย: {image_link if image_link else 'ไม่ได้แนบลิงก์'}\n"
                 f"⏰ เวลาแจ้ง: {now_th.strftime('%d/%m/%Y %H:%M:%S')} (ICT)\n"
                 f"⚠️ โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
             )
             
-            success = send_line_notification(line_msg, image_url=image_public_url)
+            success = send_line_notification(line_msg)
             
             if success:
-                st.success("✅ ส่งพิกัดและรูปภาพเข้า LINE สำเร็จ!")
+                st.success("✅ ส่งพิกัดและข้อมูลเข้า LINE สำเร็จ!")
                 time.sleep(1.5)
                 
-                # ล้างค่าใน Session State และเคลียร์ฟอร์มทั้งหมดเพื่อให้รีเซ็ตกลับเป็นค่าเริ่มต้น
-                for key in ["rep_desc", "rep_file"]:
+                # ล้างค่าใน Session State และเคลียร์ฟอร์ม
+                for key in ["rep_desc", "rep_img_link"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
             else:
-                st.error("❌ ส่งไม่สำเร็จ กรุณาตรวจสอบ LINE Token หรือไฟล์รูปภาพ")
+                st.error("❌ ส่งไม่สำเร็จ กรุณาตรวจสอบ LINE Token")
                 
     st.markdown("</div>", unsafe_allow_html=True)
 
