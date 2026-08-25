@@ -27,7 +27,7 @@ st.markdown(
     <style>
 
     /* ========================================================
-       MAIN APP
+       MAIN
        ======================================================== */
 
     .stApp {
@@ -127,6 +127,23 @@ st.markdown(
 
 
     /* ========================================================
+       INPUT
+       ======================================================== */
+
+    input,
+    textarea {
+        background-color: #ffffff !important;
+        color: #172033 !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: #94a3b8 !important;
+    }
+
+
+    /* ========================================================
        BUTTON
        ======================================================== */
 
@@ -142,6 +159,20 @@ st.markdown(
         background-color: #f0f9ff !important;
         color: #0369a1 !important;
         border-color: #7dd3fc !important;
+    }
+
+
+    /* ========================================================
+       TABS
+       ======================================================== */
+
+    button[data-baseweb="tab"] {
+        color: #475569 !important;
+        font-weight: 600 !important;
+    }
+
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #0284c7 !important;
     }
 
 
@@ -174,6 +205,38 @@ st.markdown(
         border-radius: 16px !important;
         overflow: hidden !important;
         border: 1px solid #e2e8f0 !important;
+    }
+
+
+    /* ========================================================
+       CUSTOM CARDS
+       ======================================================== */
+
+    .water-card {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+
+    .online-card {
+        background-color: #ecfdf5;
+        border: 1px solid #86efac;
+        border-radius: 12px;
+        padding: 14px;
+        color: #166534 !important;
+        font-weight: 700;
+    }
+
+    .offline-card {
+        background-color: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 12px;
+        padding: 14px;
+        color: #991b1b !important;
+        font-weight: 700;
     }
 
 
@@ -226,7 +289,23 @@ REFRESH_SECONDS = 2
 
 
 # ============================================================
-# READ FIREBASE
+# BANG PAKONG MAP
+# ใช้จุดคงที่ ไม่ใช้ GPS จาก ESP32
+# ============================================================
+
+BANGPAKONG_LAT = 13.6900
+BANGPAKONG_LON = 101.1700
+
+bangpakong_map = pd.DataFrame(
+    {
+        "lat": [BANGPAKONG_LAT],
+        "lon": [BANGPAKONG_LON]
+    }
+)
+
+
+# ============================================================
+# FIREBASE FUNCTION
 # ============================================================
 
 def read_firebase():
@@ -255,7 +334,30 @@ def read_firebase():
 
 
 # ============================================================
-# CHECK SENSOR ONLINE
+# SAFE FLOAT
+# ============================================================
+
+def safe_float(value, default=0.0):
+
+    try:
+
+        if value is None:
+            return default
+
+        return float(value)
+
+    except:
+
+        return default
+
+
+# ============================================================
+# SENSOR ONLINE
+#
+# ESP32 ส่ง:
+# tds
+# turbidity
+# do
 # ============================================================
 
 def sensor_is_online(data):
@@ -274,7 +376,7 @@ def sensor_is_online(data):
 
         if key in data:
 
-            value = data[key]
+            value = data.get(key)
 
             if value is not None:
 
@@ -292,59 +394,41 @@ def sensor_is_online(data):
 
 
 # ============================================================
-# READ CURRENT SENSOR DATA
+# READ FIREBASE
 # ============================================================
 
 live_data = read_firebase()
 
+
+# ============================================================
+# DEFAULT VALUES
+# ============================================================
 
 tds = 0.0
 turbidity = 0.0
 do_value = 0.0
 
 
+# ============================================================
+# PARSE FIREBASE
+# ============================================================
+
 if isinstance(
     live_data,
     dict
 ):
 
-    try:
+    tds = safe_float(
+        live_data.get("tds")
+    )
 
-        if live_data.get("tds") is not None:
+    turbidity = safe_float(
+        live_data.get("turbidity")
+    )
 
-            tds = float(
-                live_data["tds"]
-            )
-
-    except:
-
-        tds = 0.0
-
-
-    try:
-
-        if live_data.get("turbidity") is not None:
-
-            turbidity = float(
-                live_data["turbidity"]
-            )
-
-    except:
-
-        turbidity = 0.0
-
-
-    try:
-
-        if live_data.get("do") is not None:
-
-            do_value = float(
-                live_data["do"]
-            )
-
-    except:
-
-        do_value = 0.0
+    do_value = safe_float(
+        live_data.get("do")
+    )
 
 
 # ============================================================
@@ -367,13 +451,13 @@ if "history" not in st.session_state:
 
 if sensor_online:
 
-    current_time = datetime.now(
+    now = datetime.now(
         TH_TZ
     )
 
     st.session_state.history.append(
         {
-            "เวลา": current_time.strftime(
+            "เวลา": now.strftime(
                 "%H:%M:%S"
             ),
             "TDS": tds,
@@ -382,10 +466,18 @@ if sensor_online:
         }
     )
 
-    # เก็บย้อนหลัง 60 ค่า
     st.session_state.history = (
         st.session_state.history[-60:]
     )
+
+
+# ============================================================
+# WATER QUALITY LIMIT
+# ============================================================
+
+TDS_MAX = 1000.0
+TURBIDITY_MAX = 100.0
+DO_MIN = 4.0
 
 
 # ============================================================
@@ -395,48 +487,33 @@ if sensor_online:
 risk = []
 
 
-if tds > 1000:
+if sensor_online:
 
-    risk.append(
-        f"TDS สูง {tds:.1f} ppm"
-    )
+    if tds > TDS_MAX:
 
-
-if turbidity > 100:
-
-    risk.append(
-        f"ความขุ่นสูง {turbidity:.1f} NTU"
-    )
+        risk.append(
+            f"TDS สูง {tds:.1f} ppm"
+        )
 
 
-if do_value < 4:
+    if turbidity > TURBIDITY_MAX:
 
-    risk.append(
-        f"DO ต่ำ {do_value:.2f} mg/L"
-    )
+        risk.append(
+            f"ความขุ่นสูง {turbidity:.1f} NTU"
+        )
+
+
+    if do_value < DO_MIN:
+
+        risk.append(
+            f"DO ต่ำ {do_value:.2f} mg/L"
+        )
 
 
 water_normal = (
     sensor_online
     and
     len(risk) == 0
-)
-
-
-# ============================================================
-# BANG PAKONG MAP
-# แสดงเพียง 1 จุด
-# ============================================================
-
-bangpakong_map = pd.DataFrame(
-    {
-        "lat": [
-            13.6900
-        ],
-        "lon": [
-            101.1700
-        ]
-    }
 )
 
 
@@ -465,24 +542,35 @@ with st.sidebar:
         "📡 Sensor Status"
     )
 
+
     if sensor_online:
 
-        st.success(
-            "🟢 SENSOR ONLINE"
+        st.markdown(
+            """
+            <div class="online-card">
+            🟢 SENSOR ONLINE
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
         st.caption(
-            "กำลังรับค่าจาก Firebase"
+            "กำลังรับค่าจาก ESP32 ผ่าน Firebase"
         )
 
     else:
 
-        st.error(
-            "🔴 SENSOR OFFLINE"
+        st.markdown(
+            """
+            <div class="offline-card">
+            🔴 SENSOR OFFLINE
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
         st.caption(
-            "ไม่พบค่าจาก Firebase"
+            "ไม่พบค่าจาก ESP32"
         )
 
 
@@ -490,7 +578,31 @@ with st.sidebar:
 
 
     # --------------------------------------------------------
-    # AUTO REFRESH
+    # PARAMETERS
+    # --------------------------------------------------------
+
+    st.subheader(
+        "📊 Parameters"
+    )
+
+    st.write(
+        "🧂 TDS"
+    )
+
+    st.write(
+        "🌫️ Turbidity"
+    )
+
+    st.write(
+        "🫧 DO"
+    )
+
+
+    st.divider()
+
+
+    # --------------------------------------------------------
+    # REFRESH
     # --------------------------------------------------------
 
     st.write(
@@ -498,7 +610,7 @@ with st.sidebar:
     )
 
     st.info(
-        "อัปเดตทุก 2 วินาที"
+        f"อัปเดตทุก {REFRESH_SECONDS} วินาที"
     )
 
 
@@ -523,241 +635,590 @@ with st.sidebar:
 
 
 # ============================================================
-# HEADER
+# TABS
 # ============================================================
 
-st.caption(
-    "EEC · AGRI-WATER INTELLIGENCE"
-)
-
-st.title(
-    "💧 ระบบตรวจสอบคุณภาพน้ำ"
-)
-
-st.write(
-    "📍 จุดตรวจวัด : แม่น้ำบางปะกง"
+tab1, tab2, tab3 = st.tabs(
+    [
+        "📊 ภาพรวมน้ำ (Dashboard)",
+        "💧 คำแนะนำการใช้น้ำ",
+        "📍 แจ้งเบาะแส"
+    ]
 )
 
 
 # ============================================================
-# SENSOR ONLINE STATUS
+# TAB 1
+# DASHBOARD
 # ============================================================
 
-if sensor_online:
+with tab1:
 
-    st.success(
-        "🟢 SENSOR ONLINE · "
-        "รับค่าจากเซนเซอร์แล้ว"
+    st.caption(
+        "EEC · AGRI-WATER INTELLIGENCE"
     )
 
-else:
-
-    st.error(
-        "🔴 SENSOR OFFLINE · "
-        "ไม่พบข้อมูลจากเซนเซอร์"
+    st.title(
+        "💧 ระบบตรวจสอบคุณภาพน้ำ"
     )
-
-
-st.divider()
-
-
-# ============================================================
-# CURRENT SENSOR VALUES
-# ============================================================
-
-st.subheader(
-    "📡 ค่าจากเซนเซอร์แบบ Real-time"
-)
-
-
-col1, col2, col3 = st.columns(3)
-
-
-with col1:
-
-    st.metric(
-        "🧂 TDS",
-        f"{tds:.1f} ppm"
-    )
-
-
-with col2:
-
-    st.metric(
-        "🌫️ Turbidity",
-        f"{turbidity:.1f} NTU"
-    )
-
-
-with col3:
-
-    st.metric(
-        "🫧 DO",
-        f"{do_value:.2f} mg/L"
-    )
-
-
-st.divider()
-
-
-# ============================================================
-# WATER QUALITY STATUS
-# ============================================================
-
-st.subheader(
-    "🤖 สถานะคุณภาพน้ำ"
-)
-
-
-if not sensor_online:
-
-    st.info(
-        "⏳ กำลังรอข้อมูลจากเซนเซอร์"
-    )
-
-
-elif water_normal:
-
-    st.success(
-        "✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ"
-    )
-
-
-else:
-
-    st.warning(
-        "⚠️ พบค่าที่ควรเฝ้าระวัง"
-    )
-
-    for item in risk:
-
-        st.write(
-            "• " + item
-        )
-
-
-st.divider()
-
-
-# ============================================================
-# MAP
-# ============================================================
-
-st.subheader(
-    "🗺️ จุดตรวจวัดแม่น้ำบางปะกง"
-)
-
-st.caption(
-    "แสดงตำแหน่งจุดตรวจวัดเพียง 1 จุด"
-)
-
-
-st.map(
-    bangpakong_map,
-    latitude="lat",
-    longitude="lon",
-    size=300,
-    zoom=10
-)
-
-
-st.divider()
-
-
-# ============================================================
-# GRAPH
-# ============================================================
-
-st.subheader(
-    "📈 กราฟค่าจากเซนเซอร์"
-)
-
-
-if len(
-    st.session_state.history
-) > 0:
-
-    graph_df = pd.DataFrame(
-        st.session_state.history
-    )
-
-    graph_df = graph_df.set_index(
-        "เวลา"
-    )
-
-
-    selected_parameter = st.selectbox(
-        "เลือกค่าที่ต้องการดู",
-        [
-            "TDS",
-            "Turbidity",
-            "DO"
-        ]
-    )
-
-
-    st.line_chart(
-        graph_df[
-            [selected_parameter]
-        ],
-        use_container_width=True
-    )
-
-
-else:
-
-    st.info(
-        "⏳ รอข้อมูลจากเซนเซอร์..."
-    )
-
-
-st.divider()
-
-
-# ============================================================
-# FIREBASE DEBUG
-# ============================================================
-
-with st.expander(
-    "🔧 ดูข้อมูล Firebase"
-):
 
     st.write(
-        "Firebase URL"
+        "📍 จุดตรวจวัด : แม่น้ำบางปะกง"
     )
 
-    st.code(
-        FIREBASE_URL
-    )
-
-
-    st.write(
-        "ข้อมูลปัจจุบัน"
+    st.caption(
+        "ESP32 → Firebase → Dashboard"
     )
 
 
-    if live_data is not None:
+    # --------------------------------------------------------
+    # ONLINE STATUS
+    # --------------------------------------------------------
 
-        st.json(
-            live_data
+    if sensor_online:
+
+        st.success(
+            "🟢 SENSOR ONLINE · รับค่าจาก ESP32 แล้ว"
         )
 
     else:
 
         st.error(
-            "ไม่สามารถอ่านข้อมูลจาก Firebase ได้"
+            "🔴 SENSOR OFFLINE · ไม่พบข้อมูลจากเซนเซอร์"
         )
 
 
+    st.divider()
+
+
+    # --------------------------------------------------------
+    # CURRENT VALUES
+    # --------------------------------------------------------
+
+    st.subheader(
+        "📡 ค่าจากเซนเซอร์แบบ Real-time"
+    )
+
+
+    col1, col2, col3 = st.columns(
+        3
+    )
+
+
+    with col1:
+
+        st.metric(
+            "🧂 TDS",
+            f"{tds:.1f} ppm"
+        )
+
+
+    with col2:
+
+        st.metric(
+            "🌫️ Turbidity",
+            f"{turbidity:.1f} NTU"
+        )
+
+
+    with col3:
+
+        st.metric(
+            "🫧 DO",
+            f"{do_value:.2f} mg/L"
+        )
+
+
+    st.divider()
+
+
+    # --------------------------------------------------------
+    # WATER STATUS
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🤖 สถานะคุณภาพน้ำ"
+    )
+
+
+    if not sensor_online:
+
+        st.info(
+            "⏳ กำลังรอข้อมูลจากเซนเซอร์..."
+        )
+
+    elif water_normal:
+
+        st.success(
+            "✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ"
+        )
+
+    else:
+
+        st.warning(
+            "⚠️ พบค่าที่ควรเฝ้าระวัง"
+        )
+
+        for item in risk:
+
+            st.write(
+                "• " + item
+            )
+
+
+    st.divider()
+
+
+    # --------------------------------------------------------
+    # PARAMETER TABLE
+    # --------------------------------------------------------
+
+    st.subheader(
+        "📋 สรุป Parameter"
+    )
+
+
+    parameter_data = pd.DataFrame(
+        [
+            {
+                "Parameter": "TDS",
+                "ค่า": f"{tds:.1f} ppm",
+                "เกณฑ์": "≤ 1000 ppm",
+                "สถานะ":
+                    "ปกติ"
+                    if tds <= TDS_MAX
+                    else "เฝ้าระวัง"
+            },
+            {
+                "Parameter": "Turbidity",
+                "ค่า": f"{turbidity:.1f} NTU",
+                "เกณฑ์": "≤ 100 NTU",
+                "สถานะ":
+                    "ปกติ"
+                    if turbidity <= TURBIDITY_MAX
+                    else "เฝ้าระวัง"
+            },
+            {
+                "Parameter": "DO",
+                "ค่า": f"{do_value:.2f} mg/L",
+                "เกณฑ์": "≥ 4 mg/L",
+                "สถานะ":
+                    "ปกติ"
+                    if do_value >= DO_MIN
+                    else "เฝ้าระวัง"
+            }
+        ]
+    )
+
+
+    st.dataframe(
+        parameter_data,
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+    st.divider()
+
+
+    # --------------------------------------------------------
+    # MAP
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🗺️ จุดตรวจวัดแม่น้ำบางปะกง"
+    )
+
+    st.caption(
+        "แสดงจุดตรวจวัดเพียง 1 จุด • ไม่ใช้ GPS จาก ESP32"
+    )
+
+
+    st.map(
+        bangpakong_map,
+        latitude="lat",
+        longitude="lon",
+        size=350,
+        zoom=10
+    )
+
+
+    st.divider()
+
+
+    # --------------------------------------------------------
+    # GRAPH
+    # --------------------------------------------------------
+
+    st.subheader(
+        "📈 กราฟค่าจากเซนเซอร์"
+    )
+
+
+    if len(
+        st.session_state.history
+    ) > 0:
+
+        graph_df = pd.DataFrame(
+            st.session_state.history
+        )
+
+        graph_df = graph_df.set_index(
+            "เวลา"
+        )
+
+
+        selected_parameter = st.selectbox(
+            "เลือกค่าที่ต้องการดู",
+            [
+                "TDS",
+                "Turbidity",
+                "DO"
+            ],
+            key="graph_parameter"
+        )
+
+
+        st.line_chart(
+            graph_df[
+                [selected_parameter]
+            ],
+            use_container_width=True
+        )
+
+
+    else:
+
+        st.info(
+            "⏳ รอข้อมูลจากเซนเซอร์..."
+        )
+
+
+    st.divider()
+
+
+    # --------------------------------------------------------
+    # FIREBASE DEBUG
+    # --------------------------------------------------------
+
+    with st.expander(
+        "🔧 ดูข้อมูล Firebase"
+    ):
+
+        st.write(
+            "Firebase Path"
+        )
+
+        st.code(
+            "/devices/uno-r4/status"
+        )
+
+
+        st.write(
+            "Firebase URL"
+        )
+
+        st.code(
+            FIREBASE_URL
+        )
+
+
+        st.write(
+            "ข้อมูลปัจจุบัน"
+        )
+
+
+        if live_data is not None:
+
+            st.json(
+                live_data
+            )
+
+        else:
+
+            st.error(
+                "ไม่สามารถอ่านข้อมูลจาก Firebase ได้"
+            )
+
+
+# ============================================================
+# TAB 2
+# WATER USAGE ADVICE
+# ============================================================
+
+with tab2:
+
+    st.title(
+        "💧 คำแนะนำการใช้น้ำ"
+    )
+
+    st.caption(
+        "คำแนะนำจากค่าที่ตรวจวัดได้จาก ESP32"
+    )
+
+
+    if not sensor_online:
+
+        st.warning(
+            "🔴 ยังไม่มีข้อมูลจากเซนเซอร์"
+        )
+
+        st.info(
+            "เมื่อ ESP32 ส่ง TDS / Turbidity / DO "
+            "เข้ามา ระบบจะแสดงผลที่นี่"
+        )
+
+
+    else:
+
+        st.subheader(
+            "📊 ผลวิเคราะห์ปัจจุบัน"
+        )
+
+
+        # ----------------------------------------------------
+        # TDS
+        # ----------------------------------------------------
+
+        if tds <= TDS_MAX:
+
+            st.success(
+                f"🧂 TDS {tds:.1f} ppm — อยู่ในเกณฑ์"
+            )
+
+        else:
+
+            st.warning(
+                f"⚠️ TDS {tds:.1f} ppm — ควรเฝ้าระวัง"
+            )
+
+
+        # ----------------------------------------------------
+        # TURBIDITY
+        # ----------------------------------------------------
+
+        if turbidity <= TURBIDITY_MAX:
+
+            st.success(
+                f"🌫️ Turbidity {turbidity:.1f} NTU — อยู่ในเกณฑ์"
+            )
+
+        else:
+
+            st.warning(
+                f"⚠️ Turbidity {turbidity:.1f} NTU — ความขุ่นสูง"
+            )
+
+
+        # ----------------------------------------------------
+        # DO
+        # ----------------------------------------------------
+
+        if do_value >= DO_MIN:
+
+            st.success(
+                f"🫧 DO {do_value:.2f} mg/L — อยู่ในเกณฑ์"
+            )
+
+        else:
+
+            st.warning(
+                f"⚠️ DO {do_value:.2f} mg/L — ออกซิเจนละลายต่ำ"
+            )
+
+
+        st.divider()
+
+
+        st.subheader(
+            "🌱 แนวทางการใช้น้ำ"
+        )
+
+
+        if len(risk) == 0:
+
+            st.success(
+                "✅ จากค่าที่ตรวจวัดได้ "
+                "สามารถนำข้อมูลไปประกอบการวางแผน "
+                "ใช้น้ำเพื่อการเกษตรได้"
+            )
+
+            st.write(
+                "• ควรติดตามค่าคุณภาพน้ำอย่างต่อเนื่อง"
+            )
+
+            st.write(
+                "• ควรเปรียบเทียบค่าในแต่ละช่วงเวลา"
+            )
+
+            st.write(
+                "• หากค่าผิดปกติควรตรวจสอบแหล่งน้ำเพิ่มเติม"
+            )
+
+        else:
+
+            st.warning(
+                "⚠️ พบค่าที่ควรเฝ้าระวัง"
+            )
+
+            st.write(
+                "• ควรตรวจสอบคุณภาพน้ำเพิ่มเติม"
+            )
+
+            st.write(
+                "• ไม่ควรตัดสินใจจากค่าการวัดเพียงครั้งเดียว"
+            )
+
+            st.write(
+                "• หากค่าผิดปกติต่อเนื่อง "
+                "ควรเก็บตัวอย่างน้ำตรวจสอบเพิ่มเติม"
+            )
+
+
+        st.divider()
+
+
+        st.subheader(
+            "📌 Parameter ที่ใช้"
+        )
+
+
+        st.info(
+            "ESP32 เวอร์ชันล่าสุดส่ง 3 ค่า: "
+            "TDS / Turbidity / DO"
+        )
+
+
+# ============================================================
+# TAB 3
+# REPORT / CLUE
+# ============================================================
+
+with tab3:
+
+    st.title(
+        "📍 แจ้งเบาะแส"
+    )
+
+    st.caption(
+        "แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ"
+    )
+
+
+    st.markdown(
+        """
+        <div class="water-card">
+
+        <h3>📢 แจ้งปัญหาคุณภาพน้ำ</h3>
+
+        ใช้สำหรับบันทึกข้อมูลเมื่อพบความผิดปกติ
+        ของแม่น้ำบางปะกง เช่น น้ำมีสีผิดปกติ
+        มีกลิ่นผิดปกติ น้ำขุ่นมาก
+        หรือพบสิ่งปนเปื้อน
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+    report_type = st.selectbox(
+        "ประเภทเหตุการณ์",
+        [
+            "น้ำมีสีผิดปกติ",
+            "น้ำมีกลิ่นผิดปกติ",
+            "น้ำขุ่นผิดปกติ",
+            "พบสิ่งปนเปื้อน",
+            "พบการปล่อยน้ำเสีย",
+            "อื่น ๆ"
+        ]
+    )
+
+
+    report_detail = st.text_area(
+        "รายละเอียด",
+        placeholder="กรอกรายละเอียดที่พบ..."
+    )
+
+
+    report_location = st.text_input(
+        "สถานที่ / จุดที่พบ",
+        placeholder="เช่น ริมแม่น้ำบางปะกง"
+    )
+
+
+    if st.button(
+        "📤 บันทึกข้อมูลแจ้งเบาะแส",
+        use_container_width=True
+    ):
+
+        if (
+            report_detail.strip()
+            or report_location.strip()
+        ):
+
+            report_time = datetime.now(
+                TH_TZ
+            ).strftime(
+                "%d/%m/%Y %H:%M:%S"
+            )
+
+
+            report_data = {
+                "เวลา": report_time,
+                "ประเภท": report_type,
+                "รายละเอียด": report_detail,
+                "สถานที่": report_location
+            }
+
+
+            st.session_state[
+                "last_report"
+            ] = report_data
+
+
+            st.success(
+                "✅ บันทึกข้อมูลแจ้งเบาะแสแล้ว"
+            )
+
+        else:
+
+            st.warning(
+                "กรุณากรอกรายละเอียดหรือสถานที่"
+            )
+
+
+    if "last_report" in st.session_state:
+
+        st.divider()
+
+        st.subheader(
+            "📋 รายการล่าสุด"
+        )
+
+        st.json(
+            st.session_state[
+                "last_report"
+            ]
+        )
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+
 st.divider()
 
-
-# ============================================================
-# LAST UPDATE
-# ============================================================
+st.caption(
+    "EEC Community Water Intelligence System"
+)
 
 st.caption(
-    "🕒 อ่านข้อมูลล่าสุด : "
+    "ESP32 → Firebase → Streamlit"
+)
+
+st.caption(
+    "🕒 อัปเดตล่าสุด : "
     +
     datetime.now(
         TH_TZ
