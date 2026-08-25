@@ -30,8 +30,16 @@ def send_line_notification(message, image_url=None):
     url = "https://api.line.me/v2/bot/message/push"
     headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}", "Content-Type": "application/json"}
     messages = []
+    
+    # ⚠️ หมายเหตุ: LINE Messaging API แบบ Push/Reply กำหนดให้ image_url 
+    # ต้องเป็นลิงก์รูปภาพตรงๆ ที่เข้าถึงได้แบบสาธารณะผ่าน HTTPS (เช่น อัปโหลดขึ้น Imgur, Firebase Storage, หรือ Cloudinary)
     if image_url:
-        messages.append({"type": "image", "originalContentUrl": image_url, "previewImageUrl": image_url})
+        messages.append({
+            "type": "image", 
+            "originalContentUrl": image_url, 
+            "previewImageUrl": image_url
+        })
+        
     messages.append({"type": "text", "text": message})
     payload = {"to": TARGET_USER_ID, "messages": messages}
     try:
@@ -209,7 +217,6 @@ with tab1:
 
     st.write("")
     
-    # แสดงรายการที่ผิดปกติในการ์ดประเมิน
     reasons_list_html = ""
     if risk_reasons:
         reasons_list_html = "<div style='margin-top: 8px; font-size: 0.82rem; color: #f87171;'>"
@@ -351,11 +358,12 @@ with tab3:
         </div>
     """, unsafe_allow_html=True)
 
-    report_type = st.selectbox("📝 ประเภทการกระทำผิด", ["ทิ้งขยะลงแม่น้ำ", "ปล่อยน้ำเสียลงแม่น้ำ", "อื่นๆ"])
+    report_type = st.selectbox("📝 ประเภทการกระทำผิด", ["ทิ้งขยะลงแม่น้ำ", "ปล่อยน้ำเสียลงแม่น้ำ", "อื่นๆ"], key="rep_type")
     
     detail_desc = st.text_area(
         "✍️ รายละเอียดเพิ่มเติม (บุคคลนี้กำลังทำอะไรอยู่ / พฤติกรรมที่พบ)", 
-        placeholder="เช่น กำลังขนถังขยะมาทิ้งลงริมตลิ่ง, หรือเปิดวาล์วปล่อยน้ำเสียลงแม่น้ำ..."
+        placeholder="เช่น กำลังขนถังขยะมาทิ้งลงริมตลิ่ง, หรือเปิดวาล์วปล่อยน้ำเสียลงแม่น้ำ...",
+        key="rep_desc"
     )
 
     default_lat = 13.7563
@@ -363,18 +371,17 @@ with tab3:
 
     col_lat, col_lon = st.columns(2)
     with col_lat:
-        lat = st.number_input("🌐 ละติจูด (Latitude)", value=default_lat, format="%.6f", step=0.0001)
+        lat = st.number_input("🌐 ละติจูด (Latitude)", value=default_lat, format="%.6f", step=0.0001, key="rep_lat")
     with col_lon:
-        lon = st.number_input("🌐 ลองจิจูด (Longitude)", value=default_lon, format="%.6f", step=0.0001)
+        lon = st.number_input("🌐 ลองจิจูด (Longitude)", value=default_lon, format="%.6f", step=0.0001, key="rep_lon")
 
     map_df = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-    st.markdown("🗺️ **ตำแหน่งบนแผนที่:**")
     st.map(map_df, zoom=15)
 
     gmap_url = f"https://www.google.com/maps?q={lat},{lon}"
     st.markdown(f"🔗 [คลิกเพื่อเปิดดูตำแหน่งนี้ใน Google Maps]({gmap_url})", unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader("📷 แนบภาพถ่ายหลักฐาน", type=["png", "jpg", "jpeg"])
+    uploaded_file = st.file_uploader("📷 แนบภาพถ่ายหลักฐาน", type=["png", "jpg", "jpeg"], key="rep_file")
     if uploaded_file is not None:
         st.image(uploaded_file, caption="ภาพหลักฐานที่เลือก", use_container_width=True)
 
@@ -388,13 +395,21 @@ with tab3:
             f"⚠️ โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
         )
         
-        sample_image_url = "https://images.unsplash.com/photo-1530587191325-3db32d826c11" if uploaded_file else None
+        # 💡 หากต้องการให้ส่งรูปเข้า LINE จริงๆ จะต้องอัปโหลดไฟล์ไปเก็บบนคลาวด์ก่อน
+        # ตัวอย่างนี้หากมีการแนบไฟล์จริง ระบบจะแจ้งเตือน (กรณีใช้งานจริงแนะนำต่อ Cloud Storage)
+        sample_image_url = None # ปรับเป็นลิงก์รูปจริงบน Cloud หากมีบริการฝากไฟล์
         
         success = send_line_notification(line_msg, image_url=sample_image_url)
         if success:
             st.success("✅ ส่งพิกัดและข้อมูลเข้า LINE สำเร็จ!")
+            time.sleep(1.5)
+            # เคลียร์ค่าฟอร์มทั้งหมดโดยการล้าง Session State แล้วสั่ง rerun
+            for key in ["rep_desc", "rep_file"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
         else:
-            st.error("❌ ส่งไม่สำเร็จ ตรวจสอบ LINE Token")
+            st.error("❌ ส่งไม่สำเร็จ กรุณาตรวจสอบ LINE Token หรือการตั้งค่า")
     st.markdown("</div>", unsafe_allow_html=True)
 
 time.sleep(300)
