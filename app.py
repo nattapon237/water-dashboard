@@ -175,7 +175,7 @@ def render_risk_ring(score, status_color_css, size=110, stroke=10):
 <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="{status_color_css}" stroke-width="{stroke}" stroke-dasharray="{dash:.1f} {circumference:.1f}" stroke-linecap="round"/>
 </svg>"""
 
-# แบ่งออกเป็น 3 แท็บอย่างชัดเจน
+# 3 แท็บหลัก
 tab1, tab2, tab3 = st.tabs(["📊 ภาพรวมน้ำ (Dashboard)", "💧 คำแนะนำการใช้น้ำ", "📍 แจ้งเบาะแส"])
 
 with tab1:
@@ -242,11 +242,33 @@ with tab1:
     
     line_color = "#34d399" if water_score == 100 else "#f87171"
     
-    chart = alt.Chart(chart_df).mark_line(point=True).encode(
-        x=alt.X('เวลา', sort=None, axis=alt.Axis(labelAngle=0, title=None)),
-        y=alt.Y('ความปลอดภัย (%)', scale=alt.Scale(domain=[0, 100])),
+    # กราฟ Altair แบบโค้งมนและมี Tooltip สวยงาม
+    base_line = alt.Chart(chart_df).mark_line(
+        interpolate='monotone',
+        strokeWidth=3
+    ).encode(
+        x=alt.X('เวลา:N', sort=None, axis=alt.Axis(labelAngle=0, title=None, grid=False)),
+        y=alt.Y('ความปลอดภัย (%):Q', scale=alt.Scale(domain=[0, 100]), axis=alt.Axis(grid=True, gridColor='rgba(148,163,184,0.1)')),
         color=alt.value(line_color)
-    ).properties(height=180)
+    )
+
+    points = alt.Chart(chart_df).mark_circle(
+        size=60,
+        opacity=1
+    ).encode(
+        x=alt.X('เวลา:N', sort=None),
+        y=alt.Y('ความปลอดภัย (%):Q'),
+        color=alt.value(line_color),
+        tooltip=['เวลา', 'ความปลอดภัย (%)']
+    )
+
+    chart = (base_line + points).properties(
+        height=200
+    ).interactive().configure_view(
+        stroke=None
+    ).configure_background(
+        color='transparent'
+    )
     
     st.altair_chart(chart, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
