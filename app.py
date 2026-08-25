@@ -204,67 +204,103 @@ tab1, tab2, tab3 = st.tabs(["📊 ภาพรวมน้ำ (Dashboard)", "�
 
 with tab1:
     st.markdown('<div class="hdr-eyebrow">EEC · AGRI-WATER INTELLIGENCE</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hdr-title">💧 ระบบตรวจสอบคุณภาพน้ำ</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="hdr-sub">เวลาไทย: {now_th.strftime("%d/%m/%Y %H:%M:%S")} (อัพเดตอัตโนมัติทุก 5 นาที)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-title">💧 ระบบตรวจสอบคุณภาพน้ำ (Live Dashboard)</div>', unsafe_allow_html=True)
     
-    st.write("")
-    pill_html = f"""<div style="margin-bottom: 14px;">
+    # แบ่งส่วน Header ออกเป็น 2 ฝั่ง (ซ้าย: เวลา/สถานะ, ขวา: อัพเดต)
+    h_col1, h_col2 = st.columns([3, 1])
+    with h_col1:
+        pill_html = f"""<div style="margin-top: 5px; margin-bottom: 14px;">
 <span class="status-pill" style="--pill-color:{status_color}">
 <span class="status-dot"></span>{status_label}
 </span>
 </div>"""
-    st.markdown(pill_html, unsafe_allow_html=True)
+        st.markdown(pill_html, unsafe_allow_html=True)
+    with h_col2:
+        st.markdown(f'<div class="hdr-sub" style="text-align: right; margin-top: 10px;">อัปเดตล่าสุด: {now_th.strftime("%H:%M:%S")}<br>(Auto-refresh 5 นาที)</div>', unsafe_allow_html=True)
 
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-    g1, g2 = st.columns(2, gap="small")
+    # ------------------ ส่วน Gauge Cards (แบ่ง 3 คอลัมน์) ------------------
+    g1, g2, g3 = st.columns(3, gap="medium")
     with g1:
         render_gauge_card("⚗️", "PH LEVEL", ph, "", 0, 14,
             [(0, 6.5, "--danger"), (6.5, 8.5, "--safe"), (8.5, 14, "--danger")])
-        render_gauge_card("🌡️", "TEMP", temp, "°C", 10, 45,
+        render_gauge_card("🫧", "DISSOLVED OXYGEN (DO)", do_val, "mg/L", 0, 20,
+            [(0, 4.0, "--danger"), (4.0, 20, "--safe")])
+    with g2:
+        render_gauge_card("🌡️", "TEMPERATURE", temp, "°C", 10, 45,
             [(10, 35, "--safe"), (35, 45, "--danger")])
         render_gauge_card("🌫️", "TURBIDITY", turbidity, "NTU", 0, 300,
             [(0, 100, "--safe"), (100, 300, "--danger")])
-    with g2:
+    with g3:
         render_gauge_card("🧂", "TDS / EC", tds, "ppm", 0, 1200,
             [(0, 1000, "--safe"), (1000, 1200, "--danger")])
-        render_gauge_card("🫧", "DO", do_val, "mg/L", 0, 20,
-            [(0, 4.0, "--danger"), (4.0, 20, "--safe")])
+        # กล่องแสดงภาพรวมสั้นๆ แทนที่ว่าง
+        st.markdown(f"""
+        <div class="panel" style="height: 98px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: rgba(255,255,255,0.02);">
+            <div style="font-size: 0.8rem; color: var(--text-mid);">คุณภาพน้ำโดยรวม</div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: {status_color};">{status_label}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.write("")
     
-    reasons_list_html = ""
-    if risk_reasons:
-        reasons_list_html = "<div style='margin-top: 8px; font-size: 0.82rem; color: #f87171;'>"
-        for rsn in risk_reasons:
-            reasons_list_html += f"• {rsn}<br>"
-        reasons_list_html += "</div>"
-    else:
-        reasons_list_html = "<div style='margin-top: 8px; font-size: 0.82rem; color: #34d399;'>• ทุกค่าอยู่ในเกณฑ์มาตรฐานปกติ</div>"
+    # ------------------ ส่วน Assessment และ Map (แบ่ง 2 คอลัมน์กว้างๆ) ------------------
+    col_assess, col_map = st.columns([1.2, 1], gap="large")
+    
+    with col_assess:
+        reasons_list_html = ""
+        if risk_reasons:
+            reasons_list_html = "<div style='margin-top: 8px; font-size: 0.85rem; color: #f87171;'>"
+            for rsn in risk_reasons:
+                reasons_list_html += f"• {rsn}<br>"
+            reasons_list_html += "</div>"
+        else:
+            reasons_list_html = "<div style='margin-top: 8px; font-size: 0.85rem; color: #34d399;'>• ทุกพารามิเตอร์อยู่ในเกณฑ์มาตรฐานปกติ พร้อมใช้งาน</div>"
 
-    ring_svg = render_risk_ring(water_score, status_color)
-    risk_html = f"""<div class="panel">
-<div class="panel-title">🤖 ผลประเมินน้ำเพื่อเกษตรกรรม <span class="tag">EVALUATION</span></div>
-<div style="display:flex; align-items:center; gap:14px;">
+        ring_svg = render_risk_ring(water_score, status_color)
+        risk_html = f"""<div class="panel" style="height: 100%;">
+<div class="panel-title">🤖 ผลประเมินน้ำเพื่อเกษตรกรรม <span class="tag">AI EVALUATION</span></div>
+<div style="display:flex; align-items:center; gap:20px; margin-top: 15px;">
 <div style="position:relative; width:110px; height:110px;">
 {ring_svg}
 <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-<span style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.4rem; color:{status_color};">{water_score}%</span>
+<span style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.5rem; color:{status_color};">{water_score}%</span>
 </div>
 </div>
 <div>
-<div style="font-size:0.88rem; font-weight:700; color:{status_color}">{status_label}</div>
-<div style="font-size:0.7rem; color:var(--text-low); font-family:'JetBrains Mono',monospace; margin-top:2px;">AGRI STATUS</div>
+<div style="font-size:1rem; font-weight:700; color:{status_color}">{status_label}</div>
+<div style="font-size:0.75rem; color:var(--text-low); font-family:'JetBrains Mono',monospace; margin-top:2px;">AGRI-SAFETY STATUS</div>
 </div>
 </div>
+<div style="margin-top: 15px;">
 {reasons_list_html}
-<div class="risk-advice" style="border-left: 3px solid {status_color}; padding-left: 10px; margin-top: 10px;">
-<b>คำแนะนำ:</b><br>{action_advice}
+</div>
+<div class="risk-advice" style="border-left: 4px solid {status_color}; padding-left: 12px; margin-top: 15px; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 0 8px 8px 0;">
+<b>💡 คำแนะนำเบื้องต้น:</b><br>{action_advice}
 </div>
 </div>"""
-    st.markdown(risk_html, unsafe_allow_html=True)
+        st.markdown(risk_html, unsafe_allow_html=True)
+        
+    with col_map:
+        st.markdown("""
+        <div class="panel" style="height: 100%; display: flex; flex-direction: column;">
+            <div class="panel-title">📍 ตำแหน่งสถานีวัดคุณภาพน้ำ <span class="tag">SENSOR LOCATION</span></div>
+            <div style="font-size: 0.8rem; color: var(--text-mid); margin-bottom: 10px;">พิกัด: อ่างเก็บน้ำพื้นที่ระยอง (EEC)</div>
+        """, unsafe_allow_html=True)
+        
+        # ตัวอย่างพิกัดจุดติดตั้งเซนเซอร์ (เช่น พื้นที่ EEC ระยอง)
+        sensor_lat, sensor_lon = 12.6814, 101.2816
+        sensor_df = pd.DataFrame({'lat': [sensor_lat], 'lon': [sensor_lon]})
+        
+        # แสดง Map
+        st.map(sensor_df, zoom=11, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="panel"><div class="panel-title">📈 กราฟแนวโน้มย้อนหลัง <span class="tag">TREND</span></div>', unsafe_allow_html=True)
+    st.write("")
+    
+    # ------------------ ส่วนกราฟแนวโน้ม (Trend Chart) ------------------
+    st.markdown('<div class="panel"><div class="panel-title">📈 กราฟแนวโน้มย้อนหลัง 1 ชั่วโมง <span class="tag">TREND HISTORY</span></div>', unsafe_allow_html=True)
     
     time_index = [(now_th - timedelta(minutes=i*10)).strftime("%H:%M") for i in range(8)][::-1]
     trend_values = np.random.uniform(95, 100, 8) if water_score == 100 else np.random.uniform(0, 15, 8)
@@ -296,13 +332,14 @@ with tab1:
     )
 
     chart = (base_line + points).properties(
-        height=200
+        height=250
     ).interactive().configure_view(
         stroke=None
     )
     
     st.altair_chart(chart, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
+
 
 with tab2:
     st.markdown('<div class="hdr-eyebrow">WATER USAGE ADVICE</div>', unsafe_allow_html=True)
