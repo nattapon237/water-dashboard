@@ -209,6 +209,16 @@ with tab1:
 
     st.write("")
     
+    # แสดงรายการที่ผิดปกติในการ์ดประเมิน
+    reasons_list_html = ""
+    if risk_reasons:
+        reasons_list_html = "<div style='margin-top: 8px; font-size: 0.82rem; color: #f87171;'>"
+        for rsn in risk_reasons:
+            reasons_list_html += f"• {rsn}<br>"
+        reasons_list_html += "</div>"
+    else:
+        reasons_list_html = "<div style='margin-top: 8px; font-size: 0.82rem; color: #34d399;'>• ทุกค่าอยู่ในเกณฑ์มาตรฐานปกติ</div>"
+
     ring_svg = render_risk_ring(water_score, status_color)
     risk_html = f"""<div class="panel">
 <div class="panel-title">🤖 ผลประเมินน้ำเพื่อเกษตรกรรม <span class="tag">EVALUATION</span></div>
@@ -224,7 +234,8 @@ with tab1:
 <div style="font-size:0.7rem; color:var(--text-low); font-family:'JetBrains Mono',monospace; margin-top:2px;">AGRI STATUS</div>
 </div>
 </div>
-<div class="risk-advice" style="border-left: 3px solid {status_color}; padding-left: 10px;">
+{reasons_list_html}
+<div class="risk-advice" style="border-left: 3px solid {status_color}; padding-left: 10px; margin-top: 10px;">
 <b>คำแนะนำ:</b><br>{action_advice}
 </div>
 </div>"""
@@ -242,7 +253,6 @@ with tab1:
     
     line_color = "#34d399" if water_score == 100 else "#f87171"
     
-    # กราฟ Altair แบบโค้งมนและมี Tooltip (ปรับแก้ให้รองรับ Altair เวอร์ชันใหม่)
     base_line = alt.Chart(chart_df).mark_line(
         interpolate='monotone',
         strokeWidth=3
@@ -283,7 +293,6 @@ with tab2:
 
     st.write("")
     
-    # 1. ข้อปฏิบัติสำหรับภาคเกษตร
     st.markdown("""
     <div class="panel">
         <div class="panel-title">🛠️ คำแนะนำการใช้น้ำสำหรับภาคเกษตร <span class="tag">AGRICULTURE</span></div>
@@ -300,7 +309,6 @@ with tab2:
 
     st.write("")
 
-    # 2. ข้อปฏิบัติสำหรับภาคชุมชน
     st.markdown("""
     <div class="panel">
         <div class="panel-title">🏘️ คำแนะนำการใช้น้ำสำหรับภาคชุมชน <span class="tag">COMMUNITY</span></div>
