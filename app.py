@@ -3,6 +3,8 @@ import pandas as pd
 import requests
 import datetime
 import pytz
+import base64
+import os
 
 # ==========================================
 # CONFIGURATION
@@ -13,11 +15,21 @@ st.set_page_config(page_title="Smart Water Quality Monitoring", page_icon="💧"
 FIREBASE_URL = "https://your-firebase-database-url.firebaseio.com"
 
 # ==========================================
-# BASE64 IMAGE
+# IMAGE LOAD (อัตโนมัติจากไฟล์)
 # ==========================================
-# นำ Base64 ที่แนบมาใส่ตัวแปร (สามารถนำโค้ด Base64 ยาวๆ ของจริงมาวางแทนที่ตรงนี้ได้เลย)
-WATER_SENSOR_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAABagAAAQ+CAYAAAA6bNi7AAAQAElEQVR4AwV5A/V7v2z9e/u18c2/2P/Tz3s9X67X+c/n1+f99n+a/z87v/wL9sD2B0+3/6/v199z/6f/3/7c/b39wAAAABJRU5ErkJggg==" 
-WATER_SENSOR_IMAGE = "data:image/png;base64," + WATER_SENSOR_IMAGE_BASE64
+# ชื่อไฟล์รูปภาพที่คุณต้องการใช้ (ต้องอัปโหลดไว้ในโฟลเดอร์เดียวกับ app.py)
+IMAGE_FILENAME = "960px-thumbnail.jpg"
+
+def load_image(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode()
+            return f"data:image/jpeg;base64,{encoded}"
+    else:
+        # ถ้าระบบหาไฟล์รูปภาพไม่เจอ จะแสดงรูปภาพจำลองแทน
+        return "https://via.placeholder.com/960x721.png?text=Image+Not+Found"
+
+WATER_SENSOR_IMAGE = load_image(IMAGE_FILENAME)
 
 # ==========================================
 # CSS LIGHT THEME
@@ -257,7 +269,7 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 6. กราฟ pH / TDS / ORP (ใช้ st.line_chart แบบเดิมของ Streamlit)
+    # 6. กราฟ pH / TDS / ORP 
     st.markdown("<h3 style='color: #0F172A;'>📈 กราฟแนวโน้มคุณภาพน้ำย้อนหลัง</h3>", unsafe_allow_html=True)
     if history_data:
         df = pd.DataFrame.from_dict(history_data, orient='index')
@@ -295,7 +307,7 @@ with tab2:
         st.info("รอข้อมูลจาก Sensor")
 
 with tab3:
-    # 7. Map จุดติดตั้ง Sensor (ใช้ st.map ของ Streamlit แทน)
+    # 7. Map จุดติดตั้ง Sensor
     st.markdown("""
         <h3 style='color: #0F172A;'>📍 จุดติดตั้ง Sensor</h3>
         <p class="secondary-text">ตำแหน่งปัจจุบันของทุ่นตรวจวัดคุณภาพน้ำอัจฉริยะ</p>
@@ -304,13 +316,11 @@ with tab3:
     map_lat = 13.689108
     map_lon = 101.079153
     
-    # สร้าง DataFrame สำหรับบอกพิกัดให้ st.map
     map_data = pd.DataFrame({
         'lat': [map_lat],
         'lon': [map_lon]
     })
     
-    # แสดงข้อมูลของจุดติดตั้งในรูปแบบ Card แทน Popup ของ folium
     st.markdown(f"""
     <div class="light-card" style="text-align: left; margin-bottom: 15px;">
         <b style="color: #0F172A; font-size: 18px;">📍 จุดตรวจวัดคุณภาพน้ำ 01</b><br>
@@ -323,5 +333,4 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
     
-    # วาดแผนที่
     st.map(map_data, zoom=14, use_container_width=True)
