@@ -160,7 +160,7 @@ def safe_float(value, default=0.0):
 def sensor_is_online(data):
     if not isinstance(data, dict):
         return False
-    sensor_keys = ["tds", "orp"]
+    sensor_keys = ["tds", "orp", "ph"]
     for key in sensor_keys:
         if key in data and data.get(key) is not None:
             try:
@@ -179,6 +179,7 @@ live_data = read_firebase()
 
 tds = safe_float(live_data.get("tds")) if isinstance(live_data, dict) else 250.0
 orp_value = safe_float(live_data.get("orp")) if isinstance(live_data, dict) else 220.0
+ph_value = safe_float(live_data.get("ph")) if isinstance(live_data, dict) else 7.0
 
 sensor_online = sensor_is_online(live_data)
 
@@ -196,7 +197,8 @@ if "historical_august" not in st.session_state:
         mock_data.append({
             "เวลา": current_t.strftime("%d/%m/%Y %H:%M"),
             "TDS": round(240 + random.uniform(-20, 30), 1),
-            "ORP": round(210 + random.uniform(-30, 40), 1)
+            "ORP": round(210 + random.uniform(-30, 40), 1),
+            "pH": round(7.0 + random.uniform(-0.5, 0.5), 2)
         })
         current_t += timedelta(hours=3)
     st.session_state.historical_august = mock_data
@@ -209,12 +211,16 @@ if "historical_august" not in st.session_state:
 TDS_MAX = 1000.0
 ORP_MIN = 150.0 
 ORP_MAX = 400.0 
+PH_MIN = 6.5
+PH_MAX = 8.5
 
 risk = []
 if sensor_online:
     if tds > TDS_MAX: risk.append(f"TDS สูง {tds:.1f} ppm")
     if orp_value < ORP_MIN: risk.append(f"ORP ต่ำเกินไป {orp_value:.1f} mV")
     elif orp_value > ORP_MAX: risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f} mV")
+    if ph_value < PH_MIN: risk.append(f"pH เป็นกรดเกินไป {ph_value:.2f}")
+    elif ph_value > PH_MAX: risk.append(f"pH เป็นด่างเกินไป {ph_value:.2f}")
 
 water_normal = (sensor_online and len(risk) == 0)
 
@@ -240,6 +246,7 @@ with st.sidebar:
     st.subheader("📊 Parameters")
     st.write("🧂 TDS")
     st.write("⚡ ORP")
+    st.write("🧪 pH")
 
     st.divider()
     st.write("🔄 Auto Refresh")
@@ -271,17 +278,13 @@ with tab1:
     st.write("📍 จุดตรวจวัด : แม่น้ำบางปะกง")
     st.caption("ESP32 → Firebase → Dashboard")
 
-    if sensor_online:
-        st.success("🟢 SENSOR ONLINE · รับค่าจาก ESP32 แล้ว")
-    else:
-        st.error("🔴 SENSOR OFFLINE · ไม่พบข้อมูลจากเซนเซอร์")
-
     st.divider()
     st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     col1.metric("🧂 TDS", f"{tds:.1f} ppm")
     col2.metric("⚡ ORP", f"{orp_value:.1f} mV")
+    col3.metric("🧪 pH", f"{ph_value:.2f}")
 
     st.divider()
     st.subheader("🤖 สถานะคุณภาพน้ำ")
@@ -299,7 +302,7 @@ with tab1:
     graph_df = pd.DataFrame(st.session_state.historical_august)
     graph_df = graph_df.set_index("เวลา")
     
-    selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "ORP"], key="graph_parameter")
+    selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "ORP", "pH"], key="graph_parameter")
     st.line_chart(graph_df[[selected_parameter]], use_container_width=True)
 
 
@@ -339,6 +342,14 @@ with tab2:
         st.warning(f"⚠️ ORP {orp_value:.1f} mV — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
     else:
         st.error(f"🔴 ORP {orp_value:.1f} mV — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
+
+    # pH Analysis
+    if 6.5 <= ph_value <= 8.5:
+        st.success(f"🧪 pH {ph_value:.2f} — เหมาะสม (สภาพความเป็นกรด-ด่างอยู่ในเกณฑ์มาตรฐานเพื่อการเกษตร)")
+    elif ph_value < 6.5:
+        st.warning(f"⚠️ pH {ph_value:.2f} — มีความเป็นกรดสูง (อาจส่งผลให้รากพืชดูดซึมธาตุอาหารบางชนิดไม่ได้)")
+    else:
+        st.warning(f"⚠️ pH {ph_value:.2f} — มีความเป็นด่างสูง (อาจทำให้เกิดการตกตะกอนของแร่ธาตุในน้ำ)")
 
     st.divider()
 
@@ -397,10 +408,10 @@ with tab2:
     st.divider()
     
     st.subheader("🌱 แนวทางการใช้น้ำ")
-    if tds <= 1000 and 150 <= orp_value <= 400:
+    if tds <= 1000 and 150 <= orp_value <= 400 and 6.5 <= ph_value <= 8.5:
         st.success("✅ สามารถนำข้อมูลไปประกอบการวางแผนใช้น้ำเพื่อการเกษตรและประมงได้ตามกลุ่มพืชที่เหมาะสม")
     else:
-        st.warning("⚠️ พบค่าความเค็มหรือ ORP ที่ควรเฝ้าระวัง โปรดตรวจสอบเกณฑ์ความเหมาะสมของพืชก่อนนำไปใช้งาน")
+        st.warning("⚠️ พบค่าความเค็ม, ORP หรือ pH ที่ควรเฝ้าระวัง โปรดตรวจสอบเกณฑ์ความเหมาะสมของพืชก่อนนำไปใช้งาน")
 
 
 # ============================================================
