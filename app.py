@@ -7,6 +7,7 @@ import time
 import math
 from datetime import datetime, timedelta
 import pytz
+import altair as alt  # เพิ่มการ import altair สำหรับปรับแต่งกราฟ
 
 TH_TZ = pytz.timezone('Asia/Bangkok')
 
@@ -228,11 +229,27 @@ with tab1:
 </div>"""
     st.markdown(risk_html, unsafe_allow_html=True)
 
+    # กราฟแนวโน้ม (แก้ไขแล้ว: แกน X แนวนอน, แกน Y คงที่ 0-100)
     st.markdown('<div class="panel"><div class="panel-title">📈 กราฟแนวโน้มย้อนหลัง <span class="tag">TREND</span></div>', unsafe_allow_html=True)
+    
     time_index = [(now_th - timedelta(minutes=i*10)).strftime("%H:%M") for i in range(8)][::-1]
     trend_values = np.random.uniform(95, 100, 8) if water_score == 100 else np.random.uniform(0, 15, 8)
-    chart_df_time = pd.DataFrame({'ความปลอดภัย (%)': trend_values}, index=time_index)
-    st.line_chart(chart_df_time, color=["#34d399" if water_score == 100 else "#f87171"], height=180)
+    
+    chart_df = pd.DataFrame({
+        'เวลา': time_index,
+        'ความปลอดภัย (%)': trend_values
+    })
+    
+    line_color = "#34d399" if water_score == 100 else "#f87171"
+    
+    # ใช้ Altair จัดการเรื่องสเกลและองศาของตัวหนังสือ
+    chart = alt.Chart(chart_df).mark_line(point=True).encode(
+        x=alt.X('เวลา', sort=None, axis=alt.Axis(labelAngle=0, title=None)), # บังคับตัวหนังสือแนวนอน
+        y=alt.Y('ความปลอดภัย (%)', scale=alt.Scale(domain=[0, 100])),       # บังคับสเกล 0-100
+        color=alt.value(line_color)
+    ).properties(height=180)
+    
+    st.altair_chart(chart, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
