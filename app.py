@@ -175,7 +175,6 @@ def render_risk_ring(score, status_color_css, size=110, stroke=10):
 <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="{status_color_css}" stroke-width="{stroke}" stroke-dasharray="{dash:.1f} {circumference:.1f}" stroke-linecap="round"/>
 </svg>"""
 
-# เปลี่ยนชื่อ Tab ที่ 2 เป็น "คำแนะนำการใช้น้ำและการแจ้งเบาะแส"
 tab1, tab2 = st.tabs(["📊 ภาพรวมน้ำ (Dashboard)", "💧 คำแนะนำการใช้น้ำและการแจ้งเบาะแส"])
 
 with tab1:
@@ -297,7 +296,7 @@ with tab2:
 
     st.write("")
 
-    # 3. ฟอร์มแจ้งเบาะแสพิกัด GPS
+    # 3. ฟอร์มแจ้งเบาะแสพิกัด GPS (มีช่องกรอกรายละเอียดบุคคลทำอะไร)
     st.markdown("""
     <div class="panel">
         <div class="panel-title">📍 แจ้งเบาะแสทิ้งขยะ / ปล่อยน้ำเสีย (ระบุพิกัด GPS) <span class="tag">GPS REPORT</span></div>
@@ -307,6 +306,12 @@ with tab2:
     """, unsafe_allow_html=True)
 
     report_type = st.selectbox("📝 ประเภทการกระทำผิด", ["ทิ้งขยะลงแม่น้ำ", "ปล่อยน้ำเสียลงแม่น้ำ", "อื่นๆ"])
+    
+    # ช่องกรอกรายละเอียดเพิ่มเติมว่าบุคคลนี้ทำอะไร
+    detail_desc = st.text_area(
+        "✍️ รายละเอียดเพิ่มเติม (บุคคลนี้กำลังทำอะไรอยู่ / พฤติกรรมที่พบ)", 
+        placeholder="เช่น กำลังขนถังขยะมาทิ้งลงริมตลิ่ง, หรือเปิดวาล์วปล่อยน้ำเสียลงแม่น้ำ..."
+    )
 
     default_lat = 13.7563
     default_lon = 100.5018
@@ -331,6 +336,7 @@ with tab2:
     if st.button("🚀 ส่งพิกัด GPS และภาพแจ้ง LINE", use_container_width=True):
         line_msg = (
             f"🚨 แจ้งเบาะแส ({report_type})!\n"
+            f"📝 รายละเอียดพฤติกรรม: {detail_desc if detail_desc else 'ไม่ได้ระบุ'}\n"
             f"🌐 พิกัด GPS: {lat}, {lon}\n"
             f"🗺️ Google Maps: {gmap_url}\n"
             f"⏰ เวลาแจ้ง: {now_th.strftime('%d/%m/%Y %H:%M:%S')} (ICT)\n"
