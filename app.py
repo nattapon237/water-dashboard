@@ -7,7 +7,7 @@ import time
 import math
 from datetime import datetime, timedelta
 import pytz
-import altair as alt  # ไลบรารีสำหรับปรับแต่งกราฟ
+import altair as alt
 
 TH_TZ = pytz.timezone('Asia/Bangkok')
 
@@ -175,7 +175,8 @@ def render_risk_ring(score, status_color_css, size=110, stroke=10):
 <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="{status_color_css}" stroke-width="{stroke}" stroke-dasharray="{dash:.1f} {circumference:.1f}" stroke-linecap="round"/>
 </svg>"""
 
-tab1, tab2 = st.tabs(["📊 ภาพรวมน้ำ (Dashboard)", "🌾 จัดการแปลงเกษตร"])
+# เปลี่ยนชื่อ Tab ที่ 2 เป็น "คำแนะนำการใช้น้ำและการแจ้งเบาะแส"
+tab1, tab2 = st.tabs(["📊 ภาพรวมน้ำ (Dashboard)", "💧 คำแนะนำการใช้น้ำและการแจ้งเบาะแส"])
 
 with tab1:
     st.markdown('<div class="hdr-eyebrow">EEC · AGRI-WATER INTELLIGENCE</div>', unsafe_allow_html=True)
@@ -229,7 +230,6 @@ with tab1:
 </div>"""
     st.markdown(risk_html, unsafe_allow_html=True)
 
-    # กราฟแนวโน้ม (แกน X แนวนอน, แกน Y คงที่ 0-100)
     st.markdown('<div class="panel"><div class="panel-title">📈 กราฟแนวโน้มย้อนหลัง <span class="tag">TREND</span></div>', unsafe_allow_html=True)
     
     time_index = [(now_th - timedelta(minutes=i*10)).strftime("%H:%M") for i in range(8)][::-1]
@@ -252,8 +252,8 @@ with tab1:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
-    st.markdown('<div class="hdr-eyebrow">AGRI DECISION SUPPORT</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hdr-title" style="font-size:1.3rem;">🌾 ระบบจัดการแปลงเกษตรและแจ้งเบาะแส</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-eyebrow">WATER USAGE ADVICE & REPORT</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-title" style="font-size:1.3rem;">💧 คำแนะนำการใช้น้ำและการแจ้งเบาะแส</div>', unsafe_allow_html=True)
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
     
     if water_score == 100:
@@ -266,7 +266,7 @@ with tab2:
     # 1. ข้อปฏิบัติสำหรับภาคเกษตร
     st.markdown("""
     <div class="panel">
-        <div class="panel-title">🛠️ ข้อปฏิบัติสำหรับภาคเกษตร <span class="tag">AGRICULTURE</span></div>
+        <div class="panel-title">🛠️ คำแนะนำการใช้น้ำสำหรับภาคเกษตร <span class="tag">AGRICULTURE</span></div>
         <div class="check-row">
             <div class="check-icon">🚫</div>
             <div class="check-text"><b>หยุดสูบน้ำเข้าแปลง:</b> ปิดวาล์วและระบบชลประทานทันทีหากพบสถานะเตือนสีแดง</div>
@@ -283,7 +283,7 @@ with tab2:
     # 2. ข้อปฏิบัติสำหรับภาคชุมชน
     st.markdown("""
     <div class="panel">
-        <div class="panel-title">🏘️ ข้อปฏิบัติสำหรับภาคชุมชน <span class="tag">COMMUNITY</span></div>
+        <div class="panel-title">🏘️ คำแนะนำการใช้น้ำสำหรับภาคชุมชน <span class="tag">COMMUNITY</span></div>
         <div class="check-row">
             <div class="check-icon">⚠️</div>
             <div class="check-text"><b>งดใช้น้ำดิบชั่วคราว:</b> หลีกเลี่ยงการใช้น้ำจากแหล่งน้ำสาธารณะเพื่อการอุปโภคหรือซักล้าง</div>
@@ -297,7 +297,7 @@ with tab2:
 
     st.write("")
 
-    # 3. ฟอร์มแจ้งเบาะแสพิกัด GPS (รองรับขยะและน้ำเสีย พร้อม Google Maps)
+    # 3. ฟอร์มแจ้งเบาะแสพิกัด GPS
     st.markdown("""
     <div class="panel">
         <div class="panel-title">📍 แจ้งเบาะแสทิ้งขยะ / ปล่อยน้ำเสีย (ระบุพิกัด GPS) <span class="tag">GPS REPORT</span></div>
