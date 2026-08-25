@@ -27,67 +27,124 @@ st.markdown(
     """
     <style>
 
+    /* ========================================================
+       GLOBAL
+       ======================================================== */
+
     .stApp {
-        background-color: #f8fafc;
-        color: #172033;
+        background-color: #f8fafc !important;
+        color: #172033 !important;
     }
 
     [data-testid="stAppViewContainer"] {
-        background-color: #f8fafc;
+        background-color: #f8fafc !important;
     }
 
     .main {
-        background-color: #f8fafc;
+        background-color: #f8fafc !important;
     }
+
+
+    /* ========================================================
+       HEADER
+       ======================================================== */
 
     [data-testid="stHeader"] {
-        background-color: #ffffff;
+        background-color: #ffffff !important;
     }
 
+
+    /* ========================================================
+       SIDEBAR
+       ======================================================== */
+
     [data-testid="stSidebar"] {
-        background-color: #ffffff;
-        border-right: 1px solid #e2e8f0;
+        background-color: #ffffff !important;
+        border-right: 1px solid #e2e8f0 !important;
     }
 
     [data-testid="stSidebar"] * {
         color: #172033 !important;
     }
 
-    h1, h2, h3, h4, h5, h6 {
+
+    /* ========================================================
+       HEADINGS
+       ======================================================== */
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
         color: #172033 !important;
+        font-weight: 700 !important;
     }
 
-    p, span, label {
-        color: #334155;
+
+    /* ========================================================
+       TEXT
+       ======================================================== */
+
+    .stMarkdown,
+    .stText,
+    p,
+    label {
+        color: #334155 !important;
     }
 
-    [data-testid="stCaptionContainer"] {
+
+    /* ========================================================
+       CAPTION
+       ======================================================== */
+
+    [data-testid="stCaptionContainer"],
+    [data-testid="stCaptionContainer"] * {
         color: #64748b !important;
     }
+
+
+    /* ========================================================
+       METRIC CARDS
+       ======================================================== */
 
     [data-testid="stMetric"] {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 18px;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 16px !important;
+        padding: 18px !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
     }
 
-    [data-testid="stMetricLabel"] {
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricLabel"] * {
         color: #64748b !important;
-        font-weight: 600;
+        font-weight: 600 !important;
     }
 
-    [data-testid="stMetricValue"] {
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricValue"] * {
         color: #172033 !important;
-        font-weight: 700;
+        font-weight: 700 !important;
     }
+
+    [data-testid="stMetricDelta"],
+    [data-testid="stMetricDelta"] * {
+        color: #475569 !important;
+    }
+
+
+    /* ========================================================
+       INPUT
+       ======================================================== */
 
     input,
     textarea {
         background-color: #ffffff !important;
         color: #172033 !important;
         border: 1px solid #cbd5e1 !important;
+        border-radius: 10px !important;
     }
 
     input::placeholder,
@@ -95,51 +152,142 @@ st.markdown(
         color: #94a3b8 !important;
     }
 
+
+    /* ========================================================
+       SELECTBOX
+       ======================================================== */
+
     [data-baseweb="select"] {
         background-color: #ffffff !important;
+    }
+
+    [data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        border-color: #cbd5e1 !important;
     }
 
     [data-baseweb="select"] * {
         color: #172033 !important;
     }
 
+
+    /* ========================================================
+       BUTTON
+       ======================================================== */
+
     .stButton > button {
-        background-color: #ffffff;
+        background-color: #ffffff !important;
         color: #172033 !important;
-        border: 1px solid #cbd5e1;
-        border-radius: 10px;
-        font-weight: 600;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        min-height: 42px;
     }
 
     .stButton > button:hover {
-        background-color: #f1f5f9;
-        border-color: #94a3b8;
+        background-color: #f0f9ff !important;
+        color: #0369a1 !important;
+        border-color: #7dd3fc !important;
     }
+
+
+    /* ========================================================
+       TABS
+       ======================================================== */
 
     button[data-baseweb="tab"] {
         color: #64748b !important;
-        font-weight: 600;
+        font-weight: 600 !important;
     }
 
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #0284c7 !important;
     }
 
+
+    /* ========================================================
+       EXPANDER
+       ======================================================== */
+
     [data-testid="stExpander"] {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 14px !important;
     }
+
+
+    /* ========================================================
+       FILE UPLOADER
+       ======================================================== */
 
     [data-testid="stFileUploader"] {
-        background-color: #ffffff;
-        border: 1px dashed #cbd5e1;
-        border-radius: 12px;
-        padding: 8px;
+        background-color: #ffffff !important;
+        border: 1px dashed #cbd5e1 !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
     }
 
+
+    /* ========================================================
+       ALERT
+       ======================================================== */
+
+    [data-testid="stAlert"] {
+        border-radius: 12px !important;
+    }
+
+
+    /* ========================================================
+       DATAFRAME
+       ======================================================== */
+
+    [data-testid="stDataFrame"] {
+        background-color: #ffffff !important;
+        border-radius: 12px !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+
+
+    /* ========================================================
+       MAP
+       ======================================================== */
+
+    [data-testid="stDeckGlJsonChart"] {
+        border-radius: 16px !important;
+        overflow: hidden !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+
+
+    /* ========================================================
+       DIVIDER
+       ======================================================== */
+
     hr {
-        border-color: #e2e8f0;
+        border-color: #e2e8f0 !important;
+    }
+
+
+    /* ========================================================
+       SCROLLBAR
+       ======================================================== */
+
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f8fafc;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
     }
 
     </style>
@@ -176,31 +324,7 @@ SENSOR_OFFLINE_TIMEOUT = 30
 
 
 # ============================================================
-# LINE
-# ============================================================
-
-LINE_ACCESS_TOKEN = (
-    "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLyLGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
-)
-
-TARGET_USER_ID = (
-    "Ue3bb509d1606296f491836151927b063"
-)
-
-
-# ============================================================
-# GOOGLE APPS SCRIPT
-# ============================================================
-
-GOOGLE_APPS_SCRIPT_URL = (
-    "https://script.google.com/macros/s/"
-    "AKfycbyn2ty8P73SvsRu-YQJSwIKFUpN3TDGpkRqHJt3y9VqroBSGjz6rGte4lHdjQAP-WQheg/"
-    "exec"
-)
-
-
-# ============================================================
-# FIREBASE TOKEN
+# FIREBASE AUTH
 # ============================================================
 
 @st.cache_data(ttl=3000)
@@ -260,192 +384,13 @@ def read_sensor_data(id_token):
         )
 
         if response.status_code == 200:
+
             return response.json()
 
     except Exception as e:
 
         print(
             "Firebase Read Error:",
-            e
-        )
-
-    return None
-
-
-# ============================================================
-# WRITE TEST DATA
-# ============================================================
-
-def write_mock_sensor_data(
-    id_token,
-    tds_value,
-    turbidity_value,
-    do_value
-):
-
-    if not id_token:
-        return False
-
-    url = (
-        f"{FIREBASE_DB_URL}"
-        f"{FIREBASE_SENSOR_PATH}.json"
-        f"?auth={id_token}"
-    )
-
-    payload = {
-
-        "tds": float(tds_value),
-
-        "turbidity": float(
-            turbidity_value
-        ),
-
-        "do": float(do_value),
-
-        "updatedAt": int(
-            time.time()
-        )
-
-    }
-
-    try:
-
-        response = requests.patch(
-            url,
-            json=payload,
-            timeout=5
-        )
-
-        return response.status_code == 200
-
-    except Exception as e:
-
-        print(
-            "Firebase Write Error:",
-            e
-        )
-
-        return False
-
-
-# ============================================================
-# LINE
-# ============================================================
-
-def send_line_notification(message):
-
-    url = (
-        "https://api.line.me/v2/bot/message/push"
-    )
-
-    headers = {
-
-        "Authorization":
-            f"Bearer {LINE_ACCESS_TOKEN}",
-
-        "Content-Type":
-            "application/json"
-
-    }
-
-    payload = {
-
-        "to":
-            TARGET_USER_ID,
-
-        "messages": [
-
-            {
-                "type": "text",
-                "text": message
-            }
-
-        ]
-
-    }
-
-    try:
-
-        response = requests.post(
-            url,
-            headers=headers,
-            data=json.dumps(payload),
-            timeout=10
-        )
-
-        return response.status_code == 200
-
-    except Exception as e:
-
-        print(
-            "LINE Error:",
-            e
-        )
-
-        return False
-
-
-# ============================================================
-# GOOGLE DRIVE
-# ============================================================
-
-def upload_image_to_drive(
-    uploaded_file
-):
-
-    if not uploaded_file:
-        return None
-
-    try:
-
-        import base64
-
-        bytes_data = (
-            uploaded_file.getvalue()
-        )
-
-        base64_data = (
-            base64
-            .b64encode(bytes_data)
-            .decode("utf-8")
-        )
-
-        payload = {
-
-            "filename":
-                uploaded_file.name,
-
-            "mimeType":
-                uploaded_file.type,
-
-            "base64Data":
-                base64_data
-
-        }
-
-        response = requests.post(
-            GOOGLE_APPS_SCRIPT_URL,
-            json=payload,
-            timeout=30
-        )
-
-        if response.status_code == 200:
-
-            result = response.json()
-
-            if (
-                result.get("status")
-                == "success"
-            ):
-
-                return result.get(
-                    "url"
-                )
-
-    except Exception as e:
-
-        print(
-            "Google Drive Error:",
             e
         )
 
@@ -484,23 +429,16 @@ def calculate_water_quality(
 
     if reasons:
 
-        return (
-            False,
-            "ควรเฝ้าระวัง",
-            reasons
-        )
+        return False, reasons
 
-    return (
-        True,
-        "ปกติ",
-        []
-    )
+    return True, []
 
 
 # ============================================================
 # MAP
 # ============================================================
 
+# แสดงเพียง 1 จุด
 BANG_PAKONG_SENSOR = pd.DataFrame(
     [
         {
@@ -532,24 +470,13 @@ def add_history(
         "%H:%M:%S"
     )
 
-    point = {
-
-        "เวลา": now,
-
-        "TDS": float(tds),
-
-        "Turbidity": float(
-            turbidity
-        ),
-
-        "DO": float(
-            do_value
-        )
-
-    }
-
     st.session_state.water_history.append(
-        point
+        {
+            "เวลา": now,
+            "TDS": float(tds),
+            "Turbidity": float(turbidity),
+            "DO": float(do_value)
+        }
     )
 
     st.session_state.water_history = (
@@ -558,7 +485,7 @@ def add_history(
 
 
 # ============================================================
-# FIREBASE
+# GET DATA
 # ============================================================
 
 id_token = get_firebase_token()
@@ -569,16 +496,12 @@ live_data = read_sensor_data(
 
 
 # ============================================================
-# DEFAULT
+# DEFAULT SENSOR VALUES
 # ============================================================
 
-test_tds = 250.0
-test_turbidity = 15.0
-test_do = 6.5
-
-tds = test_tds
-turbidity = test_turbidity
-do_value = test_do
+tds = 0.0
+turbidity = 0.0
+do_value = 0.0
 
 sensor_connected = False
 last_update = None
@@ -586,7 +509,7 @@ seconds_since_update = None
 
 
 # ============================================================
-# PROCESS DATA
+# PROCESS FIREBASE DATA
 # ============================================================
 
 if isinstance(
@@ -613,6 +536,10 @@ if isinstance(
             do_value = float(
                 live_data["do"]
             )
+
+        # ----------------------------------------------------
+        # UPDATED AT
+        # ----------------------------------------------------
 
         if "updatedAt" in live_data:
 
@@ -641,41 +568,42 @@ if isinstance(
             )
 
             sensor_connected = (
-                0 <= seconds_since_update
+                0
+                <= seconds_since_update
                 <= SENSOR_OFFLINE_TIMEOUT
             )
 
     except Exception as e:
 
         print(
-            "Sensor Error:",
+            "Sensor Processing Error:",
             e
         )
 
 
 # ============================================================
-# HISTORY
+# ADD HISTORY
 # ============================================================
 
-add_history(
-    tds,
-    turbidity,
-    do_value
-)
+if live_data:
+
+    add_history(
+        tds,
+        turbidity,
+        do_value
+    )
 
 
 # ============================================================
-# QUALITY
+# WATER QUALITY
 # ============================================================
 
-(
-    water_safe,
-    water_status,
-    risk_reasons
-) = calculate_water_quality(
-    tds,
-    do_value,
-    turbidity
+water_safe, risk_reasons = (
+    calculate_water_quality(
+        tds,
+        do_value,
+        turbidity
+    )
 )
 
 
@@ -709,6 +637,24 @@ with st.sidebar:
 
     st.divider()
 
+    st.subheader(
+        "📡 สถานะระบบ"
+    )
+
+    if sensor_connected:
+
+        st.success(
+            "🟢 SENSOR ONLINE"
+        )
+
+    else:
+
+        st.error(
+            "🔴 SENSOR OFFLINE"
+        )
+
+    st.divider()
+
     st.info(
         "🕒 เวลาไทย\n\n"
         + datetime.now(
@@ -717,60 +663,6 @@ with st.sidebar:
             "%d/%m/%Y %H:%M:%S"
         )
     )
-
-    st.divider()
-
-    st.subheader(
-        "🧪 ทดสอบเซนเซอร์"
-    )
-
-    test_tds = st.number_input(
-        "TDS (ppm)",
-        min_value=0.0,
-        max_value=2000.0,
-        value=250.0,
-        step=1.0
-    )
-
-    test_turbidity = st.number_input(
-        "Turbidity (NTU)",
-        min_value=0.0,
-        max_value=2000.0,
-        value=15.0,
-        step=1.0
-    )
-
-    test_do = st.number_input(
-        "DO (mg/L)",
-        min_value=0.0,
-        max_value=14.0,
-        value=6.5,
-        step=0.1
-    )
-
-    if st.button(
-        "📤 ส่งค่าทดสอบ",
-        use_container_width=True
-    ):
-
-        if write_mock_sensor_data(
-            id_token,
-            test_tds,
-            test_turbidity,
-            test_do
-        ):
-
-            st.success(
-                "✅ ส่งข้อมูลสำเร็จ"
-            )
-
-            st.rerun()
-
-        else:
-
-            st.error(
-                "❌ ส่งข้อมูลไม่สำเร็จ"
-            )
 
 
 # ============================================================
@@ -804,6 +696,11 @@ with tab_dashboard:
         "📍 จุดตรวจวัด : แม่น้ำบางปะกง"
     )
 
+
+    # ========================================================
+    # SENSOR STATUS
+    # ========================================================
+
     if sensor_connected:
 
         age = int(
@@ -825,13 +722,16 @@ with tab_dashboard:
             "ไม่มีข้อมูลใหม่เกิน 30 วินาที"
         )
 
+
     if last_update:
 
         st.caption(
             f"อัปเดตล่าสุด : {last_update}"
         )
 
+
     st.divider()
+
 
     # ========================================================
     # SENSOR VALUES
@@ -843,12 +743,14 @@ with tab_dashboard:
 
     col1, col2, col3 = st.columns(3)
 
+
     with col1:
 
         st.metric(
             "🧂 TDS",
             f"{tds:.1f} ppm"
         )
+
 
     with col2:
 
@@ -857,6 +759,7 @@ with tab_dashboard:
             f"{turbidity:.1f} NTU"
         )
 
+
     with col3:
 
         st.metric(
@@ -864,10 +767,12 @@ with tab_dashboard:
             f"{do_value:.2f} mg/L"
         )
 
+
     st.divider()
 
+
     # ========================================================
-    # OTHER
+    # OTHER VALUES
     # ========================================================
 
     st.subheader(
@@ -875,6 +780,7 @@ with tab_dashboard:
     )
 
     col1, col2 = st.columns(2)
+
 
     with col1:
 
@@ -884,8 +790,9 @@ with tab_dashboard:
         )
 
         st.caption(
-            "ยังไม่มีข้อมูล pH"
+            "ยังไม่มีข้อมูล pH จาก ESP32"
         )
+
 
     with col2:
 
@@ -895,10 +802,12 @@ with tab_dashboard:
         )
 
         st.caption(
-            "ยังไม่มีข้อมูลอุณหภูมิ"
+            "ยังไม่มีข้อมูล Temperature จาก ESP32"
         )
 
+
     st.divider()
+
 
     # ========================================================
     # QUALITY
@@ -907,6 +816,7 @@ with tab_dashboard:
     st.subheader(
         "🤖 ผลประเมินคุณภาพน้ำ"
     )
+
 
     if water_safe:
 
@@ -926,7 +836,9 @@ with tab_dashboard:
                 f"• {reason}"
             )
 
+
     st.divider()
+
 
     # ========================================================
     # MAP
@@ -948,7 +860,9 @@ with tab_dashboard:
         zoom=10
     )
 
+
     st.divider()
+
 
     # ========================================================
     # GRAPH
@@ -958,11 +872,11 @@ with tab_dashboard:
         "📈 กราฟคุณภาพน้ำ"
     )
 
-    chart_df = pd.DataFrame(
-        st.session_state.water_history
-    )
+    if st.session_state.water_history:
 
-    if not chart_df.empty:
+        chart_df = pd.DataFrame(
+            st.session_state.water_history
+        )
 
         chart_df = chart_df.set_index(
             "เวลา"
@@ -990,7 +904,9 @@ with tab_dashboard:
             "กำลังรอข้อมูลสำหรับกราฟ"
         )
 
+
     st.divider()
+
 
     # ========================================================
     # FIREBASE DEBUG
@@ -1001,7 +917,7 @@ with tab_dashboard:
     ):
 
         st.write(
-            "Database"
+            "Firebase Database"
         )
 
         st.code(
@@ -1009,7 +925,7 @@ with tab_dashboard:
         )
 
         st.write(
-            "Path"
+            "Firebase Path"
         )
 
         st.code(
@@ -1017,7 +933,7 @@ with tab_dashboard:
         )
 
         st.write(
-            "ข้อมูลที่ได้รับ"
+            "ข้อมูลจาก Firebase"
         )
 
         if live_data:
@@ -1029,8 +945,12 @@ with tab_dashboard:
         else:
 
             st.warning(
-                "ไม่มีข้อมูล"
+                "ยังไม่มีข้อมูล"
             )
+
+
+    st.divider()
+
 
     if st.button(
         "🔄 รีเฟรชข้อมูล",
@@ -1041,7 +961,7 @@ with tab_dashboard:
 
 
 # ============================================================
-# ADVICE
+# WATER ADVICE
 # ============================================================
 
 with tab_advice:
@@ -1057,8 +977,8 @@ with tab_advice:
         )
 
         st.write(
-            "สามารถใช้ข้อมูลเพื่อประกอบ "
-            "การเฝ้าระวังและจัดการแหล่งน้ำได้"
+            "ข้อมูลคุณภาพน้ำอยู่ในช่วงที่ระบบ "
+            "กำหนดให้เป็นปกติ"
         )
 
     else:
@@ -1068,14 +988,22 @@ with tab_advice:
         )
 
         st.write(
-            "ควรตรวจสอบแหล่งกำเนิดมลพิษ "
-            "และตรวจวัดซ้ำ"
+            "พบค่าบางรายการสูงหรือต่ำกว่า "
+            "เกณฑ์ที่ระบบกำหนด"
         )
+
+        for reason in risk_reasons:
+
+            st.write(
+                f"• {reason}"
+            )
+
 
     st.divider()
 
+
     st.subheader(
-        "📋 เกณฑ์เบื้องต้น"
+        "📋 เกณฑ์เบื้องต้นของระบบ"
     )
 
     criteria = pd.DataFrame(
@@ -1112,17 +1040,7 @@ with tab_report:
 
     st.info(
         "หากพบแหล่งน้ำผิดปกติ "
-        "สามารถส่งภาพและรายละเอียดได้"
-    )
-
-    uploaded_file = st.file_uploader(
-        "📷 อัปโหลดรูปภาพ",
-        type=[
-            "jpg",
-            "jpeg",
-            "png",
-            "webp"
-        ]
+        "สามารถกรอกรายละเอียดเพื่อแจ้งข้อมูลได้"
     )
 
     report_detail = st.text_area(
@@ -1135,13 +1053,6 @@ with tab_report:
         height=150
     )
 
-    if uploaded_file:
-
-        st.image(
-            uploaded_file,
-            caption="รูปภาพที่เลือก",
-            use_container_width=True
-        )
 
     if st.button(
         "📤 ส่งข้อมูลแจ้งเบาะแส",
@@ -1156,20 +1067,6 @@ with tab_report:
 
         else:
 
-            image_url = None
-
-            if uploaded_file:
-
-                with st.spinner(
-                    "กำลังอัปโหลดรูปภาพ..."
-                ):
-
-                    image_url = (
-                        upload_image_to_drive(
-                            uploaded_file
-                        )
-                    )
-
             message = (
                 "📍 แจ้งเบาะแสแหล่งน้ำ\n\n"
                 "รายละเอียด:\n"
@@ -1178,26 +1075,13 @@ with tab_report:
                 f"{datetime.now(TH_TZ).strftime('%d/%m/%Y %H:%M:%S')}"
             )
 
-            if image_url:
+            st.success(
+                "✅ เตรียมข้อมูลแจ้งเบาะแสแล้ว"
+            )
 
-                message += (
-                    "\n\nรูปภาพ:\n"
-                    f"{image_url}"
-                )
-
-            if send_line_notification(
+            st.code(
                 message
-            ):
-
-                st.success(
-                    "✅ ส่งข้อมูลสำเร็จ"
-                )
-
-            else:
-
-                st.error(
-                    "❌ ไม่สามารถส่งข้อมูลได้"
-                )
+            )
 
 
 # ============================================================
