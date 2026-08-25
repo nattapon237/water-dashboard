@@ -242,7 +242,7 @@ with tab1:
     
     line_color = "#34d399" if water_score == 100 else "#f87171"
     
-    # กราฟ Altair แบบโค้งมนและมี Tooltip สวยงาม
+    # กราฟ Altair แบบโค้งมนและมี Tooltip (ปรับแก้ให้รองรับ Altair เวอร์ชันใหม่)
     base_line = alt.Chart(chart_df).mark_line(
         interpolate='monotone',
         strokeWidth=3
@@ -266,8 +266,6 @@ with tab1:
         height=200
     ).interactive().configure_view(
         stroke=None
-    ).configure_background(
-        color='transparent'
     )
     
     st.altair_chart(chart, use_container_width=True)
