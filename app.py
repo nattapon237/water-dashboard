@@ -28,6 +28,8 @@ PH_MIN = 6.5
 PH_MAX = 8.5
 TDS_MAX = 1000.0
 ORP_MIN = 200.0
+TURBIDITY_MAX = 100.0
+DO_MIN = 4.0
 
 # พิกัดจุดติดตั้ง Sensor ตามที่กำหนด
 STATION_LAT = 13.689108
@@ -41,14 +43,12 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 # ----------------------------------------------------
 st.markdown("""
 <style>
-    /* ตั้งค่าฟอนต์หลักและพื้นหลังแบบสว่าง */
     .stApp {
         background-color: #f8fafc;
         color: #1e293b;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     
-    /* Sidebar สว่างสะอาดตา */
     section[data-testid="stSidebar"] {
         background-color: #ffffff;
         border-right: 1px solid #e2e8f0;
@@ -57,7 +57,6 @@ st.markdown("""
         color: #334155;
     }
 
-    /* หัวข้อและข้อความ */
     .hdr-eyebrow {
         font-size: 0.75rem;
         font-weight: 700;
@@ -78,7 +77,6 @@ st.markdown("""
         margin-bottom: 12px;
     }
 
-    /* Status Pill / Badge */
     .status-pill {
         display: inline-flex;
         align-items: center;
@@ -98,7 +96,6 @@ st.markdown("""
         background-color: var(--pill-color, #0f172a);
     }
 
-    /* Gauge Card / การ์ดแสดงผลเซนเซอร์ */
     .gauge-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -163,7 +160,6 @@ st.markdown("""
         color: #94a3b8;
     }
 
-    /* Panel สำหรับกล่องข้อความ / ผลประเมิน */
     .panel {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -191,7 +187,6 @@ st.markdown("""
         text-transform: uppercase;
     }
 
-    /* เส้นคั่น */
     .divider {
         border: none;
         height: 1px;
@@ -199,28 +194,19 @@ st.markdown("""
         margin: 16px 0;
     }
 
-    /* ตัวแปรสีสถานะสำหรับ Light Theme */
     :root {
-        --safe: #10b981;    /* สีเขียว ปกติ */
-        --warning: #f59e0b; /* สีเหลือง เฝ้าระวัง */
-        --danger: #ef4444;  /* สีแดง ผิดปกติ */
+        --safe: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
     }
 </style>
 """, unsafe_allow_html=True)
-
-# โหลด CSS ภายนอก (ถ้ามี)
-try:
-    with open("style.css", "r", encoding="utf-8") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-except FileNotFoundError:
-    pass
 
 # ==========================================
 # 1. FIREBASE AUTH & DATA FETCHING
 # ==========================================
 @st.cache_data(ttl=3000)
 def get_firebase_token():
-    """ขอ Firebase Auth ID Token สำหรับเข้าถึง Realtime Database"""
     auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_WEB_API_KEY}"
     try:
         res = requests.post(auth_url, json={"returnSecureToken": True}, timeout=5)
@@ -232,7 +218,6 @@ def get_firebase_token():
 
 @st.cache_data(ttl=15)
 def read_sensor_data(id_token):
-    """อ่านค่าสถานะปัจจุบันของ Sensor จาก /devices/uno-r4/status"""
     if not id_token:
         return None
     url = f"{FIREBASE_DB_URL}/devices/uno-r4/status.json?auth={id_token}"
@@ -246,7 +231,6 @@ def read_sensor_data(id_token):
 
 @st.cache_data(ttl=15)
 def read_history_data(id_token):
-    """อ่านค่าประวัติ Sensor จาก /devices/uno-r4/history"""
     if not id_token:
         return None
     url = f"{FIREBASE_DB_URL}/devices/uno-r4/history.json?auth={id_token}"
@@ -259,8 +243,6 @@ def read_history_data(id_token):
         return None
 
 id_token = get_firebase_token()
-
-# ดึงข้อมูลจาก Firebase
 live_data = read_sensor_data(id_token)
 history_raw = read_history_data(id_token)
 
@@ -268,15 +250,15 @@ history_raw = read_history_data(id_token)
 # 2. PARSE SENSOR & ONLINE STATUS
 # ==========================================
 db_connected = id_token is not None
-ph, tds, orp, updated_at = None, None, None, None
+ph, tds, turbidity, do_val, updated_at = None, None, None, None, None
 
 if live_data and isinstance(live_data, dict):
-    ph = live_data.get("ph")
-    tds = live_data.get("tds")
-    orp = live_data.get("orp")
-    updated_at = live_data.get("updatedAt")
+    ph = live_data.get("ph") if live_data.get("ph") is not None else live_data.get("pH")
+    tds = live_data.get("tds") if live_data.get("tds") is not None else live_data.get("TDS")
+    turbidity = live_data.get("turbidity") if live_data.get("turbidity") is not None else live_data.get("Turbidity")
+    do_val = live_data.get("do") if live_data.get("do") is not None else live_data.get("DO")
+    updated_at = live_data.get("updatedAt") or live_data.get("timestamp")
 
-# ตรวจสอบสถานะ Online/Offline (หากไม่มีข้อมูล หรือข้อมูลเก่าเกิน 300 วินาที/5 นาที)
 is_online = False
 if updated_at is not None:
     try:
@@ -290,27 +272,23 @@ if updated_at is not None:
 # ==========================================
 # 4. RULE-BASED WATER QUALITY EVALUATION
 # ==========================================
-def calculate_water_quality(ph, tds, orp):
-    """ฟังก์ชันประเมินคุณภาพน้ำแบบ Rule-based ตามเกณฑ์ที่กำหนด"""
-    if ph is None or tds is None or orp is None:
+def calculate_water_quality(tds, turbidity, do_val):
+    if tds is None or turbidity is None:
         return 0, "รอข้อมูล", "var(--warning)", ["ยังไม่มีข้อมูลจาก Sensor"], "กรุณารอข้อมูลอัปเดตจากอุปกรณ์"
 
     reasons = []
     status_score = 100
 
-    # ตรวจสอบค่า pH
-    if not (PH_MIN <= ph <= PH_MAX):
-        reasons.append(f"ค่า pH ({ph}) อยู่นอกเกณฑ์ ({PH_MIN}-{PH_MAX})")
-        status_score -= 40
-
-    # ตรวจสอบค่า TDS
     if tds > TDS_MAX:
         reasons.append(f"ค่า TDS ({tds} ppm) สูงเกินเกณฑ์ (<{TDS_MAX})")
+        status_score -= 40
+
+    if turbidity > TURBIDITY_MAX:
+        reasons.append(f"ความขุ่น ({turbidity} NTU) สูงเกินเกณฑ์ (<{TURBIDITY_MAX})")
         status_score -= 35
 
-    # ตรวจสอบค่า ORP
-    if orp < ORP_MIN:
-        reasons.append(f"ค่า ORP ({orp} mV) ต่ำกว่าเกณฑ์ (>{ORP_MIN})")
+    if do_val is not None and do_val < DO_MIN:
+        reasons.append(f"ค่า DO ({do_val} mg/L) ต่ำกว่าเกณฑ์ (>{DO_MIN})")
         status_score -= 25
 
     if status_score == 100:
@@ -320,28 +298,25 @@ def calculate_water_quality(ph, tds, orp):
     else:
         return max(0, status_score), "ผิดปกติ", "var(--danger)", reasons, "❌ ตรวจพบความผิดปกติของค่าพารามิเตอร์น้ำ ห้ามใช้น้ำชั่วคราว"
 
-water_score, status_label, status_color, risk_reasons, action_advice = calculate_water_quality(ph, tds, orp)
+water_score, status_label, status_color, risk_reasons, action_advice = calculate_water_quality(tds, turbidity, do_val)
 
 def get_parameter_status(val, param_type):
     if val is None:
         return "รอข้อมูล", "var(--warning)"
-    if param_type == "ph":
-        if PH_MIN <= val <= PH_MAX:
-            return "ปกติ", "var(--safe)"
+    if param_type == "tds":
+        if val <= TDS_MAX: return "ปกติ", "var(--safe)"
         return "ผิดปกติ", "var(--danger)"
-    elif param_type == "tds":
-        if val <= TDS_MAX:
-            return "ปกติ", "var(--safe)"
+    elif param_type == "turbidity":
+        if val <= TURBIDITY_MAX: return "ปกติ", "var(--safe)"
         return "ผิดปกติ", "var(--danger)"
-    elif param_type == "orp":
-        if val >= ORP_MIN:
-            return "ปกติ", "var(--safe)"
+    elif param_type == "do":
+        if val >= DO_MIN: return "ปกติ", "var(--safe)"
         return "เฝ้าระวัง", "var(--warning)"
     return "ปกติ", "var(--safe)"
 
-ph_status, _ = get_parameter_status(ph, "ph")
 tds_status, _ = get_parameter_status(tds, "tds")
-orp_status, _ = get_parameter_status(orp, "orp")
+turb_status, _ = get_parameter_status(turbidity, "turbidity")
+do_status, _ = get_parameter_status(do_val, "do")
 
 # ==========================================
 # 18. SIDEBAR CONFIGURATION
@@ -364,7 +339,6 @@ now_th = datetime.now(TH_TZ)
 st.sidebar.markdown(f"🕒 เวลาไทย: **{now_th.strftime('%d/%m/%Y %H:%M:%S')}**")
 
 st.sidebar.markdown("---")
-# ปุ่มรีเฟรชข้อมูล (15. Auto Refresh & Manual Refresh)
 if st.sidebar.button("🔄 รีเฟรชข้อมูล", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
@@ -389,7 +363,7 @@ def gradient_from_zones(zones, vmin, vmax):
         stops.append(f"var({color}) {p1:.1f}%, var({color}) {p2:.1f}%")
     return "linear-gradient(90deg, " + ", ".join(stops) + ")"
 
-def render_gauge_card(icon, label, value, unit, vmin, vmax, zones, fmt="{:.2f}"):
+def render_gauge_card(icon, label, value, unit, vmin, vmax, zones, fmt="{:.1f}"):
     if value is None:
         val_str = "--"
         color = "#94a3b8"
@@ -436,7 +410,6 @@ with tab1:
     st.markdown('<div class="hdr-eyebrow">SMART WATER QUALITY MONITORING SYSTEM</div>', unsafe_allow_html=True)
     st.markdown('<div class="hdr-title">💧 ระบบตรวจวัดคุณภาพแหล่งน้ำอัจฉริยะ</div>', unsafe_allow_html=True)
     
-    # แสดงเวลาอัปเดตล่าสุดจาก Firebase updatedAt
     updated_str = "รอข้อมูล"
     if updated_at:
         try:
@@ -446,9 +419,8 @@ with tab1:
         except:
             updated_str = str(updated_at)
             
-    st.markdown(f'<div class="hdr-sub">ระบบตรวจวัดและติดตามคุณภาพน้ำด้วย pH, TDS และ ORP Sensor | อัปเดตล่าสุด: {updated_str}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="hdr-sub">ระบบตรวจวัดและติดตามคุณภาพน้ำ | อัปเดตล่าสุด: {updated_str}</div>', unsafe_allow_html=True)
     
-    # แสดงสถานะ Sensor Online / Offline แถบบน
     status_badge_text = "🟢 SENSOR ONLINE" if is_online else "🔴 SENSOR OFFLINE"
     status_badge_color = "var(--safe)" if is_online else "var(--danger)"
     if not live_data:
@@ -462,21 +434,20 @@ with tab1:
     st.markdown(pill_html, unsafe_allow_html=True)
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-    # 3 CARDS สำหรับแสดงค่าปัจจุบัน (pH, TDS, ORP)
+    # CARDS แสดงผลเซนเซอร์จาก ESP32 (TDS, Turbidity, DO/ORP)
     c1, c2, c3 = st.columns(3, gap="medium")
     with c1:
-        render_gauge_card("⚗️", "PH SENSOR", ph, "pH", 0, 14, 
-            [(0, PH_MIN, "--danger"), (PH_MIN, PH_MAX, "--safe"), (PH_MAX, 14, "--danger")], fmt="{:.2f}")
-    with c2:
         render_gauge_card("🧂", "TDS SENSOR", tds, "ppm", 0, 1200, 
             [(0, TDS_MAX, "--safe"), (TDS_MAX, 1200, "--danger")], fmt="{:.1f}")
+    with c2:
+        render_gauge_card("🌫️", "TURBIDITY", turbidity, "NTU", 0, 300, 
+            [(0, TURBIDITY_MAX, "--safe"), (TURBIDITY_MAX, 300, "--danger")], fmt="{:.1f}")
     with c3:
-        render_gauge_card("🔬", "ORP SENSOR", orp, "mV", -500, 1000, 
-            [(-500, ORP_MIN, "--warning"), (ORP_MIN, 1000, "--safe")], fmt="{:.1f}")
+        render_gauge_card("🫧", "DO / MAPPED ORP", do_val, "mg/L", 0, 14, 
+            [(0, DO_MIN, "--danger"), (DO_MIN, 14, "--safe")], fmt="{:.1f}")
 
     st.write("")
 
-    # WATER QUALITY STATUS & EVALUATION PANEL
     reasons_list_html = ""
     if risk_reasons:
         reasons_list_html = "<div style='margin-top: 8px; font-size: 0.85rem; color: #ef4444;'>"
@@ -508,9 +479,9 @@ with tab1:
     """, unsafe_allow_html=True)
     
     table_data = [
-        {"Sensor": "pH", "ค่า": f"{ph:.2f}" if ph is not None else "--", "หน่วย": "pH", "สถานะ": ph_status},
         {"Sensor": "TDS", "ค่า": f"{tds:.1f}" if tds is not None else "--", "หน่วย": "ppm", "สถานะ": tds_status},
-        {"Sensor": "ORP", "ค่า": f"{orp:.1f}" if orp is not None else "--", "หน่วย": "mV", "สถานะ": orp_status},
+        {"Sensor": "Turbidity", "ค่า": f"{turbidity:.1f}" if turbidity is not None else "--", "หน่วย": "NTU", "สถานะ": turb_status},
+        {"Sensor": "DO (Mapped ORP)", "ค่า": f"{do_val:.1f}" if do_val is not None else "--", "หน่วย": "mg/L", "สถานะ": do_status},
     ]
     st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True)
 
@@ -537,9 +508,9 @@ with tab1:
                 
                 hist_list.append({
                     "time": dt_val,
-                    "ph": float(v.get("ph")) if v.get("ph") is not None else np.nan,
-                    "tds": float(v.get("tds")) if v.get("tds") is not None else np.nan,
-                    "orp": float(v.get("orp")) if v.get("orp") is not None else np.nan,
+                    "tds": float(v.get("tds") or v.get("TDS", np.nan)),
+                    "turbidity": float(v.get("turbidity") or v.get("Turbidity", np.nan)),
+                    "do": float(v.get("do") or v.get("DO", np.nan)),
                 })
         if hist_list:
             df_history = pd.DataFrame(hist_list)
@@ -548,30 +519,22 @@ with tab1:
     if not df_history.empty:
         g_col1, g_col2 = st.columns(2, gap="medium")
         with g_col1:
-            st.markdown("##### 📈 ค่า pH ย้อนหลัง")
-            chart_ph = alt.Chart(df_history).mark_line(point=True, color="#0284c7").encode(
-                x=alt.X('time:T', title='เวลา'),
-                y=alt.Y('ph:Q', title='pH', scale=alt.Scale(domain=[0, 14])),
-                tooltip=['time:T', 'ph:Q']
-            ).properties(height=250).interactive()
-            st.altair_chart(chart_ph, use_container_width=True)
-
-            st.markdown("##### 📈 ค่า ORP ย้อนหลัง")
-            chart_orp = alt.Chart(df_history).mark_line(point=True, color="#9333ea").encode(
-                x=alt.X('time:T', title='เวลา'),
-                y=alt.Y('orp:Q', title='ORP (mV)'),
-                tooltip=['time:T', 'orp:Q']
-            ).properties(height=250).interactive()
-            st.altair_chart(chart_orp, use_container_width=True)
-
-        with g_col2:
             st.markdown("##### 📈 ค่า TDS ย้อนหลัง")
             chart_tds = alt.Chart(df_history).mark_line(point=True, color="#10b981").encode(
                 x=alt.X('time:T', title='เวลา'),
                 y=alt.Y('tds:Q', title='TDS (ppm)'),
                 tooltip=['time:T', 'tds:Q']
-            ).properties(height=250).interactive()
+            ).properties(height=230).interactive()
             st.altair_chart(chart_tds, use_container_width=True)
+
+        with g_col2:
+            st.markdown("##### 📈 ค่าความขุ่น (Turbidity) ย้อนหลัง")
+            chart_turb = alt.Chart(df_history).mark_line(point=True, color="#f59e0b").encode(
+                x=alt.X('time:T', title='เวลา'),
+                y=alt.Y('turbidity:Q', title='Turbidity (NTU)'),
+                tooltip=['time:T', 'turbidity:Q']
+            ).properties(height=230).interactive()
+            st.altair_chart(chart_turb, use_container_width=True)
     else:
         st.info("ℹ️ ยังไม่มีข้อมูลประวัติเพียงพอสำหรับสร้างกราฟ (กำลังรอข้อมูลจาก /devices/uno-r4/history/)")
 
@@ -604,7 +567,7 @@ with tab1:
             }}).addTo(map);
 
             var marker = L.marker([{STATION_LAT}, {STATION_LON}]).addTo(map);
-            marker.bindPopup("<b>📍 Sensor Station 01</b><br>จุดตรวจวัดคุณภาพน้ำ 01<br>pH: {ph if ph is not None else '--'}<br>TDS: {tds if tds is not None else '--'} ppm<br>ORP: {orp if orp is not None else '--'} mV<br>สถานะ: {'Online' if is_online else 'Offline'}<br>พิกัด: {STATION_LAT}, {STATION_LON}").openPopup();
+            marker.bindPopup("<b>📍 Sensor Station 01</b><br>จุดตรวจวัดคุณภาพน้ำ 01<br>TDS: {tds if tds is not None else '--'} ppm<br>Turbidity: {turbidity if turbidity is not None else '--'} NTU<br>DO: {do_val if do_val is not None else '--'} mg/L<br>สถานะ: {'Online' if is_online else 'Offline'}<br>พิกัด: {STATION_LAT}, {STATION_LON}").openPopup();
         </script>
     </body>
     </html>
@@ -617,7 +580,7 @@ with tab1:
 with tab2:
     st.markdown('<div class="hdr-eyebrow">EEC · HISTORICAL DATA</div>', unsafe_allow_html=True)
     st.markdown('<div class="hdr-title">📈 ประวัติข้อมูลคุณภาพน้ำย้อนหลัง</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hdr-sub">บันทึกข้อมูลย้อนหลังทั้งหมดที่จัดเก็บบบน Firebase Realtime Database</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-sub">บันทึกข้อมูลย้อนหลังทั้งหมดที่จัดเก็บบน Firebase Realtime Database</div>', unsafe_allow_html=True)
     
     st.write("")
     
@@ -625,7 +588,7 @@ with tab2:
         st.markdown("#### 📋 ตารางประวัติข้อมูล Sensor")
         display_df = df_history.copy()
         display_df['time'] = display_df['time'].dt.strftime('%d/%m/%Y %H:%M:%S')
-        display_df.columns = ['เวลา', 'pH', 'TDS (ppm)', 'ORP (mV)']
+        display_df.columns = ['เวลา', 'TDS (ppm)', 'Turbidity (NTU)', 'DO (mg/L)']
         st.dataframe(display_df, use_container_width=True, hide_index=True)
     else:
         st.warning("⚠️ ยังไม่มีข้อมูลประวัติจาก Sensor บน Firebase (/devices/uno-r4/history)")
@@ -648,9 +611,9 @@ with tab3:
             <p><b>ประเภทสถานี:</b> Water Quality Monitoring Station</p>
             <p><b>เซนเซอร์ที่ติดตั้ง:</b></p>
             <ul>
-                <li>⚗️ pH Sensor (ตรวจวัดความเป็นกรด-ด่าง)</li>
                 <li>🧂 TDS Sensor (ตรวจวัดปริมาณของแข็งละลายน้ำ)</li>
-                <li>🔬 ORP Sensor (ตรวจวัดศักยภาพการรีดเดอกซ์)</li>
+                <li>🌫️ Turbidity Sensor (ตรวจวัดความขุ่นของน้ำ)</li>
+                <li>🫧 DO / ORP Sensor (ตรวจวัดออกซิเจนละลาย / ศักยภาพการรีดเดอกซ์)</li>
             </ul>
             <p><b>สถานะปัจจุบัน:</b> <span style="color:{}">{}</span></p>
             <p><b>พิกัด (Decimal):</b><br>Latitude: <code>{}</code><br>Longitude: <code>{}</code></p>
