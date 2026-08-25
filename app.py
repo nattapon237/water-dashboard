@@ -1,10 +1,9 @@
 import streamlit as st
 import requests
-import json
+import pandas as pd
 import time
 from datetime import datetime
 import pytz
-import pandas as pd
 
 
 # ============================================================
@@ -27,10 +26,6 @@ st.markdown(
     """
     <style>
 
-    /* ========================================================
-       GLOBAL
-       ======================================================== */
-
     .stApp {
         background-color: #f8fafc !important;
         color: #172033 !important;
@@ -44,19 +39,9 @@ st.markdown(
         background-color: #f8fafc !important;
     }
 
-
-    /* ========================================================
-       HEADER
-       ======================================================== */
-
     [data-testid="stHeader"] {
         background-color: #ffffff !important;
     }
-
-
-    /* ========================================================
-       SIDEBAR
-       ======================================================== */
 
     [data-testid="stSidebar"] {
         background-color: #ffffff !important;
@@ -66,11 +51,6 @@ st.markdown(
     [data-testid="stSidebar"] * {
         color: #172033 !important;
     }
-
-
-    /* ========================================================
-       HEADINGS
-       ======================================================== */
 
     h1,
     h2,
@@ -82,32 +62,16 @@ st.markdown(
         font-weight: 700 !important;
     }
 
-
-    /* ========================================================
-       TEXT
-       ======================================================== */
-
-    .stMarkdown,
-    .stText,
     p,
-    label {
+    label,
+    .stMarkdown {
         color: #334155 !important;
     }
-
-
-    /* ========================================================
-       CAPTION
-       ======================================================== */
 
     [data-testid="stCaptionContainer"],
     [data-testid="stCaptionContainer"] * {
         color: #64748b !important;
     }
-
-
-    /* ========================================================
-       METRIC CARDS
-       ======================================================== */
 
     [data-testid="stMetric"] {
         background-color: #ffffff !important;
@@ -129,16 +93,6 @@ st.markdown(
         font-weight: 700 !important;
     }
 
-    [data-testid="stMetricDelta"],
-    [data-testid="stMetricDelta"] * {
-        color: #475569 !important;
-    }
-
-
-    /* ========================================================
-       INPUT
-       ======================================================== */
-
     input,
     textarea {
         background-color: #ffffff !important;
@@ -151,11 +105,6 @@ st.markdown(
     textarea::placeholder {
         color: #94a3b8 !important;
     }
-
-
-    /* ========================================================
-       SELECTBOX
-       ======================================================== */
 
     [data-baseweb="select"] {
         background-color: #ffffff !important;
@@ -170,18 +119,12 @@ st.markdown(
         color: #172033 !important;
     }
 
-
-    /* ========================================================
-       BUTTON
-       ======================================================== */
-
     .stButton > button {
         background-color: #ffffff !important;
         color: #172033 !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 10px !important;
         font-weight: 600 !important;
-        min-height: 42px;
     }
 
     .stButton > button:hover {
@@ -189,11 +132,6 @@ st.markdown(
         color: #0369a1 !important;
         border-color: #7dd3fc !important;
     }
-
-
-    /* ========================================================
-       TABS
-       ======================================================== */
 
     button[data-baseweb="tab"] {
         color: #64748b !important;
@@ -204,42 +142,11 @@ st.markdown(
         color: #0284c7 !important;
     }
 
-
-    /* ========================================================
-       EXPANDER
-       ======================================================== */
-
     [data-testid="stExpander"] {
         background-color: #ffffff !important;
         border: 1px solid #e2e8f0 !important;
         border-radius: 14px !important;
     }
-
-
-    /* ========================================================
-       FILE UPLOADER
-       ======================================================== */
-
-    [data-testid="stFileUploader"] {
-        background-color: #ffffff !important;
-        border: 1px dashed #cbd5e1 !important;
-        border-radius: 12px !important;
-        padding: 10px !important;
-    }
-
-
-    /* ========================================================
-       ALERT
-       ======================================================== */
-
-    [data-testid="stAlert"] {
-        border-radius: 12px !important;
-    }
-
-
-    /* ========================================================
-       DATAFRAME
-       ======================================================== */
 
     [data-testid="stDataFrame"] {
         background-color: #ffffff !important;
@@ -247,47 +154,24 @@ st.markdown(
         border: 1px solid #e2e8f0 !important;
     }
 
-
-    /* ========================================================
-       MAP
-       ======================================================== */
-
     [data-testid="stDeckGlJsonChart"] {
         border-radius: 16px !important;
         overflow: hidden !important;
         border: 1px solid #e2e8f0 !important;
     }
 
+    [data-testid="stFileUploader"] {
+        background-color: #ffffff !important;
+        border: 1px dashed #cbd5e1 !important;
+        border-radius: 12px !important;
+    }
 
-    /* ========================================================
-       DIVIDER
-       ======================================================== */
+    [data-testid="stAlert"] {
+        border-radius: 12px !important;
+    }
 
     hr {
         border-color: #e2e8f0 !important;
-    }
-
-
-    /* ========================================================
-       SCROLLBAR
-       ======================================================== */
-
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-        background: #f8fafc;
-    }
-
-    ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
     }
 
     </style>
@@ -319,8 +203,6 @@ FIREBASE_DB_URL = (
 FIREBASE_SENSOR_PATH = (
     "/devices/uno-r4/status"
 )
-
-SENSOR_OFFLINE_TIMEOUT = 30
 
 
 # ============================================================
@@ -398,13 +280,52 @@ def read_sensor_data(id_token):
 
 
 # ============================================================
+# SENSOR STATUS
+#
+# ถ้ามีค่า TDS / Turbidity / DO อย่างน้อย 1 ค่า
+# ให้ถือว่า SENSOR ONLINE
+# ============================================================
+
+def check_sensor_online(data):
+
+    if not isinstance(data, dict):
+        return False
+
+    sensor_keys = [
+        "tds",
+        "turbidity",
+        "do"
+    ]
+
+    for key in sensor_keys:
+
+        if key in data:
+
+            value = data[key]
+
+            if value is not None:
+
+                try:
+
+                    float(value)
+
+                    return True
+
+                except (ValueError, TypeError):
+
+                    pass
+
+    return False
+
+
+# ============================================================
 # WATER QUALITY
 # ============================================================
 
 def calculate_water_quality(
     tds,
-    do_value,
-    turbidity
+    turbidity,
+    do_value
 ):
 
     reasons = []
@@ -415,30 +336,30 @@ def calculate_water_quality(
             f"TDS {tds:.1f} ppm สูง"
         )
 
-    if do_value < 4:
-
-        reasons.append(
-            f"DO {do_value:.2f} mg/L ต่ำ"
-        )
-
     if turbidity > 100:
 
         reasons.append(
             f"ความขุ่น {turbidity:.1f} NTU สูง"
         )
 
-    if reasons:
+    if do_value < 4:
 
-        return False, reasons
+        reasons.append(
+            f"DO {do_value:.2f} mg/L ต่ำ"
+        )
 
-    return True, []
+    if len(reasons) == 0:
+
+        return True, []
+
+    return False, reasons
 
 
 # ============================================================
 # MAP
+# แสดงเพียง 1 จุดบริเวณแม่น้ำบางปะกง
 # ============================================================
 
-# แสดงเพียง 1 จุด
 BANG_PAKONG_SENSOR = pd.DataFrame(
     [
         {
@@ -485,7 +406,7 @@ def add_history(
 
 
 # ============================================================
-# GET DATA
+# FIREBASE
 # ============================================================
 
 id_token = get_firebase_token()
@@ -496,20 +417,25 @@ live_data = read_sensor_data(
 
 
 # ============================================================
-# DEFAULT SENSOR VALUES
+# DEFAULT VALUES
 # ============================================================
 
 tds = 0.0
 turbidity = 0.0
 do_value = 0.0
 
-sensor_connected = False
-last_update = None
-seconds_since_update = None
+
+# ============================================================
+# SENSOR ONLINE
+# ============================================================
+
+sensor_connected = check_sensor_online(
+    live_data
+)
 
 
 # ============================================================
-# PROCESS FIREBASE DATA
+# READ SENSOR VALUES
 # ============================================================
 
 if isinstance(
@@ -519,73 +445,37 @@ if isinstance(
 
     try:
 
-        if "tds" in live_data:
+        if live_data.get("tds") is not None:
 
             tds = float(
                 live_data["tds"]
             )
 
-        if "turbidity" in live_data:
+        if live_data.get("turbidity") is not None:
 
             turbidity = float(
                 live_data["turbidity"]
             )
 
-        if "do" in live_data:
+        if live_data.get("do") is not None:
 
             do_value = float(
                 live_data["do"]
             )
 
-        # ----------------------------------------------------
-        # UPDATED AT
-        # ----------------------------------------------------
-
-        if "updatedAt" in live_data:
-
-            timestamp = float(
-                live_data["updatedAt"]
-            )
-
-            if timestamp > 100000000000:
-
-                timestamp /= 1000
-
-            seconds_since_update = (
-                time.time()
-                - timestamp
-            )
-
-            last_update = (
-                datetime
-                .fromtimestamp(
-                    timestamp,
-                    TH_TZ
-                )
-                .strftime(
-                    "%d/%m/%Y %H:%M:%S"
-                )
-            )
-
-            sensor_connected = (
-                0
-                <= seconds_since_update
-                <= SENSOR_OFFLINE_TIMEOUT
-            )
-
     except Exception as e:
 
         print(
-            "Sensor Processing Error:",
+            "Sensor Data Error:",
             e
         )
 
 
 # ============================================================
-# ADD HISTORY
+# HISTORY
 # ============================================================
 
-if live_data:
+if sensor_connected:
 
     add_history(
         tds,
@@ -601,8 +491,8 @@ if live_data:
 water_safe, risk_reasons = (
     calculate_water_quality(
         tds,
-        do_value,
-        turbidity
+        turbidity,
+        do_value
     )
 )
 
@@ -638,7 +528,7 @@ with st.sidebar:
     st.divider()
 
     st.subheader(
-        "📡 สถานะระบบ"
+        "📡 สถานะเซนเซอร์"
     )
 
     if sensor_connected:
@@ -647,10 +537,18 @@ with st.sidebar:
             "🟢 SENSOR ONLINE"
         )
 
+        st.caption(
+            "ตรวจพบข้อมูลจาก Firebase"
+        )
+
     else:
 
         st.error(
             "🔴 SENSOR OFFLINE"
+        )
+
+        st.caption(
+            "ไม่พบข้อมูลเซนเซอร์"
         )
 
     st.divider()
@@ -696,6 +594,8 @@ with tab_dashboard:
         "📍 จุดตรวจวัด : แม่น้ำบางปะกง"
     )
 
+    st.divider()
+
 
     # ========================================================
     # SENSOR STATUS
@@ -703,30 +603,16 @@ with tab_dashboard:
 
     if sensor_connected:
 
-        age = int(
-            max(
-                0,
-                seconds_since_update
-            )
-        )
-
         st.success(
-            f"🟢 SENSOR ONLINE · "
-            f"ข้อมูลล่าสุด {age} วินาทีที่แล้ว"
+            "🟢 SENSOR ONLINE · "
+            "รับข้อมูลจากเซนเซอร์แล้ว"
         )
 
     else:
 
         st.error(
             "🔴 SENSOR OFFLINE · "
-            "ไม่มีข้อมูลใหม่เกิน 30 วินาที"
-        )
-
-
-    if last_update:
-
-        st.caption(
-            f"อัปเดตล่าสุด : {last_update}"
+            "ยังไม่มีข้อมูลจากเซนเซอร์"
         )
 
 
@@ -772,44 +658,6 @@ with tab_dashboard:
 
 
     # ========================================================
-    # OTHER VALUES
-    # ========================================================
-
-    st.subheader(
-        "📋 ข้อมูลเพิ่มเติม"
-    )
-
-    col1, col2 = st.columns(2)
-
-
-    with col1:
-
-        st.metric(
-            "⚗️ pH",
-            "--"
-        )
-
-        st.caption(
-            "ยังไม่มีข้อมูล pH จาก ESP32"
-        )
-
-
-    with col2:
-
-        st.metric(
-            "🌡️ Temperature",
-            "--"
-        )
-
-        st.caption(
-            "ยังไม่มีข้อมูล Temperature จาก ESP32"
-        )
-
-
-    st.divider()
-
-
-    # ========================================================
     # QUALITY
     # ========================================================
 
@@ -817,8 +665,13 @@ with tab_dashboard:
         "🤖 ผลประเมินคุณภาพน้ำ"
     )
 
+    if not sensor_connected:
 
-    if water_safe:
+        st.info(
+            "⏳ กำลังรอข้อมูลจากเซนเซอร์..."
+        )
+
+    elif water_safe:
 
         st.success(
             "✅ คุณภาพน้ำอยู่ในเกณฑ์ปกติ"
@@ -849,7 +702,7 @@ with tab_dashboard:
     )
 
     st.caption(
-        "แสดงเพียง 1 จุดตรวจวัด"
+        "แสดงตำแหน่งจุดตรวจวัดเพียง 1 จุด"
     )
 
     st.map(
@@ -872,7 +725,9 @@ with tab_dashboard:
         "📈 กราฟคุณภาพน้ำ"
     )
 
-    if st.session_state.water_history:
+    if len(
+        st.session_state.water_history
+    ) > 0:
 
         chart_df = pd.DataFrame(
             st.session_state.water_history
@@ -901,7 +756,7 @@ with tab_dashboard:
     else:
 
         st.info(
-            "กำลังรอข้อมูลสำหรับกราฟ"
+            "⏳ กำลังรอข้อมูลสำหรับสร้างกราฟ"
         )
 
 
@@ -933,7 +788,7 @@ with tab_dashboard:
         )
 
         st.write(
-            "ข้อมูลจาก Firebase"
+            "ข้อมูลที่ได้รับ"
         )
 
         if live_data:
@@ -945,12 +800,16 @@ with tab_dashboard:
         else:
 
             st.warning(
-                "ยังไม่มีข้อมูล"
+                "ไม่พบข้อมูลจาก Firebase"
             )
 
 
     st.divider()
 
+
+    # ========================================================
+    # REFRESH
+    # ========================================================
 
     if st.button(
         "🔄 รีเฟรชข้อมูล",
@@ -961,35 +820,36 @@ with tab_dashboard:
 
 
 # ============================================================
-# WATER ADVICE
+# ADVICE
 # ============================================================
 
 with tab_advice:
 
     st.title(
-        "💧 คำแนะนำการใช้น้ำ"
+        "💧 คำแนะนำการเฝ้าระวังคุณภาพน้ำ"
     )
 
-    if water_safe:
+    if not sensor_connected:
+
+        st.info(
+            "⏳ ยังไม่มีข้อมูลจากเซนเซอร์"
+        )
+
+    elif water_safe:
 
         st.success(
-            "✅ คุณภาพน้ำอยู่ในเกณฑ์ปกติ"
+            "✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ"
         )
 
         st.write(
-            "ข้อมูลคุณภาพน้ำอยู่ในช่วงที่ระบบ "
-            "กำหนดให้เป็นปกติ"
+            "สามารถติดตามข้อมูลอย่างต่อเนื่อง "
+            "เพื่อเฝ้าระวังการเปลี่ยนแปลงของแหล่งน้ำ"
         )
 
     else:
 
         st.warning(
             "⚠️ ควรเฝ้าระวังคุณภาพน้ำ"
-        )
-
-        st.write(
-            "พบค่าบางรายการสูงหรือต่ำกว่า "
-            "เกณฑ์ที่ระบบกำหนด"
         )
 
         for reason in risk_reasons:
@@ -1003,7 +863,7 @@ with tab_advice:
 
 
     st.subheader(
-        "📋 เกณฑ์เบื้องต้นของระบบ"
+        "📋 เกณฑ์เบื้องต้น"
     )
 
     criteria = pd.DataFrame(
@@ -1013,7 +873,7 @@ with tab_advice:
                 "DO",
                 "Turbidity"
             ],
-            "เกณฑ์": [
+            "เกณฑ์ระบบ": [
                 "< 1,000 ppm",
                 "> 4.0 mg/L",
                 "< 100 NTU"
@@ -1040,19 +900,18 @@ with tab_report:
 
     st.info(
         "หากพบแหล่งน้ำผิดปกติ "
-        "สามารถกรอกรายละเอียดเพื่อแจ้งข้อมูลได้"
+        "สามารถแจ้งรายละเอียดได้"
     )
 
     report_detail = st.text_area(
         "รายละเอียด",
         placeholder=(
-            "เช่น พบคราบน้ำมัน "
-            "น้ำมีสีผิดปกติ มีกลิ่น "
+            "เช่น น้ำมีสีผิดปกติ "
+            "มีกลิ่น พบคราบน้ำมัน "
             "หรือพบการปล่อยน้ำเสีย"
         ),
         height=150
     )
-
 
     if st.button(
         "📤 ส่งข้อมูลแจ้งเบาะแส",
@@ -1067,20 +926,12 @@ with tab_report:
 
         else:
 
-            message = (
-                "📍 แจ้งเบาะแสแหล่งน้ำ\n\n"
-                "รายละเอียด:\n"
-                f"{report_detail}\n\n"
-                "เวลา: "
-                f"{datetime.now(TH_TZ).strftime('%d/%m/%Y %H:%M:%S')}"
-            )
-
             st.success(
-                "✅ เตรียมข้อมูลแจ้งเบาะแสแล้ว"
+                "✅ บันทึกข้อมูลแจ้งเบาะแสแล้ว"
             )
 
-            st.code(
-                message
+            st.write(
+                report_detail
             )
 
 
