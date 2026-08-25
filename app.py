@@ -31,8 +31,7 @@ def send_line_notification(message, image_url=None):
     headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}", "Content-Type": "application/json"}
     messages = []
     
-    # ⚠️ หมายเหตุ: LINE Messaging API แบบ Push/Reply กำหนดให้ image_url 
-    # ต้องเป็นลิงก์รูปภาพตรงๆ ที่เข้าถึงได้แบบสาธารณะผ่าน HTTPS (เช่น อัปโหลดขึ้น Imgur, Firebase Storage, หรือ Cloudinary)
+    # หากมี image_url ที่เป็น Public URL จริง จะถูกแนบส่งไปแสดงเป็นรูปภาพใน LINE
     if image_url:
         messages.append({
             "type": "image", 
@@ -43,10 +42,25 @@ def send_line_notification(message, image_url=None):
     messages.append({"type": "text", "text": message})
     payload = {"to": TARGET_USER_ID, "messages": messages}
     try:
-        res = requests.post(url, headers=headers, data=json.dumps(payload), timeout=5)
+        res = requests.post(url, headers=headers, data=json.dumps(payload), timeout=10)
         return res.status_code == 200
     except Exception:
         return False
+
+def upload_image_to_imgur(uploaded_file):
+    if uploaded_file is None:
+        return None
+    url = "https://api.imgur.com/3/image"
+    client_id = "5e98e578fa9ea7d"  # Client ID สาธารณะสำหรับทดสอบ
+    headers = {"Authorization": f"Client-ID {client_id}"}
+    try:
+        files = {"image": uploaded_file.getvalue()}
+        response = requests.post(url, headers=headers, files=files, timeout=15)
+        if response.status_code == 200:
+            return response.json()["data"]["link"]
+    except Exception:
+        pass
+    return None
 
 @st.cache_data(ttl=3000)
 def get_firebase_token():
@@ -188,7 +202,7 @@ tab1, tab2, tab3 = st.tabs(["📊 ภาพรวมน้ำ (Dashboard)", "�
 
 with tab1:
     st.markdown('<div class="hdr-eyebrow">EEC · AGRI-WATER INTELLIGENCE</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hdr-title">🌾 ระบบตรวจสอบคุณภาพน้ำ</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hdr-title">💧 ระบบตรวจสอบคุณภาพน้ำ</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="hdr-sub">เวลาไทย: {now_th.strftime("%d/%m/%Y %H:%M:%S")} (อัพเดตอัตโนมัติทุก 5 นาที)</div>', unsafe_allow_html=True)
     
     st.write("")
@@ -386,30 +400,34 @@ with tab3:
         st.image(uploaded_file, caption="ภาพหลักฐานที่เลือก", use_container_width=True)
 
     if st.button("🚀 ส่งพิกัด GPS และภาพแจ้ง LINE", use_container_width=True):
-        line_msg = (
-            f"🚨 แจ้งเบาะแส ({report_type})!\n"
-            f"📝 รายละเอียดพฤติกรรม: {detail_desc if detail_desc else 'ไม่ได้ระบุ'}\n"
-            f"🌐 พิกัด GPS: {lat}, {lon}\n"
-            f"🗺️ Google Maps: {gmap_url}\n"
-            f"⏰ เวลาแจ้ง: {now_th.strftime('%d/%m/%Y %H:%M:%S')} (ICT)\n"
-            f"⚠️ โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
-        )
-        
-        # 💡 หากต้องการให้ส่งรูปเข้า LINE จริงๆ จะต้องอัปโหลดไฟล์ไปเก็บบนคลาวด์ก่อน
-        # ตัวอย่างนี้หากมีการแนบไฟล์จริง ระบบจะแจ้งเตือน (กรณีใช้งานจริงแนะนำต่อ Cloud Storage)
-        sample_image_url = None # ปรับเป็นลิงก์รูปจริงบน Cloud หากมีบริการฝากไฟล์
-        
-        success = send_line_notification(line_msg, image_url=sample_image_url)
-        if success:
-            st.success("✅ ส่งพิกัดและข้อมูลเข้า LINE สำเร็จ!")
-            time.sleep(1.5)
-            # เคลียร์ค่าฟอร์มทั้งหมดโดยการล้าง Session State แล้วสั่ง rerun
-            for key in ["rep_desc", "rep_file"]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
-        else:
-            st.error("❌ ส่งไม่สำเร็จ กรุณาตรวจสอบ LINE Token หรือการตั้งค่า")
+        with st.spinner("กำลังอัปโหลดรูปภาพและส่งข้อมูลเข้า LINE..."):
+            
+            # อัปโหลดรูปภาพขึ้น Imgur เพื่อแปลงเป็น Public URL
+            image_public_url = upload_image_to_imgur(uploaded_file)
+            
+            line_msg = (
+                f"🚨 แจ้งเบาะแส ({report_type})!\n"
+                f"📝 รายละเอียดพฤติกรรม: {detail_desc if detail_desc else 'ไม่ได้ระบุ'}\n"
+                f"🌐 พิกัด GPS: {lat}, {lon}\n"
+                f"🗺️ Google Maps: {gmap_url}\n"
+                f"⏰ เวลาแจ้ง: {now_th.strftime('%d/%m/%Y %H:%M:%S')} (ICT)\n"
+                f"⚠️ โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
+            )
+            
+            success = send_line_notification(line_msg, image_url=image_public_url)
+            
+            if success:
+                st.success("✅ ส่งพิกัดและรูปภาพเข้า LINE สำเร็จ!")
+                time.sleep(1.5)
+                
+                # ล้างค่าใน Session State และเคลียร์ฟอร์มทั้งหมดเพื่อให้รีเซ็ตกลับเป็นค่าเริ่มต้น
+                for key in ["rep_desc", "rep_file"]:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.rerun()
+            else:
+                st.error("❌ ส่งไม่สำเร็จ กรุณาตรวจสอบ LINE Token หรือไฟล์รูปภาพ")
+                
     st.markdown("</div>", unsafe_allow_html=True)
 
 time.sleep(300)
