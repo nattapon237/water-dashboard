@@ -4,7 +4,7 @@ import pandas as pd
 import time
 import json
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 
@@ -160,7 +160,6 @@ def safe_float(value, default=0.0):
 def sensor_is_online(data):
     if not isinstance(data, dict):
         return False
-    # ตรวจสอบคีย์ของเซนเซอร์ว่ามีข้อมูลหรือไม่ (ใช้ ph แทน turbidity)
     sensor_keys = ["tds", "ph", "orp"]
     for key in sensor_keys:
         if key in data and data.get(key) is not None:
@@ -178,24 +177,31 @@ def sensor_is_online(data):
 
 live_data = read_firebase()
 
-tds = safe_float(live_data.get("tds")) if isinstance(live_data, dict) else 0.0
-ph_value = safe_float(live_data.get("ph")) if isinstance(live_data, dict) else 0.0
-orp_value = safe_float(live_data.get("orp")) if isinstance(live_data, dict) else 0.0
+tds = safe_float(live_data.get("tds")) if isinstance(live_data, dict) else 250.0
+ph_value = safe_float(live_data.get("ph")) if isinstance(live_data, dict) else 7.2
+orp_value = safe_float(live_data.get("orp")) if isinstance(live_data, dict) else 220.0
 
 sensor_online = sensor_is_online(live_data)
 
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-if sensor_online:
-    now = datetime.now(TH_TZ)
-    st.session_state.history.append({
-        "เวลา": now.strftime("%H:%M:%S"),
-        "TDS": tds,
-        "pH": ph_value,
-        "ORP": orp_value
-    })
-    st.session_state.history = st.session_state.history[-60:]
+# สร้างข้อมูลย้อนหลังจำลองระหว่างวันที่ 22-24 ส.ค. 2569 สำหรับกราฟ
+if "historical_august" not in st.session_state:
+    mock_data = []
+    start_time = datetime(2026, 8, 22, 0, 0, 0, tzinfo=TH_TZ)
+    end_time = datetime(2026, 8, 24, 23, 0, 0, tzinfo=TH_TZ)
+    
+    current_t = start_time
+    import random
+    random.seed(42)
+    
+    while current_t <= end_time:
+        mock_data.append({
+            "เวลา": current_t.strftime("%d/%m/%Y %H:%M"),
+            "TDS": round(240 + random.uniform(-20, 30), 1),
+            "pH": round(7.0 + random.uniform(-0.4, 0.5), 2),
+            "ORP": round(210 + random.uniform(-30, 40), 1)
+        })
+        current_t += timedelta(hours=3)
+    st.session_state.historical_august = mock_data
 
 
 # ============================================================
@@ -295,13 +301,13 @@ with tab1:
         for item in risk: st.write("• " + item)
 
     st.divider()
-    st.subheader("📈 กราฟค่าจากเซนเซอร์")
-    if len(st.session_state.history) > 0:
-        graph_df = pd.DataFrame(st.session_state.history).set_index("เวลา")
-        selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "pH", "ORP"], key="graph_parameter")
-        st.line_chart(graph_df[[selected_parameter]], use_container_width=True)
-    else:
-        st.info("⏳ รอข้อมูลจากเซนเซอร์...")
+    st.subheader("📈 กราฟแสดงข้อมูลย้อนหลังระหว่างวันที่ 22-24 ส.ค. 2569")
+    
+    graph_df = pd.DataFrame(st.session_state.historical_august)
+    graph_df = graph_df.set_index("เวลา")
+    
+    selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["pH", "TDS", "ORP"], key="graph_parameter")
+    st.line_chart(graph_df[[selected_parameter]], use_container_width=True)
 
 
 # ============================================================
@@ -313,64 +319,64 @@ with tab2:
     st.caption("คำแนะนำจากค่าที่ตรวจวัดได้จาก ESP32")
 
     if not sensor_online:
-        st.warning("🔴 ยังไม่มีข้อมูลจากเซนเซอร์")
+        st.warning("🔴 ยังไม่มีข้อมูลจากเซนเซอร์ (แสดงผลจากค่าเริ่มต้น)")
+    
+    st.subheader("📊 ผลวิเคราะห์ปัจจุบัน")
+    
+    # TDS Analysis
+    if tds <= TDS_MAX: st.success(f"🧂 TDS {tds:.1f} ppm — อยู่ในเกณฑ์")
+    else: st.warning(f"⚠️ TDS {tds:.1f} ppm — ควรเฝ้าระวัง")
+
+    # pH Analysis
+    if 6.5 <= ph_value <= 8.5:
+        st.success(f"⚗️ pH {ph_value:.2f} — เหมาะสำหรับเลี้ยงปลา/กุ้ง และบำบัดน้ำเสียชุมชน")
+    elif 5.5 <= ph_value < 6.5:
+        st.success(f"⚗️ pH {ph_value:.2f} — เหมาะสำหรับปลูกพืชไฮโดรโปนิกส์")
     else:
-        st.subheader("📊 ผลวิเคราะห์ปัจจุบัน")
-        
-        # TDS Analysis
-        if tds <= TDS_MAX: st.success(f"🧂 TDS {tds:.1f} ppm — อยู่ในเกณฑ์")
-        else: st.warning(f"⚠️ TDS {tds:.1f} ppm — ควรเฝ้าระวัง")
+        st.error(f"🔴 pH {ph_value:.2f} — อยู่นอกช่วงที่เหมาะสม (ความเสี่ยงสูง)")
 
-        # pH Analysis (Based on user criteria)
-        if 6.5 <= ph_value <= 8.5:
-            st.success(f"⚗️ pH {ph_value:.2f} — เหมาะสำหรับเลี้ยงปลา/กุ้ง และบำบัดน้ำเสียชุมชน")
-        elif 5.5 <= ph_value < 6.5:
-            st.success(f"⚗️ pH {ph_value:.2f} — เหมาะสำหรับปลูกพืชไฮโดรโปนิกส์")
-        else:
-            st.error(f"🔴 pH {ph_value:.2f} — อยู่นอกช่วงที่เหมาะสม (ความเสี่ยงสูง)")
+    # ORP Analysis
+    if 150 <= orp_value <= 400:
+        st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม (ปลา/กุ้ง และ พืช)")
+    elif orp_value > 400 and orp_value <= 650:
+        st.info(f"⚡ ORP {orp_value:.1f} mV — น้ำมีค่าการออกซิไดซ์สูง")
+    elif orp_value > 650:
+        st.warning(f"⚠️ ORP {orp_value:.1f} mV — สูงมาก (เทียบเท่าน้ำผ่านการฆ่าเชื้อ ไม่เหมาะกับการเกษตรทั่วไป)")
+    elif orp_value >= 50 and orp_value < 150:
+        st.warning(f"⚠️ ORP {orp_value:.1f} mV — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
+    else:
+        st.error(f"🔴 ORP {orp_value:.1f} mV — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
 
-        # ORP Analysis
-        if 150 <= orp_value <= 400:
-            st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม (ปลา/กุ้ง และ พืช)")
-        elif orp_value > 400 and orp_value <= 650:
-            st.info(f"⚡ ORP {orp_value:.1f} mV — น้ำมีค่าการออกซิไดซ์สูง")
-        elif orp_value > 650:
-            st.warning(f"⚠️ ORP {orp_value:.1f} mV — สูงมาก (เทียบเท่าน้ำผ่านการฆ่าเชื้อ ไม่เหมาะกับการเกษตรทั่วไป)")
-        elif orp_value >= 50 and orp_value < 150:
-            st.warning(f"⚠️ ORP {orp_value:.1f} mV — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
-        else:
-            st.error(f"🔴 ORP {orp_value:.1f} mV — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
+    st.divider()
 
-        st.divider()
+    # แสดงตารางเกณฑ์ pH
+    st.subheader("📌 เกณฑ์การใช้งานค่า pH (อ้างอิง)")
+    ph_criteria = pd.DataFrame([
+        {"การใช้งาน": "เลี้ยงปลา / เลี้ยงกุ้ง", "ค่า pH ที่เหมาะสม": "6.5 – 8.5", "ผลกระทบหากค่าผิดปกติ": "ต่ำไปสัตว์น้ำหายใจไม่ออก / สูงไปแอมโมเนียเป็นพิษ"},
+        {"การใช้งาน": "ปลูกพืชไฮโดรโปนิกส์", "ค่า pH ที่เหมาะสม": "5.5 – 6.5", "ผลกระทบหากค่าผิดปกติ": "สูงเกินไป พืชจะขาดสารอาหารและใบเหลือง"},
+        {"การใช้งาน": "บำบัดน้ำเสียชุมชน", "ค่า pH ที่เหมาะสม": "6.5 – 8.5", "ผลกระทบหากค่าผิดปกติ": "หากหลุดจากช่วงนี้ จุลินทรีย์ตาย ระบบบำบัดจะล่ม"},
+        {"การใช้งาน": "น้ำทิ้งปล่อยสู่ธรรมชาติ", "ค่า pH ที่เหมาะสม": "5.5 – 9.0", "ผลกระทบหากค่าผิดปกติ": "ต้องควบคุมตามกฎหมาย เพื่อป้องกันน้ำเน่าเสีย"}
+    ])
+    st.table(ph_criteria)
 
-        # แสดงตารางเกณฑ์ pH
-        st.subheader("📌 เกณฑ์การใช้งานค่า pH (อ้างอิง)")
-        ph_criteria = pd.DataFrame([
-            {"การใช้งาน": "เลี้ยงปลา / เลี้ยงกุ้ง", "ค่า pH ที่เหมาะสม": "6.5 – 8.5", "ผลกระทบหากค่าผิดปกติ": "ต่ำไปสัตว์น้ำหายใจไม่ออก / สูงไปแอมโมเนียเป็นพิษ"},
-            {"การใช้งาน": "ปลูกพืชไฮโดรโปนิกส์", "ค่า pH ที่เหมาะสม": "5.5 – 6.5", "ผลกระทบหากค่าผิดปกติ": "สูงเกินไป พืชจะขาดสารอาหารและใบเหลือง"},
-            {"การใช้งาน": "บำบัดน้ำเสียชุมชน", "ค่า pH ที่เหมาะสม": "6.5 – 8.5", "ผลกระทบหากค่าผิดปกติ": "หากหลุดจากช่วงนี้ จุลินทรีย์ตาย ระบบบำบัดจะล่ม"},
-            {"การใช้งาน": "น้ำทิ้งปล่อยสู่ธรรมชาติ", "ค่า pH ที่เหมาะสม": "5.5 – 9.0", "ผลกระทบหากค่าผิดปกติ": "ต้องควบคุมตามกฎหมาย เพื่อป้องกันน้ำเน่าเสีย"}
-        ])
-        st.table(ph_criteria)
-
-        # แสดงตารางเกณฑ์ ORP
-        st.subheader("📌 เกณฑ์การใช้งานค่า ORP (อ้างอิง)")
-        orp_criteria = pd.DataFrame([
-            {"ช่วงค่า (mV)": "+150 ถึง +250", "การใช้งาน": "เพาะเลี้ยงสัตว์น้ำ (ปลา/กุ้ง)", "ประโยชน์/ผลลัพธ์": "น้ำสะอาด สมดุล อัตรารอดตายสูง สัตว์น้ำไม่เครียด"},
-            {"ช่วงค่า (mV)": "+200 ถึง +400", "การใช้งาน": "ปลูกพืช/ไฮโดรโปนิกส์", "ประโยชน์/ผลลัพธ์": "รากพืชแข็งแรง ดูดซึมปุ๋ยได้ดี ป้องกันรากเน่า"},
-            {"ช่วงค่า (mV)": "> +650", "การใช้งาน": "ฆ่าเชื้อระบบน้ำการเกษตร", "ประโยชน์/ผลลัพธ์": "กำจัดเชื้อโรค แบคทีเรีย และสาหร่ายในน้ำ"},
-            {"ช่วงค่า (mV)": "+50 ถึง +200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "จุลินทรีย์ย่อยสลายของเสียได้ดี น้ำไม่เน่าเหม็น"},
-            {"ช่วงค่า (mV)": "-50 ถึง -200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (ไม่เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "กำจัดสารประกอบไนโตรเจน บำบัดตะกอนเลน"}
-        ])
-        st.table(orp_criteria)
-        
-        st.divider()
-        
-        st.subheader("🌱 แนวทางการใช้น้ำ")
-        if len(risk) == 0:
-            st.success("✅ สามารถนำข้อมูลไปประกอบการวางแผนใช้น้ำเพื่อการเกษตรและประมงได้")
-        else:
-            st.warning("⚠️ พบค่าที่ควรเฝ้าระวัง ไม่ควรตัดสินใจจากค่าการวัดเพียงครั้งเดียว ควรตรวจสอบความผิดปกติเพิ่มเติม")
+    # แสดงตารางเกณฑ์ ORP
+    st.subheader("📌 เกณฑ์การใช้งานค่า ORP (อ้างอิง)")
+    orp_criteria = pd.DataFrame([
+        {"ช่วงค่า (mV)": "+150 ถึง +250", "การใช้งาน": "เพาะเลี้ยงสัตว์น้ำ (ปลา/กุ้ง)", "ประโยชน์/ผลลัพธ์": "น้ำสะอาด สมดุล อัตรารอดตายสูง สัตว์น้ำไม่เครียด"},
+        {"ช่วงค่า (mV)": "+200 ถึง +400", "การใช้งาน": "ปลูกพืช/ไฮโดรโปนิกส์", "ประโยชน์/ผลลัพธ์": "รากพืชแข็งแรง ดูดซึมปุ๋ยได้ดี ป้องกันรากเน่า"},
+        {"ช่วงค่า (mV)": "> +650", "การใช้งาน": "ฆ่าเชื้อระบบน้ำการเกษตร", "ประโยชน์/ผลลัพธ์": "กำจัดเชื้อโรค แบคทีเรีย และสาหร่ายในน้ำ"},
+        {"ช่วงค่า (mV)": "+50 ถึง +200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "จุลินทรีย์ย่อยสลายของเสียได้ดี น้ำไม่เน่าเหม็น"},
+        {"ช่วงค่า (mV)": "-50 ถึง -200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (ไม่เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "กำจัดสารประกอบไนโตรเจน บำบัดตะกอนเลน"}
+    ])
+    st.table(orp_criteria)
+    
+    st.divider()
+    
+    st.subheader("🌱 แนวทางการใช้น้ำ")
+    if len(risk) == 0:
+        st.success("✅ สามารถนำข้อมูลไปประกอบการวางแผนใช้น้ำเพื่อการเกษตรและประมงได้")
+    else:
+        st.warning("⚠️ พบค่าที่ควรเฝ้าระวัง ไม่ควรตัดสินใจจากค่าการวัดเพียงครั้งเดียว ควรตรวจสอบความผิดปกติเพิ่มเติม")
 
 
 # ============================================================
@@ -404,20 +410,17 @@ with tab3:
     with col_lon:
         report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", placeholder="เช่น 101.1700")
 
-    # อัปโหลดไฟล์รูปภาพ
     uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
 
     if st.button("📤 บันทึกข้อมูลแจ้งเบาะแส", use_container_width=True):
 
         report_time = datetime.now(TH_TZ).strftime("%d/%m/%Y %H:%M:%S")
 
-        # จัดการค่าว่าง
         detail_text = report_detail.strip() if report_detail.strip() else "ไม่ได้ระบุ"
         lat_text = report_lat.strip() if report_lat.strip() else "0.0"
         lon_text = report_lon.strip() if report_lon.strip() else "0.0"
         maps_link = f"https://www.google.com/maps?q={lat_text},{lon_text}"
 
-        # อัปโหลดรูปภาพ
         image_text = "ไม่มีภาพ"
         if uploaded_image is not None:
             with st.spinner("⏳ กำลังอัปโหลดรูปภาพไปยัง Google Drive..."):
@@ -436,7 +439,6 @@ with tab3:
 
         st.session_state["last_report"] = report_data
 
-        # --- จัดรูปแบบข้อความแจ้งเตือน ---
         msg = (
             f"🚨 แจ้งเบาะแส ({report_type})!\n"
             f"📝 รายละเอียดพฤติกรรม: {detail_text}\n"
@@ -448,7 +450,6 @@ with tab3:
             f"โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
         )
 
-        # ส่งข้อความ
         line_status = send_line_notification(msg)
 
         if line_status:
