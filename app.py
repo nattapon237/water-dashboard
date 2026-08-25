@@ -3,7 +3,6 @@ import pandas as pd
 import requests
 import datetime
 import pytz
-import plotly.graph_objects as go
 import folium
 from streamlit_folium import st_folium
 
@@ -19,9 +18,7 @@ FIREBASE_URL = "https://your-firebase-database-url.firebaseio.com"
 # BASE64 IMAGE
 # ==========================================
 # นำ Base64 ที่แนบมาใส่ตัวแปร
-WATER_SENSOR_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAABagAAAQ+CAYAAAA6bNi7AAAQAElEQVR4AwV5A/V7v2z9e/u18c2/2P/Tz3s9X67X+c/n1+f99n+a/z87v/wL9sD2B0+3/6/v199z/6f/3/7c/b39wAAAABJRU5ErkJggg==" # (ย่อไว้เพื่อให้โค้ดดูง่าย กรุณานำ Base64 โค้ดเต็มจากต้นฉบับมาวางแทนที่บรรทัดนี้หากมันยาวเกินไป แต่จากข้อมูลที่คุณให้มา จะใช้โครงสร้างนี้)
-
-# จำลองการใช้ Base64 เต็ม (หากรหัสรูปภาพยาวมาก สามารถวางโค้ดแบบนี้ได้เลย)
+WATER_SENSOR_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAABagAAAQ+CAYAAAA6bNi7AAAQAElEQVR4AwV5A/V7v2z9e/u18c2/2P/Tz3s9X67X+c/n1+f99n+a/z87v/wL9sD2B0+3/6/v199z/6f/3/7c/b39wAAAABJRU5ErkJggg==" 
 WATER_SENSOR_IMAGE = "data:image/png;base64," + WATER_SENSOR_IMAGE_BASE64
 
 # ==========================================
@@ -262,29 +259,25 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 6. กราฟ pH / TDS / ORP
+    # 6. กราฟ pH / TDS / ORP (ใช้ st.line_chart แบบเดิมของ Streamlit)
     st.markdown("<h3 style='color: #0F172A;'>📈 กราฟแนวโน้มคุณภาพน้ำย้อนหลัง</h3>", unsafe_allow_html=True)
     if history_data:
         df = pd.DataFrame.from_dict(history_data, orient='index')
         df.index = pd.to_datetime(df.index)
         df = df.sort_index()
 
-        def create_gauge_graph(df, col, title, y_title, color):
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df.index, y=df[col], mode='lines+markers', line=dict(color=color, width=3)))
-            fig.update_layout(
-                title=dict(text=title, font=dict(color='#0F172A')),
-                paper_bgcolor='#FFFFFF',
-                plot_bgcolor='#FFFFFF',
-                xaxis=dict(gridcolor='#E2E8F0', tickfont=dict(color='#64748B')),
-                yaxis=dict(title=y_title, gridcolor='#E2E8F0', tickfont=dict(color='#64748B'), titlefont=dict(color='#64748B')),
-                margin=dict(l=40, r=40, t=60, b=40)
-            )
-            return fig
-
-        if 'pH' in df.columns: st.plotly_chart(create_gauge_graph(df, 'pH', '📈 ค่า pH ย้อนหลัง', 'pH', '#0284C7'), use_container_width=True)
-        if 'TDS' in df.columns: st.plotly_chart(create_gauge_graph(df, 'TDS', '📈 ค่า TDS ย้อนหลัง', 'ppm', '#0284C7'), use_container_width=True)
-        if 'ORP' in df.columns: st.plotly_chart(create_gauge_graph(df, 'ORP', '📈 ค่า ORP ย้อนหลัง', 'mV', '#0284C7'), use_container_width=True)
+        if 'pH' in df.columns:
+            st.markdown("<h4 style='color: #1E293B;'>📈 ค่า pH ย้อนหลัง</h4>", unsafe_allow_html=True)
+            st.line_chart(df[['pH']], color=["#0284C7"])
+            
+        if 'TDS' in df.columns:
+            st.markdown("<h4 style='color: #1E293B;'>📈 ค่า TDS ย้อนหลัง (ppm)</h4>", unsafe_allow_html=True)
+            st.line_chart(df[['TDS']], color=["#16A34A"])
+            
+        if 'ORP' in df.columns:
+            st.markdown("<h4 style='color: #1E293B;'>📈 ค่า ORP ย้อนหลัง (mV)</h4>", unsafe_allow_html=True)
+            st.line_chart(df[['ORP']], color=["#EAB308"])
+            
     else:
         st.markdown("""
         <div class="light-card">
@@ -299,7 +292,6 @@ with tab2:
         df_hist = pd.DataFrame.from_dict(history_data, orient='index')
         df_hist.index.name = "Timestamp"
         df_hist = df_hist.reset_index()
-        # ปรับแต่งตารางด้วย Pandas Styler แบบ Light Theme
         st.dataframe(df_hist, use_container_width=True, hide_index=True)
     else:
         st.info("รอข้อมูลจาก Sensor")
@@ -335,7 +327,6 @@ with tab3:
         icon=folium.Icon(color="blue", icon="info-sign")
     ).add_to(m)
     
-    # ห่อ Map ในกล่อง Card สีขาว
     st.markdown('<div class="light-card" style="padding: 10px;">', unsafe_allow_html=True)
     st_folium(m, height=400, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
