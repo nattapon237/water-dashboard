@@ -160,7 +160,7 @@ def safe_float(value, default=0.0):
 def sensor_is_online(data):
     if not isinstance(data, dict):
         return False
-    sensor_keys = ["tds", "ph", "do"]
+    sensor_keys = ["tds", "ph", "orp"]
     for key in sensor_keys:
         if key in data and data.get(key) is not None:
             try:
@@ -179,8 +179,8 @@ live_data = read_firebase()
 
 tds = safe_float(live_data.get("tds")) if isinstance(live_data, dict) else 250.0
 ph_value = safe_float(live_data.get("ph")) if isinstance(live_data, dict) else 7.2
-# ดึงค่าจาก node "do" บน Firebase ที่ ESP32 ส่งค่า ORP แปลงมาเก็บไว้
-orp_value = safe_float(live_data.get("do")) if isinstance(live_data, dict) else 220.0
+# ดึงค่า ORP เพียวๆ จาก node "orp" บน Firebase ตรงๆ
+orp_value = safe_float(live_data.get("orp")) if isinstance(live_data, dict) else 220.0
 
 sensor_online = sensor_is_online(live_data)
 
@@ -219,8 +219,8 @@ risk = []
 if sensor_online:
     if tds > TDS_MAX: risk.append(f"TDS สูง {tds:.1f} ppm")
     if ph_value < PH_MIN_NATURE or ph_value > PH_MAX_NATURE: risk.append(f"pH ผิดปกติ {ph_value:.2f}")
-    if orp_value < ORP_MIN: risk.append(f"ORP ต่ำเกินไป {orp_value:.1f}")
-    elif orp_value > ORP_MAX: risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f}")
+    if orp_value < ORP_MIN: risk.append(f"ORP ต่ำเกินไป {orp_value:.1f} mV")
+    elif orp_value > ORP_MAX: risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f} mV")
 
 water_normal = (sensor_online and len(risk) == 0)
 
@@ -289,7 +289,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     col1.metric("🧂 TDS", f"{tds:.1f} ppm")
     col2.metric("⚗️ pH", f"{ph_value:.2f}")
-    col3.metric("⚡ ORP", f"{orp_value:.1f}")
+    col3.metric("⚡ ORP", f"{orp_value:.1f} mV")
 
     st.divider()
     st.subheader("🤖 สถานะคุณภาพน้ำ")
@@ -338,15 +338,15 @@ with tab2:
 
     # ORP Analysis
     if 150 <= orp_value <= 400:
-        st.success(f"⚡ ORP {orp_value:.1f} — เหมาะสม (ปลา/กุ้ง และ พืช)")
+        st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม (ปลา/กุ้ง และ พืช)")
     elif orp_value > 400 and orp_value <= 650:
-        st.info(f"⚡ ORP {orp_value:.1f} — น้ำมีค่าการออกซิไดซ์สูง")
+        st.info(f"⚡ ORP {orp_value:.1f} mV — น้ำมีค่าการออกซิไดซ์สูง")
     elif orp_value > 650:
-        st.warning(f"⚠️ ORP {orp_value:.1f} — สูงมาก (เทียบเท่าน้ำผ่านการฆ่าเชื้อ ไม่เหมาะกับการเกษตรทั่วไป)")
+        st.warning(f"⚠️ ORP {orp_value:.1f} mV — สูงมาก (เทียบเท่าน้ำผ่านการฆ่าเชื้อ ไม่เหมาะกับการเกษตรทั่วไป)")
     elif orp_value >= 50 and orp_value < 150:
-        st.warning(f"⚠️ ORP {orp_value:.1f} — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
+        st.warning(f"⚠️ ORP {orp_value:.1f} mV — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
     else:
-        st.error(f"🔴 ORP {orp_value:.1f} — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
+        st.error(f"🔴 ORP {orp_value:.1f} mV — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
 
     st.divider()
 
@@ -364,7 +364,7 @@ with tab2:
     st.subheader("📌 เกณฑ์การใช้งานค่า ORP (อ้างอิง)")
     orp_criteria = pd.DataFrame([
         {"ช่วงค่า (mV)": "+150 ถึง +250", "การใช้งาน": "เพาะเลี้ยงสัตว์น้ำ (ปลา/กุ้ง)", "ประโยชน์/ผลลัพธ์": "น้ำสะอาด สมดุล อัตรารอดตายสูง สัตว์น้ำไม่เครียด"},
-        {"ช่วงค่า (mV)": "+200 ถึง +400", "การใช้งาน": "ปลูกพืช/ไฮโดรโปนิกส์", "ประโยชน์/ผลลัพธ์": "รากพืชแข็งแรง ดูดซึมปุ๋ยได้ดี ป้องกันรากเน่า"},
+        {"ช่วงค่า (mV)": "+200 ถึง +400", "การใช้งาน": "ปลูกพืชไฮโดรโปนิกส์", "ประโยชน์/ผลลัพธ์": "รากพืชแข็งแรง ดูดซึมปุ๋ยได้ดี ป้องกันรากเน่า"},
         {"ช่วงค่า (mV)": "> +650", "การใช้งาน": "ฆ่าเชื้อระบบน้ำการเกษตร", "ประโยชน์/ผลลัพธ์": "กำจัดเชื้อโรค แบคทีเรีย และสาหร่ายในน้ำ"},
         {"ช่วงค่า (mV)": "+50 ถึง +200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "จุลินทรีย์ย่อยสลายของเสียได้ดี น้ำไม่เน่าเหม็น"},
         {"ช่วงค่า (mV)": "-50 ถึง -200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (ไม่เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "กำจัดสารประกอบไนโตรเจน บำบัดตะกอนเลน"}
