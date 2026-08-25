@@ -160,8 +160,8 @@ def safe_float(value, default=0.0):
 def sensor_is_online(data):
     if not isinstance(data, dict):
         return False
-    # ตรวจสอบว่ามีข้อมูลจากเซนเซอร์หรือไม่ (ใช้ orp แทน do)
-    sensor_keys = ["tds", "turbidity", "orp"]
+    # ตรวจสอบคีย์ของเซนเซอร์ว่ามีข้อมูลหรือไม่ (ใช้ ph แทน turbidity)
+    sensor_keys = ["tds", "ph", "orp"]
     for key in sensor_keys:
         if key in data and data.get(key) is not None:
             try:
@@ -179,7 +179,7 @@ def sensor_is_online(data):
 live_data = read_firebase()
 
 tds = safe_float(live_data.get("tds")) if isinstance(live_data, dict) else 0.0
-turbidity = safe_float(live_data.get("turbidity")) if isinstance(live_data, dict) else 0.0
+ph_value = safe_float(live_data.get("ph")) if isinstance(live_data, dict) else 0.0
 orp_value = safe_float(live_data.get("orp")) if isinstance(live_data, dict) else 0.0
 
 sensor_online = sensor_is_online(live_data)
@@ -192,7 +192,7 @@ if sensor_online:
     st.session_state.history.append({
         "เวลา": now.strftime("%H:%M:%S"),
         "TDS": tds,
-        "Turbidity": turbidity,
+        "pH": ph_value,
         "ORP": orp_value
     })
     st.session_state.history = st.session_state.history[-60:]
@@ -203,15 +203,15 @@ if sensor_online:
 # ============================================================
 
 TDS_MAX = 1000.0
-TURBIDITY_MAX = 100.0
-# เกณฑ์ขั้นต่ำและสูงสุดสำหรับแม่น้ำ/เกษตรกรรม (อิงจากปลา/กุ้ง และ พืช)
+PH_MIN_NATURE = 5.5
+PH_MAX_NATURE = 9.0
 ORP_MIN = 150.0 
 ORP_MAX = 400.0 
 
 risk = []
 if sensor_online:
     if tds > TDS_MAX: risk.append(f"TDS สูง {tds:.1f} ppm")
-    if turbidity > TURBIDITY_MAX: risk.append(f"ความขุ่นสูง {turbidity:.1f} NTU")
+    if ph_value < PH_MIN_NATURE or ph_value > PH_MAX_NATURE: risk.append(f"pH ผิดปกติ {ph_value:.2f}")
     if orp_value < ORP_MIN: risk.append(f"ORP ต่ำเกินไป {orp_value:.1f} mV")
     elif orp_value > ORP_MAX: risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f} mV")
 
@@ -238,7 +238,7 @@ with st.sidebar:
     st.divider()
     st.subheader("📊 Parameters")
     st.write("🧂 TDS")
-    st.write("🌫️ Turbidity")
+    st.write("⚗️ pH")
     st.write("⚡ ORP")
 
     st.divider()
@@ -281,7 +281,7 @@ with tab1:
     
     col1, col2, col3 = st.columns(3)
     col1.metric("🧂 TDS", f"{tds:.1f} ppm")
-    col2.metric("🌫️ Turbidity", f"{turbidity:.1f} NTU")
+    col2.metric("⚗️ pH", f"{ph_value:.2f}")
     col3.metric("⚡ ORP", f"{orp_value:.1f} mV")
 
     st.divider()
@@ -298,7 +298,7 @@ with tab1:
     st.subheader("📈 กราฟค่าจากเซนเซอร์")
     if len(st.session_state.history) > 0:
         graph_df = pd.DataFrame(st.session_state.history).set_index("เวลา")
-        selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "Turbidity", "ORP"], key="graph_parameter")
+        selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "pH", "ORP"], key="graph_parameter")
         st.line_chart(graph_df[[selected_parameter]], use_container_width=True)
     else:
         st.info("⏳ รอข้อมูลจากเซนเซอร์...")
@@ -321,11 +321,15 @@ with tab2:
         if tds <= TDS_MAX: st.success(f"🧂 TDS {tds:.1f} ppm — อยู่ในเกณฑ์")
         else: st.warning(f"⚠️ TDS {tds:.1f} ppm — ควรเฝ้าระวัง")
 
-        # Turbidity Analysis
-        if turbidity <= TURBIDITY_MAX: st.success(f"🌫️ Turbidity {turbidity:.1f} NTU — อยู่ในเกณฑ์")
-        else: st.warning(f"⚠️ Turbidity {turbidity:.1f} NTU — ความขุ่นสูง")
+        # pH Analysis (Based on user criteria)
+        if 6.5 <= ph_value <= 8.5:
+            st.success(f"⚗️ pH {ph_value:.2f} — เหมาะสำหรับเลี้ยงปลา/กุ้ง และบำบัดน้ำเสียชุมชน")
+        elif 5.5 <= ph_value < 6.5:
+            st.success(f"⚗️ pH {ph_value:.2f} — เหมาะสำหรับปลูกพืชไฮโดรโปนิกส์")
+        else:
+            st.error(f"🔴 pH {ph_value:.2f} — อยู่นอกช่วงที่เหมาะสม (ความเสี่ยงสูง)")
 
-        # ORP Analysis (Based on user criteria)
+        # ORP Analysis
         if 150 <= orp_value <= 400:
             st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม (ปลา/กุ้ง และ พืช)")
         elif orp_value > 400 and orp_value <= 650:
@@ -339,8 +343,18 @@ with tab2:
 
         st.divider()
 
-        st.subheader("📌 เกณฑ์การใช้งานค่า ORP (อ้างอิง)")
+        # แสดงตารางเกณฑ์ pH
+        st.subheader("📌 เกณฑ์การใช้งานค่า pH (อ้างอิง)")
+        ph_criteria = pd.DataFrame([
+            {"การใช้งาน": "เลี้ยงปลา / เลี้ยงกุ้ง", "ค่า pH ที่เหมาะสม": "6.5 – 8.5", "ผลกระทบหากค่าผิดปกติ": "ต่ำไปสัตว์น้ำหายใจไม่ออก / สูงไปแอมโมเนียเป็นพิษ"},
+            {"การใช้งาน": "ปลูกพืชไฮโดรโปนิกส์", "ค่า pH ที่เหมาะสม": "5.5 – 6.5", "ผลกระทบหากค่าผิดปกติ": "สูงเกินไป พืชจะขาดสารอาหารและใบเหลือง"},
+            {"การใช้งาน": "บำบัดน้ำเสียชุมชน", "ค่า pH ที่เหมาะสม": "6.5 – 8.5", "ผลกระทบหากค่าผิดปกติ": "หากหลุดจากช่วงนี้ จุลินทรีย์ตาย ระบบบำบัดจะล่ม"},
+            {"การใช้งาน": "น้ำทิ้งปล่อยสู่ธรรมชาติ", "ค่า pH ที่เหมาะสม": "5.5 – 9.0", "ผลกระทบหากค่าผิดปกติ": "ต้องควบคุมตามกฎหมาย เพื่อป้องกันน้ำเน่าเสีย"}
+        ])
+        st.table(ph_criteria)
+
         # แสดงตารางเกณฑ์ ORP
+        st.subheader("📌 เกณฑ์การใช้งานค่า ORP (อ้างอิง)")
         orp_criteria = pd.DataFrame([
             {"ช่วงค่า (mV)": "+150 ถึง +250", "การใช้งาน": "เพาะเลี้ยงสัตว์น้ำ (ปลา/กุ้ง)", "ประโยชน์/ผลลัพธ์": "น้ำสะอาด สมดุล อัตรารอดตายสูง สัตว์น้ำไม่เครียด"},
             {"ช่วงค่า (mV)": "+200 ถึง +400", "การใช้งาน": "ปลูกพืช/ไฮโดรโปนิกส์", "ประโยชน์/ผลลัพธ์": "รากพืชแข็งแรง ดูดซึมปุ๋ยได้ดี ป้องกันรากเน่า"},
