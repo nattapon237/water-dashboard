@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import time
 import json
+import base64
 from datetime import datetime
 import pytz
 
@@ -77,6 +78,33 @@ REFRESH_SECONDS = 2
 FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatabase.app"
 FIREBASE_SENSOR_PATH = "/devices/uno-r4/status"
 FIREBASE_URL = FIREBASE_DB_URL + FIREBASE_SENSOR_PATH + ".json"
+
+
+# ============================================================
+# GOOGLE DRIVE UPLOAD FUNCTION
+# ============================================================
+
+GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyn2ty8P73SvsRu-YQJSwIKFUpN3TDGpkRqHJt3y9VqroBSGjz6rGte4lHdjQAP-WQheg/exec"
+
+def upload_image_to_drive(uploaded_file):
+    if not uploaded_file:
+        return None
+    try:
+        bytes_data = uploaded_file.getvalue()
+        base64_data = base64.b64encode(bytes_data).decode('utf-8')
+        payload = {
+            "filename": uploaded_file.name,
+            "mimeType": uploaded_file.type,
+            "base64Data": base64_data
+        }
+        res = requests.post(GOOGLE_APPS_SCRIPT_URL, json=payload, timeout=30)
+        if res.status_code == 200:
+            res_json = res.json()
+            if res_json.get("status") == "success":
+                return res_json.get("url")
+    except Exception as e:
+        print(f"Error uploading to Drive: {e}")
+    return None
 
 
 # ============================================================
@@ -332,7 +360,8 @@ with tab3:
     with col_lon:
         report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", placeholder="เช่น 101.1700")
 
-    report_image = st.text_input("ลิงก์รูปภาพหลักฐาน (เช่น Google Drive)", placeholder="https://drive.google.com/...")
+    # เปลี่ยนจากการกรอก URL เป็นการอัปโหลดไฟล์รูปภาพ
+    uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
 
     if st.button("📤 บันทึกข้อมูลแจ้งเบาะแส", use_container_width=True):
 
@@ -342,8 +371,17 @@ with tab3:
         detail_text = report_detail.strip() if report_detail.strip() else "ไม่ได้ระบุ"
         lat_text = report_lat.strip() if report_lat.strip() else "0.0"
         lon_text = report_lon.strip() if report_lon.strip() else "0.0"
-        image_text = report_image.strip() if report_image.strip() else "ไม่มีภาพ"
         maps_link = f"https://www.google.com/maps?q={lat_text},{lon_text}"
+
+        # อัปโหลดรูปภาพ
+        image_text = "ไม่มีภาพ"
+        if uploaded_image is not None:
+            with st.spinner("⏳ กำลังอัปโหลดรูปภาพไปยัง Google Drive..."):
+                drive_url = upload_image_to_drive(uploaded_image)
+                if drive_url:
+                    image_text = drive_url
+                else:
+                    image_text = "อัปโหลดรูปภาพล้มเหลว"
 
         report_data = {
             "เวลา": report_time,
@@ -360,7 +398,7 @@ with tab3:
             f"📝 รายละเอียดพฤติกรรม: {detail_text}\n"
             f"🌐 พิกัด GPS: {lat_text}, {lon_text}\n"
             f"🗺️ Google Maps: {maps_link}\n"
-            f"🖼️ ภาพถ่ายหลักฐาน: {image_text}\n"
+            f"🖼️ ภาพถ่ายหลักฐาน (Google Drive): {image_text}\n"
             f"⏰ เวลาแจ้ง: {report_time} (ICT)\n"
             f"⚠️\n"
             f"โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
