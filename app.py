@@ -167,7 +167,7 @@ if "last_mock_push" not in st.session_state:
     st.session_state.last_mock_push = 0
 
 current_time_sec = time.time()
-if current_time_sec - st.session_state.last_mock_push > 3600:  # 3600 วินาที = 60 นาที (1 ชั่วโมง)
+if current_time_sec - st.session_state.last_mock_push > 3600:  
     push_mock_data_to_firebase()
     st.session_state.last_mock_push = current_time_sec
 
@@ -194,7 +194,7 @@ def sensor_is_online(data):
 
 
 # ============================================================
-# PROCESS DATA (ดึงค่าล่าสุดจาก Firebase หรือใช้ค่าปกติสำรอง)
+# PROCESS DATA
 # ============================================================
 
 live_data = read_firebase()
@@ -210,7 +210,6 @@ else:
     ph_value = 7.2
     sensor_online = True
 
-# สร้างข้อมูลเทียบ 3 วัน (22, 23, 24 ส.ค. 2569) ความถี่ทุก 60 นาที ในรูปแบบ Long Format สำหรับ Altair
 if "historical_long_df" not in st.session_state:
     random.seed(42)
     time_index = []
@@ -220,14 +219,13 @@ if "historical_long_df" not in st.session_state:
     curr = start_t
     while curr <= end_t:
         time_index.append(curr.strftime("%H:%M"))
-        curr += timedelta(minutes=60)  # ปรับเป็นทุก 60 นาที
+        curr += timedelta(minutes=60)
 
     records = []
     dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
     
     for t_str in time_index:
         for d_str in dates:
-            # สุ่มค่า TDS, ORP, pH ให้ใกล้เคียงความเป็นจริง
             tds_val = round(280 + random.uniform(-20, 30), 1)
             orp_val = round(230 + random.uniform(-25, 30), 1)
             ph_val = round(7.1 + random.uniform(-0.3, 0.3), 2)
@@ -244,7 +242,7 @@ if "historical_long_df" not in st.session_state:
 
 
 # ============================================================
-# WATER QUALITY LIMIT & CRITICAL CHECK (RED ALERT)
+# WATER QUALITY LIMIT & CRITICAL CHECK
 # ============================================================
 
 TDS_MAX = 1000.0
@@ -282,7 +280,7 @@ water_normal = (sensor_online and len(risk) == 0)
 
 
 # ============================================================
-# AUTOMATED SCHEDULERS (3-HOUR & RED ALERT IMMEDIATE)
+# AUTOMATED SCHEDULERS
 # ============================================================
 
 now_th = datetime.now(TH_TZ)
@@ -366,7 +364,7 @@ with st.sidebar:
 
 
 # ============================================================
-# TABS
+# TABS (คืนค่าตำแหน่ง Dashboard ไว้เป็น Tab แรกเหมือนเดิม)
 # ============================================================
 
 tab1, tab2, tab3 = st.tabs([
@@ -377,7 +375,7 @@ tab1, tab2, tab3 = st.tabs([
 
 
 # ============================================================
-# TAB 1: DASHBOARD
+# TAB 1: DASHBOARD (ตำแหน่งเดิม)
 # ============================================================
 
 with tab1:
@@ -412,17 +410,15 @@ with tab1:
     
     selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "ORP", "pH"], key="graph_parameter")
     
-    # กำหนดช่วงสเกลแกน Y ให้เหมาะสมกับแต่ละพารามิเตอร์ เพื่อไม่ให้แกน Y ห่างจากข้อมูลจริงเกินไป
     if selected_parameter == "TDS":
         y_scale = alt.Scale(domain=[200, 360])
     elif selected_parameter == "ORP":
         y_scale = alt.Scale(domain=[180, 280])
-    else:  # pH
+    else:
         y_scale = alt.Scale(domain=[6.0, 8.0])
 
     df_long = st.session_state.historical_long_df
     
-    # สร้างกราฟด้วย Altair เพื่อควบคุมสเกลแกน Y ได้อย่างแม่นยำ
     chart = alt.Chart(df_long).mark_line(point=True).encode(
         x=alt.X('เวลา:N', title='เวลา', sort=None),
         y=alt.Y(f'{selected_parameter}:Q', title=selected_parameter, scale=y_scale),
@@ -436,7 +432,7 @@ with tab1:
 
 
 # ============================================================
-# TAB 2: WATER USAGE ADVICE
+# TAB 2: WATER USAGE ADVICE (ตำแหน่งเดิม)
 # ============================================================
 
 with tab2:
@@ -499,92 +495,95 @@ with tab2:
 
 
 # ============================================================
-# TAB 3: REPORT / CLUE
+# TAB 3: REPORT / CLUE (ตำแหน่งเดิม พร้อมพิกัดใหม่และระบบรีเซ็ตฟอร์ม)
 # ============================================================
 
 with tab3:
     st.title("📍 แจ้งเบาะแส")
-    st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ (ย่านคลองสวน)")
+    st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ")
 
     st.markdown(
         """
         <div class="water-card">
         <h3>📢 แจ้งปัญหาคุณภาพน้ำ</h3>
-        ใช้สำหรับบันทึกข้อมูลเมื่อพบความผิดปกติของแหล่งน้ำบริเวณคลองสวน
+        ใช้สำหรับบันทึกข้อมูลเมื่อพบความผิดปกติของแหล่งน้ำ
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    st.subheader("🗺️ ตำแหน่งทุ่นตรวจวัดคุณภาพน้ำ (คลองสวน)")
+    st.subheader("🗺️ ตำแหน่งทุ่นตรวจวัดคุณภาพน้ำ (พิกัด: 13°41'21.90\"N 101°04'43.02\"E)")
+    # แปลงพิกัด 13°41'21.90"N 101°04'43.02"E เป็น Decimal Degrees (13.689417, 101.078617)
     map_data = pd.DataFrame({
-        'lat': [13.6692425],
-        'lon': [100.9673371]
+        'lat': [13.689417],
+        'lon': [101.078617]
     })
     st.map(map_data, zoom=14)
-    st.caption("📍 พิกัดจุดติดตั้งทุ่น: คลองสวน (13.6692425, 100.9673371)")
+    st.caption("📍 พิกัดจุดติดตั้งทุ่น: 13°41'21.90\"N 101°04'43.02\"E (13.689417, 101.078617)")
 
     st.divider()
 
-    report_type = st.selectbox(
-        "ประเภทเหตุการณ์",
-        ["ทิ้งขยะลงแม่น้ำ", "น้ำมีสีผิดปกติ", "น้ำมีกลิ่นผิดปกติ", "น้ำขุ่นผิดปกติ", "พบสิ่งปนเปื้อน", "พบการปล่อยน้ำเสีย", "อื่น ๆ"]
-    )
+    # ใช้ clear_on_submit=True เพื่อรีเซ็ตค่าในฟอร์มเป็นค่าว่างทั้งหมดทันทีหลังกดส่ง
+    with st.form("report_form", clear_on_submit=True):
+        report_type = st.selectbox(
+            "ประเภทเหตุการณ์",
+            ["ทิ้งขยะลงแม่น้ำ", "น้ำมีสีผิดปกติ", "น้ำมีกลิ่นผิดปกติ", "น้ำขุ่นผิดปกติ", "พบสิ่งปนเปื้อน", "พบการปล่อยน้ำเสีย", "อื่น ๆ"]
+        )
 
-    report_detail = st.text_area("รายละเอียดพฤติกรรม", placeholder="กรอกรายละเอียดที่พบ...")
+        report_detail = st.text_area("รายละเอียดพฤติกรรม", placeholder="กรอกรายละเอียดที่พบ...")
 
-    col_lat, col_lon = st.columns(2)
-    with col_lat:
-        report_lat = st.text_input("พิกัด GPS (ละติจูด)", placeholder="เช่น 13.6692425")
-    with col_lon:
-        report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", placeholder="เช่น 100.9673371")
+        col_lat, col_lon = st.columns(2)
+        with col_lat:
+            report_lat = st.text_input("พิกัด GPS (ละติจูด)", value="13.689417", placeholder="เช่น 13.689417")
+        with col_lon:
+            report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", value="101.078617", placeholder="เช่น 101.078617")
 
-    uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
+        uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
 
-    if st.button("📤 บันทึกข้อมูลแจ้งเบาะแส", use_container_width=True):
+        submitted = st.form_submit_button("📤 บันทึกข้อมูลแจ้งเบาะแส", use_container_width=True)
 
-        report_time = datetime.now(TH_TZ).strftime("%d/%m/%Y %H:%M:%S")
+        if submitted:
+            report_time = datetime.now(TH_TZ).strftime("%d/%m/%Y %H:%M:%S")
 
-        detail_text = report_detail.strip() if report_detail.strip() else "ไม่ได้ระบุ"
-        lat_text = report_lat.strip() if report_lat.strip() else "0.0"
-        lon_text = report_lon.strip() if report_lon.strip() else "0.0"
-        maps_link = f"https://www.google.com/maps?q={lat_text},{lon_text}"
+            detail_text = report_detail.strip() if report_detail.strip() else "ไม่ได้ระบุ"
+            lat_text = report_lat.strip() if report_lat.strip() else "13.689417"
+            lon_text = report_lon.strip() if report_lon.strip() else "101.078617"
+            maps_link = f"https://www.google.com/maps?q={lat_text},{lon_text}"
 
-        image_text = "ไม่มีภาพ"
-        if uploaded_image is not None:
-            with st.spinner("⏳ กำลังอัปโหลดรูปภาพไปยัง Google Drive..."):
+            image_text = "ไม่มีภาพ"
+            if uploaded_image is not None:
                 drive_url = upload_image_to_drive(uploaded_image)
                 if drive_url:
                     image_text = drive_url
                 else:
                     image_text = "อัปโหลดรูปภาพล้มเหลว"
 
-        report_data = {
-            "เวลา": report_time,
-            "ประเภท": report_type,
-            "รายละเอียด": detail_text,
-            "พิกัด": f"{lat_text}, {lon_text}"
-        }
+            report_data = {
+                "เวลา": report_time,
+                "ประเภท": report_type,
+                "รายละเอียด": detail_text,
+                "พิกัด": f"{lat_text}, {lon_text}"
+            }
 
-        st.session_state["last_report"] = report_data
+            st.session_state["last_report"] = report_data
 
-        msg = (
-            f"🚨 แจ้งเบาะแส ({report_type})!\n"
-            f"📝 รายละเอียดพฤติกรรม: {detail_text}\n"
-            f"🌐 พิกัด GPS: {lat_text}, {lon_text}\n"
-            f"🗺️ Google Maps: {maps_link}\n"
-            f"🖼️ ภาพถ่ายหลักฐาน (Google Drive): {image_text}\n"
-            f"⏰ เวลาแจ้ง: {report_time} (ICT)\n"
-            f"⚠️\n"
-            f"โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
-        )
+            msg = (
+                f"🚨 แจ้งเบาะแส ({report_type})!\n"
+                f"📝 รายละเอียดพฤติกรรม: {detail_text}\n"
+                f"🌐 พิกัด GPS: {lat_text}, {lon_text}\n"
+                f"🗺️ Google Maps: {maps_link}\n"
+                f"🖼️ ภาพถ่ายหลักฐาน (Google Drive): {image_text}\n"
+                f"⏰ เวลาแจ้ง: {report_time} (ICT)\n"
+                f"⚠️\n"
+                f"โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
+            )
 
-        line_status = send_line_notification(msg)
+            line_status = send_line_notification(msg)
 
-        if line_status:
-            st.success("✅ บันทึกข้อมูลและส่งแจ้งเตือนไปยัง LINE เรียบร้อยแล้ว")
-        else:
-            st.warning("⚠️ บันทึกข้อมูลแล้ว แต่ไม่สามารถส่งแจ้งเตือนไป LINE ได้")
+            if line_status:
+                st.success("✅ บันทึกข้อมูลและส่งแจ้งเตือนไปยัง LINE เรียบร้อยแล้ว (รีเซ็ตฟอร์มแล้ว)")
+            else:
+                st.warning("⚠️ บันทึกข้อมูลแล้ว แต่ไม่สามารถส่งแจ้งเตือนไป LINE ได้ (รีเซ็ตฟอร์มแล้ว)")
 
     if "last_report" in st.session_state:
         st.divider()
