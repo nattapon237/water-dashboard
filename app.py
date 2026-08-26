@@ -137,7 +137,7 @@ def send_line_notification(message):
 
 
 # ============================================================
-# DATA FUNCTIONS & AUTOMATED MOCK FIREBASE WRITER (ทุก 10 นาที)
+# DATA FUNCTIONS & AUTOMATED MOCK FIREBASE WRITER (ทุก 30 นาที)
 # ============================================================
 
 def read_firebase():
@@ -166,7 +166,7 @@ if "last_mock_push" not in st.session_state:
     st.session_state.last_mock_push = 0
 
 current_time_sec = time.time()
-if current_time_sec - st.session_state.last_mock_push > 600:
+if current_time_sec - st.session_state.last_mock_push > 1800:  # 1800 วินาที = 30 นาที
     push_mock_data_to_firebase()
     st.session_state.last_mock_push = current_time_sec
 
@@ -209,7 +209,7 @@ else:
     ph_value = 7.2
     sensor_online = True
 
-# สร้างข้อมูลเทียบ 3 วัน (22, 23, 24 ส.ค. 2569) ในรูปแบบ 1 วัน (แกนเวลา 00:00 - 23:50) เพื่อให้ขึ้น 3 เส้นในกราฟเดียว
+# สร้างข้อมูลเทียบ 3 วัน (22, 23, 24 ส.ค. 2569) ความถี่ทุก 30 นาที
 if "historical_multi_line" not in st.session_state:
     random.seed(42)
     time_index = []
@@ -219,7 +219,7 @@ if "historical_multi_line" not in st.session_state:
     curr = start_t
     while curr <= end_t:
         time_index.append(curr.strftime("%H:%M"))
-        curr += timedelta(minutes=10)
+        curr += timedelta(minutes=30)  # ปรับเป็นทุก 30 นาที
 
     data_dict = {"เวลา": time_index}
     
@@ -362,7 +362,7 @@ with st.sidebar:
 
     st.divider()
     st.write("🔄 Auto Refresh & Schedule")
-    st.info(f"• รีเฟรชหน้าจอทุก {REFRESH_SECONDS} วิ\n• ส่งค่าปลอมปกติเข้า Firebase ทุก 10 นาที\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
+    st.info(f"• รีเฟรชหน้าจอทุก {REFRESH_SECONDS} วิ\n• ส่งค่าปลอมปกติเข้า Firebase ทุก 30 นาที\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
 
     st.divider()
     st.write("🕒 เวลาปัจจุบัน")
@@ -412,11 +412,10 @@ with tab1:
         for item in risk: st.write("• " + item)
 
     st.divider()
-    st.subheader("📈 เปรียบเทียบข้อมูลย้อนหลัง (เทียบ 3 เส้นในกราฟเดียว: วันที่ 22, 23, 24 ส.ค. 2569)")
+    st.subheader("📈 เปรียบเทียบข้อมูลย้อนหลัง (เทียบ 3 เส้นในกราฟเดียว: วันที่ 22, 23, 24 ส.ค. 2569 ความถี่ทุก 30 นาที)")
     
     selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "ORP", "pH"], key="graph_parameter")
     
-    # ดึง Dataframe ของค่าที่เลือก (จะมี 3 คอลัมน์ คือวันที่ 22, 23, 24) แสดงเป็น 3 เส้นในกราฟเดียว
     active_chart_df = st.session_state.historical_multi_line[selected_parameter]
     st.line_chart(active_chart_df, use_container_width=True)
 
