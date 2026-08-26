@@ -151,7 +151,6 @@ def read_firebase():
         return None
 
 def push_mock_data_to_firebase():
-    # สุ่มค่าให้อยู่ในเกณฑ์ปกติทั้งหมด
     mock_payload = {
         "tds": round(random.uniform(250.0, 350.0), 1),
         "orp": round(random.uniform(200.0, 300.0), 1),
@@ -163,7 +162,6 @@ def push_mock_data_to_firebase():
     except Exception as e:
         print("Mock Firebase Push Error:", e)
 
-# รันส่งค่าจำลองปกติขึ้น Firebase ทุก ๆ 10 นาที (600 วินาที)
 if "last_mock_push" not in st.session_state:
     st.session_state.last_mock_push = 0
 
@@ -211,24 +209,42 @@ else:
     ph_value = 7.2
     sensor_online = True
 
-# สร้างข้อมูลย้อนหลังจำลองระหว่างวันที่ 22-24 ส.ค. 2569 ความถี่ทุก ๆ 10 นาทีสำหรับกราฟ
-if "historical_august" not in st.session_state:
-    mock_data = []
-    start_time = datetime(2026, 8, 22, 0, 0, 0, tzinfo=TH_TZ)
-    end_time = datetime(2026, 8, 24, 23, 59, 0, tzinfo=TH_TZ)
-    
-    current_t = start_time
+# สร้างข้อมูลเทียบ 3 วัน (22, 23, 24 ส.ค. 2569) ในรูปแบบ 1 วัน (แกนเวลา 00:00 - 23:50) เพื่อให้ขึ้น 3 เส้นในกราฟเดียว
+if "historical_multi_line" not in st.session_state:
     random.seed(42)
+    time_index = []
     
-    while current_t <= end_time:
-        mock_data.append({
-            "เวลา": current_t.strftime("%d/%m/%Y %H:%M"),
-            "TDS": round(280 + random.uniform(-15, 25), 1),
-            "ORP": round(230 + random.uniform(-20, 30), 1),
-            "pH": round(7.1 + random.uniform(-0.3, 0.3), 2)
-        })
-        current_t += timedelta(minutes=10)  # ปรับเพิ่มข้อมูลทุก 10 นาที
-    st.session_state.historical_august = mock_data
+    start_t = datetime(2026, 8, 22, 0, 0, 0)
+    end_t = datetime(2026, 8, 22, 23, 59, 0)
+    curr = start_t
+    while curr <= end_t:
+        time_index.append(curr.strftime("%H:%M"))
+        curr += timedelta(minutes=10)
+
+    data_dict = {"เวลา": time_index}
+    
+    # วันที่ 22 ส.ค. 2569
+    data_dict["22 ส.ค. 2569"] = [round(280 + random.uniform(-15, 25), 1) for _ in time_index]
+    # วันที่ 23 ส.ค. 2569
+    data_dict["23 ส.ค. 2569"] = [round(285 + random.uniform(-20, 20), 1) for _ in time_index]
+    # วันที่ 24 ส.ค. 2569
+    data_dict["24 ส.ค. 2569"] = [round(275 + random.uniform(-25, 30), 1) for _ in time_index]
+    
+    st.session_state.historical_multi_line = {
+        "TDS": pd.DataFrame(data_dict).set_index("เวลา"),
+        "ORP": pd.DataFrame({
+            "เวลา": time_index,
+            "22 ส.ค. 2569": [round(230 + random.uniform(-20, 30), 1) for _ in time_index],
+            "23 ส.ค. 2569": [round(235 + random.uniform(-15, 25), 1) for _ in time_index],
+            "24 ส.ค. 2569": [round(225 + random.uniform(-25, 35), 1) for _ in time_index]
+        }).set_index("เวลา"),
+        "pH": pd.DataFrame({
+            "เวลา": time_index,
+            "22 ส.ค. 2569": [round(7.1 + random.uniform(-0.3, 0.3), 2) for _ in time_index],
+            "23 ส.ค. 2569": [round(7.2 + random.uniform(-0.2, 0.2), 2) for _ in time_index],
+            "24 ส.ค. 2569": [round(7.0 + random.uniform(-0.4, 0.3), 2) for _ in time_index]
+        }).set_index("เวลา")
+    }
 
 
 # ============================================================
@@ -278,7 +294,6 @@ current_date_str = now_th.strftime("%Y-%m-%d")
 current_hour = now_th.hour
 current_minute = now_th.minute
 
-# 1. แจ้งเตือนด่วนทันทีเมื่อค่าเกินเกณฑ์สีแดง (Critical Alert)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = None
 
@@ -300,7 +315,6 @@ if is_critical and sensor_online:
         if sent_ok:
             st.session_state.last_alert_time = now_time
 
-# 2. รายงานอัตโนมัติทุก ๆ 3 ชั่วโมง
 target_hours = [0, 3, 6, 9, 12, 15, 18, 21]
 if "last_auto_report_key" not in st.session_state:
     st.session_state.last_auto_report_key = ""
@@ -398,13 +412,13 @@ with tab1:
         for item in risk: st.write("• " + item)
 
     st.divider()
-    st.subheader("📈 กราฟแสดงข้อมูลย้อนหลังระหว่างวันที่ 22-24 ส.ค. 2569 (ความถี่ทุก 10 นาที)")
-    
-    graph_df = pd.DataFrame(st.session_state.historical_august)
-    graph_df = graph_df.set_index("เวลา")
+    st.subheader("📈 เปรียบเทียบข้อมูลย้อนหลัง (เทียบ 3 เส้นในกราฟเดียว: วันที่ 22, 23, 24 ส.ค. 2569)")
     
     selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "ORP", "pH"], key="graph_parameter")
-    st.line_chart(graph_df[[selected_parameter]], use_container_width=True)
+    
+    # ดึง Dataframe ของค่าที่เลือก (จะมี 3 คอลัมน์ คือวันที่ 22, 23, 24) แสดงเป็น 3 เส้นในกราฟเดียว
+    active_chart_df = st.session_state.historical_multi_line[selected_parameter]
+    st.line_chart(active_chart_df, use_container_width=True)
 
 
 # ============================================================
