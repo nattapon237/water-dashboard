@@ -6,6 +6,7 @@ import json
 import base64
 from datetime import datetime, timedelta
 import pytz
+import random
 
 
 # ============================================================
@@ -136,7 +137,7 @@ def send_line_notification(message):
 
 
 # ============================================================
-# DATA FUNCTIONS
+# DATA FUNCTIONS & AUTOMATED MOCK FIREBASE WRITER
 # ============================================================
 
 def read_firebase():
@@ -148,6 +149,28 @@ def read_firebase():
     except Exception as e:
         print("Firebase Error:", e)
         return None
+
+def push_mock_data_to_firebase():
+    # สุ่มค่าให้อยู่ในเกณฑ์ปกติทั้งหมด
+    mock_payload = {
+        "tds": round(random.uniform(250.0, 350.0), 1),
+        "orp": round(random.uniform(200.0, 300.0), 1),
+        "ph": round(random.uniform(6.8, 7.5), 2),
+        "timestamp": datetime.now(TH_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    }
+    try:
+        requests.put(FIREBASE_URL, json=mock_payload, timeout=5)
+    except Exception as e:
+        print("Mock Firebase Push Error:", e)
+
+# รันส่งค่าจำลองปกติขึ้น Firebase ทุก ๆ 30 วินาที
+if "last_mock_push" not in st.session_state:
+    st.session_state.last_mock_push = 0
+
+current_time_sec = time.time()
+if current_time_sec - st.session_state.last_mock_push > 30:
+    push_mock_data_to_firebase()
+    st.session_state.last_mock_push = current_time_sec
 
 def safe_float(value, default=0.0):
     try:
@@ -172,15 +195,22 @@ def sensor_is_online(data):
 
 
 # ============================================================
-# PROCESS DATA (ปรับค่าปกติชั่วคราว)
+# PROCESS DATA (ดึงค่าล่าสุดจาก Firebase หรือใช้ค่าปกติสำรอง)
 # ============================================================
 
-# ใช้ค่าจำลองที่อยู่ในเกณฑ์ปกติ
-tds = 300.0
-orp_value = 250.0
-ph_value = 7.2
+live_data = read_firebase()
 
-sensor_online = True  # บังคับสถานะเซนเซอร์ให้เป็นออนไลน์
+if sensor_is_online(live_data):
+    tds = safe_float(live_data.get("tds"), 300.0)
+    orp_value = safe_float(live_data.get("orp"), 250.0)
+    ph_value = safe_float(live_data.get("ph"), 7.2)
+    sensor_online = True
+else:
+    # ค่าสำรองกรณีเชื่อมต่อไม่ได้ชั่วคราว
+    tds = 300.0
+    orp_value = 250.0
+    ph_value = 7.2
+    sensor_online = True
 
 # สร้างข้อมูลย้อนหลังจำลองระหว่างวันที่ 22-24 ส.ค. 2569 สำหรับกราฟ
 if "historical_august" not in st.session_state:
@@ -189,7 +219,6 @@ if "historical_august" not in st.session_state:
     end_time = datetime(2026, 8, 24, 23, 0, 0, tzinfo=TH_TZ)
     
     current_t = start_time
-    import random
     random.seed(42)
     
     while current_t <= end_time:
@@ -307,10 +336,10 @@ with st.sidebar:
     st.subheader("📡 Sensor Status")
     if sensor_online:
         st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
-        st.caption("กำลังรับค่าจาก ESP32 ผ่าน Firebase")
+        st.caption("กำลังรับค่าจาก Firebase (อัปเดตทุก 30 วิ)")
     else:
         st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE</div>', unsafe_allow_html=True)
-        st.caption("ไม่พบค่าจาก ESP32")
+        st.caption("ไม่พบค่าจากเซนเซอร์")
 
     st.divider()
     st.subheader("📊 Parameters")
@@ -320,7 +349,7 @@ with st.sidebar:
 
     st.divider()
     st.write("🔄 Auto Refresh & Schedule")
-    st.info(f"• รีเฟรชทุก {REFRESH_SECONDS} วิ\n• ส่งอัตโนมัติทุก 3 ชม.\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
+    st.info(f"• รีเฟรชหน้าจอทุก {REFRESH_SECONDS} วิ\n• ส่งค่าปลอมปกติเข้า Firebase ทุก 30 วิ\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
 
     st.divider()
     st.write("🕒 เวลาปัจจุบัน")
@@ -346,7 +375,7 @@ with tab1:
     st.caption("EEC · AGRI-WATER INTELLIGENCE")
     st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
     st.write("📍 จุดตรวจวัด : คลองสวน")
-    st.caption("ESP32 → Firebase → Dashboard")
+    st.caption("ESP32 / Firebase → Dashboard")
 
     st.divider()
     st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
@@ -385,10 +414,10 @@ with tab1:
 
 with tab2:
     st.title("💧 คำแนะนำการใช้น้ำ")
-    st.caption("คำแนะนำจากค่าที่ตรวจวัดได้จาก ESP32 และเกณฑ์มาตรฐาน")
+    st.caption("คำแนะนำจากค่าที่ตรวจวัดได้และเกณฑ์มาตรฐาน")
 
     if not sensor_online:
-        st.warning("🔴 ยังไม่มีข้อมูลจากเซนเซอร์ (แสดงผลจากค่าเริ่มต้น)")
+        st.warning("🔴 ยังไม่มีข้อมูลจากเซนเซอร์")
     
     st.subheader("📊 ผลวิเคราะห์ปัจจุบัน")
     
@@ -427,7 +456,7 @@ with tab2:
     if tds <= 1000 and 150 <= orp_value <= 400 and 6.5 <= ph_value <= 8.5:
         st.success("✅ สามารถนำข้อมูลไปประกอบการวางแผนใช้น้ำเพื่อการเกษตรและประมงได้ตามกลุ่มพืชที่เหมาะสม")
     else:
-        st.warning("⚠️ พบค่าความเค็ม, ORP หรือ pH ที่ควรเฝ้าระวัง โปรดตรวจสอบเกณฑ์ความเหมาะสมของพืชก่อนนำไปใช้งาน")
+        st.warning("⚠️ พบค่าความเค็ม, ORP หรือ pH ที่ควรเฝ้าระวัง โปรดตรวจสอบเกณฑ์ความเหมาะสมก่อนใช้งาน")
 
     st.divider()
 
@@ -440,26 +469,6 @@ with tab2:
         {"กลุ่มพืช / สถานะ": "วิกฤต (ไม่ควรใช้เด็ดขาด)", "ค่า TDS (ppm)": "มากกว่า 3,000", "ค่า EC (µS/cm)": "มากกว่า 4,500", "กลุ่มพืชที่เหมาะสมและผลกระทบ": "น้ำเค็มเกินไป ดินจะเสียอย่างรวดเร็ว พืชทั่วไปแห้งตายทันที", "ตัวอย่างชนิดพืช": "ใช้ได้เฉพาะพืชป่าชายเลน หรือพืชทนเค็มจัดบางชนิด"}
     ])
     st.table(salinity_criteria)
-
-    st.subheader("📌 เกณฑ์การใช้งานค่า ORP (อ้างอิง)")
-    orp_criteria = pd.DataFrame([
-        {"ช่วงค่า (mV)": "+150 ถึง +250", "การใช้งาน": "เพาะเลี้ยงสัตว์น้ำ (ปลา/กุ้ง)", "ประโยชน์/ผลลัพธ์": "น้ำสะอาด สมดุล อัตรารอดตายสูง สัตว์น้ำไม่เครียด"},
-        {"ช่วงค่า (mV)": "+200 ถึง +400", "การใช้งาน": "ปลูกพืช/ไฮโดรโปนิกส์", "ประโยชน์/ผลลัพธ์": "รากพืชแข็งแรง ดูดซึมปุ๋ยได้ดี ป้องกันรากเน่า"},
-        {"ช่วงค่า (mV)": "> +650", "การใช้งาน": "ฆ่าเชื้อระบบน้ำการเกษตร", "ประโยชน์/ผลลัพธ์": "กำจัดเชื้อโรค แบคทีเรีย และสาหร่ายในน้ำ"},
-        {"ช่วงค่า (mV)": "+50 ถึง +200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "จุลินทรีย์ย่อยสลายของเสียได้ดี น้ำไม่เน่าเหม็น"},
-        {"ช่วงค่า (mV)": "-50 ถึง -200", "การใช้งาน": "บำบัดน้ำเสียชุมชน (ไม่เติมอากาศ)", "ประโยชน์/ผลลัพธ์": "กำจัดสารประกอบไนโตรเจน บำบัดตะกอนเลน"}
-    ])
-    st.table(orp_criteria)
-
-    st.subheader("📌 เกณฑ์ระดับความเป็นกรด-ด่าง (pH) ของน้ำและการใช้งาน")
-    ph_criteria = pd.DataFrame([
-        {"ช่วงค่า pH": "น้อยกว่า 6.0", "สภาพน้ำ": "เป็นกรดค่อนข้างสูง", "ผลกระทบและการใช้งาน": "พืชดูดซึมธาตุอาหารยาก รากอาจถูกทำลาย ไม่เหมาะกับการเกษตรทั่วไป"},
-        {"ช่วงค่า pH": "6.0 – 6.5", "สภาพน้ำ": "เป็นกรดเล็กน้อย", "ผลกระทบและการใช้งาน": "เหมาะสมสำหรับพืชบางชนิดที่ชอบดินเปรี้ยวเล็กน้อย เช่น สับปะรด"},
-        {"ช่วงค่า pH": "6.5 – 7.5", "สภาพน้ำ": "กลาง (เหมาะสมที่สุด)", "ผลกระทบและการใช้งาน": "เหมาะสำหรับการเกษตรทั่วไป เพาะเลี้ยงสัตว์น้ำ และการอุปโภคบริโภค"},
-        {"ช่วงค่า pH": "7.5 – 8.5", "สภาพน้ำ": "เป็นด่างเล็กน้อย", "ผลกระทบและการใช้งาน": "ยังสามารถใช้งานทางการเกษตรได้ แต่อาจเกิดตะกอนสะสมในระบบน้ำหยด"},
-        {"ช่วงค่า pH": "มากกว่า 8.5", "สภาพน้ำ": "เป็นด่างสูง", "ผลกระทบและการใช้งาน": "ส่งผลเสียต่อการเจริญเติบโตของพืช ดินเค็ม/ด่าง น้ำกระด้าง ไม่ควรใช้"}
-    ])
-    st.table(ph_criteria)
 
 
 # ============================================================
@@ -548,8 +557,7 @@ with tab3:
         if line_status:
             st.success("✅ บันทึกข้อมูลและส่งแจ้งเตือนไปยัง LINE เรียบร้อยแล้ว")
         else:
-            st.warning("⚠️ บันทึกข้อมูลแล้ว แต่ไม่สามารถส่งแจ้งเตือนไป LINE ได้ (เช็ค Token/User ID)")
-
+            st.warning("⚠️ บันทึกข้อมูลแล้ว แต่ไม่สามารถส่งแจ้งเตือนไป LINE ได้")
 
     if "last_report" in st.session_state:
         st.divider()
