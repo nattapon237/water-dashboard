@@ -217,12 +217,28 @@ if "historical_long_df" not in st.session_state:
     records = []
     dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
     
-    for t_str in time_index:
-        for d_str in dates:
-            # ปรับช่วงข้อมูลให้หลากหลายแต่สมเหตุสมผล (pH อยู่ในช่วง 6.5 - 8.0)
+    # รายการค่า pH ที่ต้องการให้กระจายตัวกัน (6.1 ถึง 7.9)
+    base_ph_pool = [6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9]
+    
+    for d_str in dates:
+        ph_shuffled = base_ph_pool.copy()
+        random.shuffle(ph_shuffled)
+        
+        daily_ph_values = []
+        pool_idx = 0
+        for idx in range(len(time_index)):
+            if idx == 50:  # กำหนดให้จุดสูงสุด 8.0 โผล่มาแค่จุดเดียวช่วงกลาง ๆ วัน
+                daily_ph_values.append(8.0)
+            else:
+                daily_ph_values.append(ph_shuffled[pool_idx % len(ph_shuffled)])
+                pool_idx += 1
+        
+        random.shuffle(daily_ph_values)
+
+        for i, t_str in enumerate(time_index):
             tds_val = round(random.uniform(350.0, 750.0), 1)
             orp_val = round(random.uniform(180.0, 320.0), 1)
-            ph_val = round(random.uniform(6.5, 8.0), 2)
+            ph_val = daily_ph_values[i]
             
             records.append({
                 "เวลา": t_str,
@@ -429,7 +445,7 @@ with tab1:
             ).properties(height=220).interactive()
             st.altair_chart(chart_orp, use_container_width=True)
             
-            # กราฟที่ 3: pH (ปรับช่วงฟิกซ์สเกลให้เห็นการกระจายตัวชัดเจน 6.5 - 8.0)
+            # กราฟที่ 3: pH (สเกลฟิกซ์ช่วง 6.0 - 8.5)
             st.markdown("#### 🧪 ค่า pH")
             chart_ph = alt.Chart(df_filtered).mark_line(point=True, color='#10b981').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
