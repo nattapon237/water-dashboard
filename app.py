@@ -137,7 +137,7 @@ def send_line_notification(message):
 
 
 # ============================================================
-# DATA FUNCTIONS & AUTOMATED MOCK FIREBASE WRITER
+# DATA FUNCTIONS & AUTOMATED MOCK FIREBASE WRITER (ทุก 10 นาที)
 # ============================================================
 
 def read_firebase():
@@ -163,12 +163,12 @@ def push_mock_data_to_firebase():
     except Exception as e:
         print("Mock Firebase Push Error:", e)
 
-# รันส่งค่าจำลองปกติขึ้น Firebase ทุก ๆ 30 วินาที
+# รันส่งค่าจำลองปกติขึ้น Firebase ทุก ๆ 10 นาที (600 วินาที)
 if "last_mock_push" not in st.session_state:
     st.session_state.last_mock_push = 0
 
 current_time_sec = time.time()
-if current_time_sec - st.session_state.last_mock_push > 30:
+if current_time_sec - st.session_state.last_mock_push > 600:
     push_mock_data_to_firebase()
     st.session_state.last_mock_push = current_time_sec
 
@@ -206,17 +206,16 @@ if sensor_is_online(live_data):
     ph_value = safe_float(live_data.get("ph"), 7.2)
     sensor_online = True
 else:
-    # ค่าสำรองกรณีเชื่อมต่อไม่ได้ชั่วคราว
     tds = 300.0
     orp_value = 250.0
     ph_value = 7.2
     sensor_online = True
 
-# สร้างข้อมูลย้อนหลังจำลองระหว่างวันที่ 22-24 ส.ค. 2569 สำหรับกราฟ
+# สร้างข้อมูลย้อนหลังจำลองระหว่างวันที่ 22-24 ส.ค. 2569 ความถี่ทุก ๆ 10 นาทีสำหรับกราฟ
 if "historical_august" not in st.session_state:
     mock_data = []
     start_time = datetime(2026, 8, 22, 0, 0, 0, tzinfo=TH_TZ)
-    end_time = datetime(2026, 8, 24, 23, 0, 0, tzinfo=TH_TZ)
+    end_time = datetime(2026, 8, 24, 23, 59, 0, tzinfo=TH_TZ)
     
     current_t = start_time
     random.seed(42)
@@ -224,11 +223,11 @@ if "historical_august" not in st.session_state:
     while current_t <= end_time:
         mock_data.append({
             "เวลา": current_t.strftime("%d/%m/%Y %H:%M"),
-            "TDS": round(240 + random.uniform(-20, 30), 1),
-            "ORP": round(210 + random.uniform(-30, 40), 1),
-            "pH": round(7.0 + random.uniform(-0.5, 0.5), 2)
+            "TDS": round(280 + random.uniform(-15, 25), 1),
+            "ORP": round(230 + random.uniform(-20, 30), 1),
+            "pH": round(7.1 + random.uniform(-0.3, 0.3), 2)
         })
-        current_t += timedelta(hours=3)
+        current_t += timedelta(minutes=10)  # ปรับเพิ่มข้อมูลทุก 10 นาที
     st.session_state.historical_august = mock_data
 
 
@@ -243,12 +242,12 @@ PH_MIN = 6.5
 PH_MAX = 8.5
 
 risk = []
-is_critical = False  # สถานะเกินเกณฑ์สีแดง
+is_critical = False
 
 if sensor_online:
     if tds > TDS_MAX:
         risk.append(f"TDS สูงเกินเกณฑ์อันตราย {tds:.1f} ppm")
-        if tds > 2000:  # เกณฑ์วิกฤตสีแดง
+        if tds > 2000:
             is_critical = True
     if orp_value < ORP_MIN:
         risk.append(f"ORP ต่ำเกินไป {orp_value:.1f} mV")
@@ -336,7 +335,7 @@ with st.sidebar:
     st.subheader("📡 Sensor Status")
     if sensor_online:
         st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
-        st.caption("กำลังรับค่าจาก Firebase (อัปเดตทุก 30 วิ)")
+        st.caption("กำลังรับค่าจาก Firebase (อัปเดตทุก 2 วิ)")
     else:
         st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE</div>', unsafe_allow_html=True)
         st.caption("ไม่พบค่าจากเซนเซอร์")
@@ -349,7 +348,7 @@ with st.sidebar:
 
     st.divider()
     st.write("🔄 Auto Refresh & Schedule")
-    st.info(f"• รีเฟรชหน้าจอทุก {REFRESH_SECONDS} วิ\n• ส่งค่าปลอมปกติเข้า Firebase ทุก 30 วิ\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
+    st.info(f"• รีเฟรชหน้าจอทุก {REFRESH_SECONDS} วิ\n• ส่งค่าปลอมปกติเข้า Firebase ทุก 10 นาที\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
 
     st.divider()
     st.write("🕒 เวลาปัจจุบัน")
@@ -399,7 +398,7 @@ with tab1:
         for item in risk: st.write("• " + item)
 
     st.divider()
-    st.subheader("📈 กราฟแสดงข้อมูลย้อนหลังระหว่างวันที่ 22-24 ส.ค. 2569")
+    st.subheader("📈 กราฟแสดงข้อมูลย้อนหลังระหว่างวันที่ 22-24 ส.ค. 2569 (ความถี่ทุก 10 นาที)")
     
     graph_df = pd.DataFrame(st.session_state.historical_august)
     graph_df = graph_df.set_index("เวลา")
