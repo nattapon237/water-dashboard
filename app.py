@@ -7,6 +7,7 @@ import base64
 from datetime import datetime, timedelta
 import pytz
 import random
+import altair as alt
 
 
 # ============================================================
@@ -137,7 +138,7 @@ def send_line_notification(message):
 
 
 # ============================================================
-# DATA FUNCTIONS & AUTOMATED MOCK FIREBASE WRITER (ทุก 30 นาที)
+# DATA FUNCTIONS & AUTOMATED MOCK FIREBASE WRITER (ทุก 60 นาที)
 # ============================================================
 
 def read_firebase():
@@ -166,7 +167,7 @@ if "last_mock_push" not in st.session_state:
     st.session_state.last_mock_push = 0
 
 current_time_sec = time.time()
-if current_time_sec - st.session_state.last_mock_push > 1800:  # 1800 วินาที = 30 นาที
+if current_time_sec - st.session_state.last_mock_push > 3600:  # 3600 วินาที = 60 นาที (1 ชั่วโมง)
     push_mock_data_to_firebase()
     st.session_state.last_mock_push = current_time_sec
 
@@ -209,42 +210,37 @@ else:
     ph_value = 7.2
     sensor_online = True
 
-# สร้างข้อมูลเทียบ 3 วัน (22, 23, 24 ส.ค. 2569) ความถี่ทุก 30 นาที
-if "historical_multi_line" not in st.session_state:
+# สร้างข้อมูลเทียบ 3 วัน (22, 23, 24 ส.ค. 2569) ความถี่ทุก 60 นาที ในรูปแบบ Long Format สำหรับ Altair
+if "historical_long_df" not in st.session_state:
     random.seed(42)
     time_index = []
     
     start_t = datetime(2026, 8, 22, 0, 0, 0)
-    end_t = datetime(2026, 8, 22, 23, 59, 0)
+    end_t = datetime(2026, 8, 22, 23, 0, 0)
     curr = start_t
     while curr <= end_t:
         time_index.append(curr.strftime("%H:%M"))
-        curr += timedelta(minutes=30)  # ปรับเป็นทุก 30 นาที
+        curr += timedelta(minutes=60)  # ปรับเป็นทุก 60 นาที
 
-    data_dict = {"เวลา": time_index}
+    records = []
+    dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
     
-    # วันที่ 22 ส.ค. 2569
-    data_dict["22 ส.ค. 2569"] = [round(280 + random.uniform(-15, 25), 1) for _ in time_index]
-    # วันที่ 23 ส.ค. 2569
-    data_dict["23 ส.ค. 2569"] = [round(285 + random.uniform(-20, 20), 1) for _ in time_index]
-    # วันที่ 24 ส.ค. 2569
-    data_dict["24 ส.ค. 2569"] = [round(275 + random.uniform(-25, 30), 1) for _ in time_index]
-    
-    st.session_state.historical_multi_line = {
-        "TDS": pd.DataFrame(data_dict).set_index("เวลา"),
-        "ORP": pd.DataFrame({
-            "เวลา": time_index,
-            "22 ส.ค. 2569": [round(230 + random.uniform(-20, 30), 1) for _ in time_index],
-            "23 ส.ค. 2569": [round(235 + random.uniform(-15, 25), 1) for _ in time_index],
-            "24 ส.ค. 2569": [round(225 + random.uniform(-25, 35), 1) for _ in time_index]
-        }).set_index("เวลา"),
-        "pH": pd.DataFrame({
-            "เวลา": time_index,
-            "22 ส.ค. 2569": [round(7.1 + random.uniform(-0.3, 0.3), 2) for _ in time_index],
-            "23 ส.ค. 2569": [round(7.2 + random.uniform(-0.2, 0.2), 2) for _ in time_index],
-            "24 ส.ค. 2569": [round(7.0 + random.uniform(-0.4, 0.3), 2) for _ in time_index]
-        }).set_index("เวลา")
-    }
+    for t_str in time_index:
+        for d_str in dates:
+            # สุ่มค่า TDS, ORP, pH ให้ใกล้เคียงความเป็นจริง
+            tds_val = round(280 + random.uniform(-20, 30), 1)
+            orp_val = round(230 + random.uniform(-25, 30), 1)
+            ph_val = round(7.1 + random.uniform(-0.3, 0.3), 2)
+            
+            records.append({
+                "เวลา": t_str,
+                "วันที่": d_str,
+                "TDS": tds_val,
+                "ORP": orp_val,
+                "pH": ph_val
+            })
+            
+    st.session_state.historical_long_df = pd.DataFrame(records)
 
 
 # ============================================================
@@ -362,7 +358,7 @@ with st.sidebar:
 
     st.divider()
     st.write("🔄 Auto Refresh & Schedule")
-    st.info(f"• รีเฟรชหน้าจอทุก {REFRESH_SECONDS} วิ\n• ส่งค่าปลอมปกติเข้า Firebase ทุก 30 นาที\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
+    st.info(f"• รีเฟรชหน้าจอทุก {REFRESH_SECONDS} วิ\n• ส่งค่าปลอมปกติเข้า Firebase ทุก 60 นาที\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
 
     st.divider()
     st.write("🕒 เวลาปัจจุบัน")
@@ -412,12 +408,31 @@ with tab1:
         for item in risk: st.write("• " + item)
 
     st.divider()
-    st.subheader("📈 เปรียบเทียบข้อมูลย้อนหลัง (เทียบ 3 เส้นในกราฟเดียว: วันที่ 22, 23, 24 ส.ค. 2569 ความถี่ทุก 30 นาที)")
+    st.subheader("📈 เปรียบเทียบข้อมูลย้อนหลัง (เทียบ 3 เส้นในกราฟเดียว: วันที่ 22, 23, 24 ส.ค. 2569 ความถี่ทุก 60 นาที)")
     
     selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "ORP", "pH"], key="graph_parameter")
     
-    active_chart_df = st.session_state.historical_multi_line[selected_parameter]
-    st.line_chart(active_chart_df, use_container_width=True)
+    # กำหนดช่วงสเกลแกน Y ให้เหมาะสมกับแต่ละพารามิเตอร์ เพื่อไม่ให้แกน Y ห่างจากข้อมูลจริงเกินไป
+    if selected_parameter == "TDS":
+        y_scale = alt.Scale(domain=[200, 360])
+    elif selected_parameter == "ORP":
+        y_scale = alt.Scale(domain=[180, 280])
+    else:  # pH
+        y_scale = alt.Scale(domain=[6.0, 8.0])
+
+    df_long = st.session_state.historical_long_df
+    
+    # สร้างกราฟด้วย Altair เพื่อควบคุมสเกลแกน Y ได้อย่างแม่นยำ
+    chart = alt.Chart(df_long).mark_line(point=True).encode(
+        x=alt.X('เวลา:N', title='เวลา', sort=None),
+        y=alt.Y(f'{selected_parameter}:Q', title=selected_parameter, scale=y_scale),
+        color=alt.Color('วันที่:N', title='วันที่'),
+        tooltip=['เวลา', 'วันที่', selected_parameter]
+    ).properties(
+        height=350
+    ).interactive()
+
+    st.altair_chart(chart, use_container_width=True)
 
 
 # ============================================================
