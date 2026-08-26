@@ -71,7 +71,7 @@ FIREBASE_URL = FIREBASE_DB_URL + FIREBASE_SENSOR_PATH + ".json"
 
 
 # ============================================================
-# FIREBASE & HELPER FUNCTIONS (ย้ายขึ้นมาไว้ด้านบนก่อนเรียกใช้)
+# FIREBASE & HELPER FUNCTIONS
 # ============================================================
 
 def read_firebase():
@@ -187,7 +187,7 @@ if current_time_sec - st.session_state.last_mock_push > 3600:
 
 
 # ============================================================
-# PROCESS DATA (เรียกใช้งานหลังจากประกาศฟังก์ชันเรียบร้อยแล้ว)
+# PROCESS DATA
 # ============================================================
 
 live_data = read_firebase()
@@ -399,29 +399,43 @@ with tab1:
         for item in risk: st.write("• " + item)
 
     st.divider()
-    st.subheader("📈 เปรียบเทียบข้อมูลย้อนหลัง (เทียบ 3 เส้นในกราฟเดียว: ทุก 10 นาที)")
+    st.subheader("📈 ข้อมูลย้อนหลังแยกตามรายวัน และแยกตามตัวแปร (ทุก 10 นาที)")
     
-    selected_parameter = st.selectbox("เลือกค่าที่ต้องการดู", ["TDS", "ORP", "pH"], key="graph_parameter")
-    
-    if selected_parameter == "TDS":
-        y_scale = alt.Scale(domain=[200, 360])
-    elif selected_parameter == "ORP":
-        y_scale = alt.Scale(domain=[180, 280])
-    else:
-        y_scale = alt.Scale(domain=[6.0, 8.0])
-
     df_long = st.session_state.historical_long_df
-    
-    chart = alt.Chart(df_long).mark_line(point=True).encode(
-        x=alt.X('เวลา:N', title='เวลา', sort=None),
-        y=alt.Y(f'{selected_parameter}:Q', title=selected_parameter, scale=y_scale),
-        color=alt.Color('วันที่:N', title='วันที่'),
-        tooltip=['เวลา', 'วันที่', selected_parameter]
-    ).properties(
-        height=350
-    ).interactive()
+    dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
+    tab_dates = st.tabs([f"📅 วันที่ {d}" for d in dates])
 
-    st.altair_chart(chart, use_container_width=True)
+    for i, d_str in enumerate(dates):
+        with tab_dates[i]:
+            st.write(f"### 📊 กราฟแสดงผลประจำวันที่ {d_str}")
+            df_filtered = df_long[df_long["วันที่"] == d_str]
+            
+            # กราฟที่ 1: TDS
+            st.markdown("#### 🧂 ค่า TDS (ppm)")
+            chart_tds = alt.Chart(df_filtered).mark_line(point=True, color='#f97316').encode(
+                x=alt.X('เวลา:N', title='เวลา', sort=None),
+                y=alt.Y('TDS:Q', title='TDS (ppm)', scale=alt.Scale(zero=False)),
+                tooltip=['เวลา', 'วันที่', 'TDS']
+            ).properties(height=220).interactive()
+            st.altair_chart(chart_tds, use_container_width=True)
+            
+            # กราฟที่ 2: ORP
+            st.markdown("#### ⚡ ค่า ORP (mV)")
+            chart_orp = alt.Chart(df_filtered).mark_line(point=True, color='#0ea5e9').encode(
+                x=alt.X('เวลา:N', title='เวลา', sort=None),
+                y=alt.Y('ORP:Q', title='ORP (mV)', scale=alt.Scale(zero=False)),
+                tooltip=['เวลา', 'วันที่', 'ORP']
+            ).properties(height=220).interactive()
+            st.altair_chart(chart_orp, use_container_width=True)
+            
+            # กราฟที่ 3: pH
+            st.markdown("#### 🧪 ค่า pH")
+            chart_ph = alt.Chart(df_filtered).mark_line(point=True, color='#10b981').encode(
+                x=alt.X('เวลา:N', title='เวลา', sort=None),
+                y=alt.Y('pH:Q', title='pH', scale=alt.Scale(zero=False)),
+                tooltip=['เวลา', 'วันที่', 'pH']
+            ).properties(height=220).interactive()
+            st.altair_chart(chart_ph, use_container_width=True)
 
 
 # ============================================================
