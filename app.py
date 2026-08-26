@@ -87,7 +87,7 @@ def read_firebase():
 def push_mock_data_to_firebase():
     mock_payload = {
         "tds": round(random.uniform(300.0, 700.0), 1),
-        "orp": round(random.uniform(180.0, 320.0), 1),
+        "orp": round(random.uniform(220.0, 410.0), 1),
         "ph": round(random.uniform(6.5, 8.0), 2),
         "timestamp": datetime.now(TH_TZ).strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -194,12 +194,12 @@ live_data = read_firebase()
 
 if sensor_is_online(live_data):
     tds = safe_float(live_data.get("tds"), 450.0)
-    orp_value = safe_float(live_data.get("orp"), 220.0)
+    orp_value = safe_float(live_data.get("orp"), 300.0)
     ph_value = safe_float(live_data.get("ph"), 7.2)
     sensor_online = True
 else:
     tds = 450.0
-    orp_value = 220.0
+    orp_value = 300.0
     ph_value = 7.2
     sensor_online = True
 
@@ -217,7 +217,7 @@ if "historical_long_df" not in st.session_state:
     records = []
     dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
     
-    # รายการค่า pH ที่ต้องการให้กระจายตัวกัน (6.1 ถึง 7.9)
+    # pH pool (6.1 ถึง 7.9)
     base_ph_pool = [6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9]
     
     for d_str in dates:
@@ -227,7 +227,7 @@ if "historical_long_df" not in st.session_state:
         daily_ph_values = []
         pool_idx = 0
         for idx in range(len(time_index)):
-            if idx == 50:  # กำหนดให้จุดสูงสุด 8.0 โผล่มาแค่จุดเดียวช่วงกลาง ๆ วัน
+            if idx == 50:  # จุดสูงสุด pH = 8.0 เพียงจุดเดียว
                 daily_ph_values.append(8.0)
             else:
                 daily_ph_values.append(ph_shuffled[pool_idx % len(ph_shuffled)])
@@ -237,7 +237,10 @@ if "historical_long_df" not in st.session_state:
 
         for i, t_str in enumerate(time_index):
             tds_val = round(random.uniform(350.0, 750.0), 1)
-            orp_val = round(random.uniform(180.0, 320.0), 1)
+            
+            # ปรับช่วง ORP ให้เฉลี่ยอยู่สูงขึ้นไปแตะแถวๆ 400 mV (ช่วง 220 - 410 mV)
+            orp_val = round(random.uniform(220.0, 410.0), 1)
+            
             ph_val = daily_ph_values[i]
             
             records.append({
@@ -257,7 +260,7 @@ if "historical_long_df" not in st.session_state:
 
 TDS_MAX = 1000.0
 ORP_MIN = 150.0 
-ORP_MAX = 400.0 
+ORP_MAX = 450.0 
 PH_MIN = 6.5
 PH_MAX = 8.5
 
@@ -436,16 +439,16 @@ with tab1:
             ).properties(height=220).interactive()
             st.altair_chart(chart_tds, use_container_width=True)
             
-            # กราฟที่ 2: ORP
+            # กราฟที่ 2: ORP (ปรับสเกลให้ครอบคลุมถึงช่วง ~410 mV)
             st.markdown("#### ⚡ ค่า ORP (mV)")
             chart_orp = alt.Chart(df_filtered).mark_line(point=True, color='#0ea5e9').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
-                y=alt.Y('ORP:Q', title='ORP (mV)', scale=alt.Scale(zero=False)),
+                y=alt.Y('ORP:Q', title='ORP (mV)', scale=alt.Scale(domain=[150, 450])),
                 tooltip=['เวลา', 'วันที่', 'ORP']
             ).properties(height=220).interactive()
             st.altair_chart(chart_orp, use_container_width=True)
             
-            # กราฟที่ 3: pH (สเกลฟิกซ์ช่วง 6.0 - 8.5)
+            # กราฟที่ 3: pH
             st.markdown("#### 🧪 ค่า pH")
             chart_ph = alt.Chart(df_filtered).mark_line(point=True, color='#10b981').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
