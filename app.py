@@ -86,9 +86,9 @@ def read_firebase():
 
 def push_mock_data_to_firebase():
     mock_payload = {
-        "tds": round(random.uniform(250.0, 350.0), 1),
-        "orp": round(random.uniform(200.0, 300.0), 1),
-        "ph": round(random.uniform(6.8, 7.5), 2),
+        "tds": round(random.uniform(300.0, 700.0), 1),
+        "orp": round(random.uniform(180.0, 320.0), 1),
+        "ph": round(random.uniform(6.5, 8.0), 2),
         "timestamp": datetime.now(TH_TZ).strftime("%Y-%m-%d %H:%M:%S")
     }
     try:
@@ -193,13 +193,13 @@ if current_time_sec - st.session_state.last_mock_push > 3600:
 live_data = read_firebase()
 
 if sensor_is_online(live_data):
-    tds = safe_float(live_data.get("tds"), 300.0)
-    orp_value = safe_float(live_data.get("orp"), 250.0)
+    tds = safe_float(live_data.get("tds"), 450.0)
+    orp_value = safe_float(live_data.get("orp"), 220.0)
     ph_value = safe_float(live_data.get("ph"), 7.2)
     sensor_online = True
 else:
-    tds = 300.0
-    orp_value = 250.0
+    tds = 450.0
+    orp_value = 220.0
     ph_value = 7.2
     sensor_online = True
 
@@ -219,9 +219,10 @@ if "historical_long_df" not in st.session_state:
     
     for t_str in time_index:
         for d_str in dates:
-            tds_val = round(280 + random.uniform(-20, 30), 1)
-            orp_val = round(230 + random.uniform(-25, 30), 1)
-            ph_val = round(7.1 + random.uniform(-0.3, 0.3), 2)
+            # ปรับช่วงข้อมูลให้หลากหลายแต่สมเหตุสมผล (pH อยู่ในช่วง 6.5 - 8.0)
+            tds_val = round(random.uniform(350.0, 750.0), 1)
+            orp_val = round(random.uniform(180.0, 320.0), 1)
+            ph_val = round(random.uniform(6.5, 8.0), 2)
             
             records.append({
                 "เวลา": t_str,
@@ -428,11 +429,11 @@ with tab1:
             ).properties(height=220).interactive()
             st.altair_chart(chart_orp, use_container_width=True)
             
-            # กราฟที่ 3: pH
+            # กราฟที่ 3: pH (ปรับช่วงฟิกซ์สเกลให้เห็นการกระจายตัวชัดเจน 6.5 - 8.0)
             st.markdown("#### 🧪 ค่า pH")
             chart_ph = alt.Chart(df_filtered).mark_line(point=True, color='#10b981').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
-                y=alt.Y('pH:Q', title='pH', scale=alt.Scale(zero=False)),
+                y=alt.Y('pH:Q', title='pH', scale=alt.Scale(domain=[6.0, 8.5])),
                 tooltip=['เวลา', 'วันที่', 'pH']
             ).properties(height=220).interactive()
             st.altair_chart(chart_ph, use_container_width=True)
