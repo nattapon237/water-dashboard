@@ -402,7 +402,6 @@ with tab1:
     st.caption("EEC · AGRI-WATER INTELLIGENCE")
     st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
     st.write("📍 จุดตรวจวัด : แม่น้ำบางปะกง")
-    st.caption("ESP32 / Firebase → Dashboard")
 
     st.divider()
     st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
