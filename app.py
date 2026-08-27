@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 import random
 import altair as alt
+import pydeck as pdk
 
 
 # ============================================================
@@ -223,8 +224,6 @@ if "historical_long_df" not in st.session_state:
 
     records = []
     dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
-    
-    # pH pool (6.1 ถึง 7.9)
     base_ph_pool = [6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9]
     
     for d_str in dates:
@@ -234,7 +233,7 @@ if "historical_long_df" not in st.session_state:
         daily_ph_values = []
         pool_idx = 0
         for idx in range(len(time_index)):
-            if idx == 50:  # จุดสูงสุด pH = 8.0 เพียงจุดเดียว
+            if idx == 50:
                 daily_ph_values.append(8.0)
             else:
                 daily_ph_values.append(ph_shuffled[pool_idx % len(ph_shuffled)])
@@ -244,10 +243,7 @@ if "historical_long_df" not in st.session_state:
 
         for i, t_str in enumerate(time_index):
             tds_val = round(random.uniform(350.0, 750.0), 1)
-            
-            # ปรับช่วง ORP ให้เฉลี่ยอยู่สูงขึ้นไปแตะแถวๆ 400 mV (ช่วง 220 - 410 mV)
             orp_val = round(random.uniform(220.0, 410.0), 1)
-            
             ph_val = daily_ph_values[i]
             
             records.append({
@@ -316,7 +312,7 @@ if is_critical and sensor_online:
     if st.session_state.last_alert_time is None or (now_time - st.session_state.last_alert_time).total_seconds() > 900:
         alert_msg = (
             f"🚨 ⚠️ แจ้งเตือนวิกฤตคุณภาพน้ำ (ค่าเกินเกณฑ์สีแดง)!\n"
-            f"📍 จุดตรวจวัด: แม่น้ำบางปะกง\n"
+            f"📍 จุดตรวจวัดหลัก: แม่น้ำบางปะกง\n"
             f"⏰ เวลา: {now_time.strftime('%d/%m/%Y %H:%M:%S')}\n"
             f"----------------------------------\n"
             f"🧂 TDS: {tds:.1f} ppm\n"
@@ -338,7 +334,7 @@ if current_hour in target_hours and current_minute <= 2:
     if st.session_state.last_auto_report_key != report_slot_key:
         auto_msg = (
             f"📊 รายงานคุณภาพน้ำอัตโนมัติ (ทุก 3 ชม.)\n"
-            f"📍 จุดตรวจวัด: แม่น้ำบางปะกง\n"
+            f"📍 จุดตรวจวัดหลัก: แม่น้ำบางปะกง\n"
             f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
             f"----------------------------------\n"
             f"🧂 TDS: {tds:.1f} ppm\n"
@@ -363,7 +359,6 @@ with st.sidebar:
     st.subheader("📡 Sensor Status")
     if sensor_online:
         st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
-        st.caption("กำลังรับค่าจาก Firebase (อัปเดตทุก 2 วิ)")
     else:
         st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE</div>', unsafe_allow_html=True)
         st.caption("ไม่พบค่าจากเซนเซอร์")
@@ -401,7 +396,7 @@ tab1, tab2, tab3 = st.tabs([
 with tab1:
     st.caption("EEC · AGRI-WATER INTELLIGENCE")
     st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
-    st.write("📍 จุดตรวจวัด : แม่น้ำบางปะกง")
+    st.write("📍 จุดตรวจวัดหลัก : แม่น้ำบางปะกง")
 
     st.divider()
     st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
@@ -436,7 +431,6 @@ with tab1:
             st.write(f"### 📊 กราฟแสดงผลประจำวันที่ {d_str}")
             df_filtered = df_long[df_long["วันที่"] == d_str]
             
-            # กราฟที่ 1: TDS
             st.markdown("#### 🧂 ค่า TDS (ppm)")
             chart_tds = alt.Chart(df_filtered).mark_line(point=True, color='#f97316').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
@@ -445,7 +439,6 @@ with tab1:
             ).properties(height=220).interactive()
             st.altair_chart(chart_tds, use_container_width=True)
             
-            # กราฟที่ 2: ORP (ปรับสเกลให้ครอบคลุมถึงช่วง ~410 mV)
             st.markdown("#### ⚡ ค่า ORP (mV)")
             chart_orp = alt.Chart(df_filtered).mark_line(point=True, color='#0ea5e9').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
@@ -454,7 +447,6 @@ with tab1:
             ).properties(height=220).interactive()
             st.altair_chart(chart_orp, use_container_width=True)
             
-            # กราฟที่ 3: pH
             st.markdown("#### 🧪 ค่า pH")
             chart_ph = alt.Chart(df_filtered).mark_line(point=True, color='#10b981').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
@@ -528,7 +520,7 @@ with tab2:
 
 
 # ============================================================
-# TAB 3: REPORT / CLUE
+# TAB 3: REPORT / CLUE (พร้อมแผนที่พิกัดจริงหลายจุด)
 # ============================================================
 
 with tab3:
@@ -545,13 +537,55 @@ with tab3:
         unsafe_allow_html=True
     )
 
-    st.subheader("🗺️ ตำแหน่งทุ่นตรวจวัดคุณภาพน้ำ (พิกัด: 13°41'21.90\"N 101°04'43.02\"E)")
-    map_data = pd.DataFrame({
-        'lat': [13.689417],
-        'lon': [101.078617]
-    })
-    st.map(map_data, zoom=14)
-    st.caption("📍 พิกัดจุดติดตั้งทุ่น: 13°41'21.90\"N 101°04'43.02\"E (13.689417, 101.078617)")
+    st.subheader("🗺️ แผนที่แสดงจุดตรวจวัด และจุดเสี่ยง (โรงไฟฟ้า / พื้นที่อุตสาหกรรมริมแม่น้ำ)")
+
+    map_df = pd.DataFrame([
+        {
+            "lat": 13.689417, 
+            "lon": 101.078617, 
+            "name": "ทุ่นตรวจวัดคุณภาพน้ำ", 
+            "color": [0, 150, 255]
+        },
+        {
+            "lat": 13.501389, 
+            "lon": 101.025278, 
+            "name": "พื้นที่โรงไฟฟ้าบางปะกง (ริมแม่น้ำ)", 
+            "color": [255, 0, 0]
+        },
+        {
+            "lat": 13.535000, 
+            "lon": 101.005000, 
+            "name": "โซนสวนอุตสาหกรรม / จุดระบายน้ำ (ท่าข้าม)", 
+            "color": [255, 0, 0]
+        }
+    ])
+
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        map_df,
+        get_position=["lon", "lat"],
+        get_color="color",
+        get_radius=120,
+        pickable=True,
+        auto_highlight=True,
+    )
+
+    view_state = pdk.ViewState(
+        latitude=13.600000,
+        longitude=101.040000,
+        zoom=10.5,
+        pitch=0,
+    )
+
+    r = pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip={"text": "{name}\nพิกัด: {lat}, {lon}"},
+        map_style="mapbox://styles/mapbox/dark-v10"
+    )
+
+    st.pydeck_chart(r)
+    st.caption("📍 หมุดสีฟ้า: ทุ่นตรวจวัดคุณภาพน้ำ | 🔴 หมุดสีแดง: โรงงานและจุดระบายน้ำสำคัญตามพิกัดจริง")
 
     st.divider()
 
