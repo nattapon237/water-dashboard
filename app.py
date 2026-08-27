@@ -24,13 +24,12 @@ st.set_page_config(
 
 
 # ============================================================
-# BRIGHT LIGHT THEME & STEALTH MOCK CONTROLS CSS
+# BRIGHT LIGHT THEME CSS
 # ============================================================
 
 st.markdown(
     """
     <style>
-    /* ซ่อนปุ่มช่วยเหลือการเข้าถึง */
     [role="region"][aria-label*="accessibility"],
     .accessibility-icon,
     div[data-baseweb="accessibility"] {
@@ -49,15 +48,8 @@ st.markdown(
     [data-testid="stMetric"] { background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 16px !important; padding: 18px !important; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05); }
     [data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * { color: #64748b !important; font-weight: 600 !important; }
     [data-testid="stMetricValue"], [data-testid="stMetricValue"] * { color: #172033 !important; font-weight: 700 !important; }
-    [data-baseweb="select"] { background-color: #ffffff !important; }
-    [data-baseweb="select"] * { color: #172033 !important; }
-    input, textarea { background-color: #ffffff !important; color: #172033 !important; border: 1px solid #cbd5e1 !important; }
-    input::placeholder, textarea::placeholder { color: #94a3b8 !important; }
-    .stButton > button { background-color: #ffffff !important; color: #172033 !important; border: 1px solid #cbd5e1 !important; border-radius: 10px !important; font-weight: 600 !important; }
-    .stButton > button:hover { background-color: #f0f9ff !important; color: #0369a1 !important; border-color: #7dd3fc !important; }
-    .water-card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04); }
-    .online-card { background-color: #ecfdf5; border: 1px solid #86efac; border-radius: 12px; padding: 14px; color: #166534 !important; font-weight: 700; }
-    .offline-card { background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 14px; color: #991b1b !important; font-weight: 700; }
+    .online-card { background-color: #ecfdf5; border: 1px solid #86efac; border-radius: 12px; padding: 14px; color: #166534 !important; font-weight: 700; text-align: center; }
+    .offline-card { background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 14px; color: #991b1b !important; font-weight: 700; text-align: center; }
     hr { border-color: #e2e8f0 !important; }
     </style>
     """,
@@ -90,18 +82,6 @@ def read_firebase():
     except Exception as e:
         print("Firebase Error:", e)
         return None
-
-def push_mock_data_to_firebase():
-    mock_payload = {
-        "tds": round(random.uniform(300.0, 700.0), 1),
-        "orp": round(random.uniform(220.0, 410.0), 1),
-        "ph": round(random.uniform(6.5, 8.0), 2),
-        "timestamp": datetime.now(TH_TZ).strftime("%Y-%m-%d %H:%M:%S")
-    }
-    try:
-        requests.put(FIREBASE_URL, json=mock_payload, timeout=5)
-    except Exception as e:
-        print("Mock Firebase Push Error:", e)
 
 
 # ============================================================
@@ -158,59 +138,28 @@ def send_line_notification(message):
 # SESSION STATE INITIALIZATION
 # ============================================================
 
-if "sim_mode" not in st.session_state:
-    st.session_state.sim_mode = "⚫ เซนเซอร์ไม่ได้ลงน้ำ (ค่าเริ่มต้นต่ำๆ)"
-
-if "custom_tds" not in st.session_state:
-    st.session_state.custom_tds = 550.0
-
-if "custom_orp" not in st.session_state:
-    st.session_state.custom_orp = 280.0
-
-if "custom_ph" not in st.session_state:
-    st.session_state.custom_ph = 7.2
-
-if "last_mock_push" not in st.session_state:
-    st.session_state.last_mock_push = 0
+if "sensor_connected" not in st.session_state:
+    st.session_state.sensor_connected = False
 
 
 # ============================================================
 # DATA SIMULATION LOGIC
 # ============================================================
 
-if time.time() - st.session_state.last_mock_push > 3600:  
-    push_mock_data_to_firebase()
-    st.session_state.last_mock_push = time.time()
-
 live_data = read_firebase()
 
-# คำนวณค่าตามโหมดที่เลือกใน Sidebar (เปลี่ยนโหมดไม่ได้ลงน้ำ ให้รันค่าต่ำๆ แทน)
-mode = st.session_state.sim_mode
-if "⚫ เซนเซอร์ไม่ได้ลงน้ำ" in mode:
+if not st.session_state.sensor_connected:
     sensor_online = False
     tds = 30.0
     orp_value = 100.0
     ph_value = 7.00
 else:
     sensor_online = True
-    if "🟢 ปกติ" in mode:
-        time_seed = int(time.time() // 10)
-        random.seed(time_seed)
-        tds = round(random.uniform(400.0, 750.0), 1)
-        orp_value = round(random.uniform(220.0, 380.0), 1)
-        ph_value = round(random.uniform(6.8, 7.8), 2)
-    elif "⚠️ เตือน (ค่าปานกลาง)" in mode:
-        tds = 1250.0
-        orp_value = 110.0
-        ph_value = 8.8
-    elif "🚨 วิกฤต (ค่าสีแดง)" in mode:
-        tds = 3200.0
-        orp_value = 20.0
-        ph_value = 5.2
-    else:  # กำหนดค่าเอง
-        tds = st.session_state.custom_tds
-        orp_value = st.session_state.custom_orp
-        ph_value = st.session_state.custom_ph
+    time_seed = int(time.time() // 10)
+    random.seed(time_seed)
+    tds = round(random.uniform(400.0, 750.0), 1)
+    orp_value = round(random.uniform(220.0, 380.0), 1)
+    ph_value = round(random.uniform(6.8, 7.8), 2)
 
 
 # ============================================================
@@ -275,49 +224,14 @@ if sensor_online:
             is_critical = True
     if orp_value < ORP_MIN:
         risk.append(f"ORP ต่ำเกินไป {orp_value:.1f} mV")
-        if orp_value < -50:
-            is_critical = True
     elif orp_value > ORP_MAX:
         risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f} mV")
-        if orp_value > 650:
-            is_critical = True
     if ph_value < PH_MIN:
         risk.append(f"pH เป็นกรดเกินไป {ph_value:.2f}")
-        if ph_value < 6.0:
-            is_critical = True
     elif ph_value > PH_MAX:
         risk.append(f"pH เป็นด่างเกินไป {ph_value:.2f}")
-        if ph_value > 8.5:
-            is_critical = True
 
 water_normal = (sensor_online and len(risk) == 0)
-
-
-# ============================================================
-# AUTOMATED SCHEDULERS (LINE NOTIFY)
-# ============================================================
-
-now_th = datetime.now(TH_TZ)
-
-if "last_alert_time" not in st.session_state:
-    st.session_state.last_alert_time = None
-
-if is_critical and sensor_online:
-    now_time = datetime.now(TH_TZ)
-    if st.session_state.last_alert_time is None or (now_time - st.session_state.last_alert_time).total_seconds() > 900:
-        alert_msg = (
-            f"🚨 ⚠️ แจ้งเตือนวิกฤตคุณภาพน้ำ (ค่าเกินเกณฑ์สีแดง)!\n"
-            f"📍 จุดตรวจวัดหลัก: แม่น้ำบางปะกง\n"
-            f"⏰ เวลา: {now_time.strftime('%d/%m/%Y %H:%M:%S')}\n"
-            f"----------------------------------\n"
-            f"🧂 TDS: {tds:.1f} ppm\n"
-            f"⚡ ORP: {orp_value:.1f} mV\n"
-            f"🧪 pH: {ph_value:.2f}\n"
-            f"⚠️ สาเหตุ/ความเสี่ยง:\n" + "\n".join([f"• {r}" for r in risk]) + "\n\n"
-            f"🔴 โปรดตรวจสอบระบบและพื้นที่ด่วน!"
-        )
-        if send_line_notification(alert_msg):
-            st.session_state.last_alert_time = now_time
 
 
 # ============================================================
@@ -335,28 +249,15 @@ with st.sidebar:
     else:
         st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE (ไม่ได้ลงน้ำ)</div>', unsafe_allow_html=True)
 
-    st.divider()
-    
-    with st.expander("🛠️ ตั้งค่าสถานะเซนเซอร์ (จำลองค่า)", expanded=True):
-        st.session_state.sim_mode = st.selectbox(
-            "เลือกพฤติกรรมของค่าเซนเซอร์",
-            [
-                "⚫ เซนเซอร์ไม่ได้ลงน้ำ (ค่าเริ่มต้นต่ำๆ)",
-                "🟢 ปกติ (สุ่มค่าเรียลไทม์)", 
-                "⚠️ เตือน (ค่าปานกลาง)", 
-                "🚨 วิกฤต (ค่าสีแดง)", 
-                "🛠️ กำหนดค่าเอง (Custom)"
-            ],
-            index=["⚫ เซนเซอร์ไม่ได้ลงน้ำ (ค่าเริ่มต้นต่ำๆ)", "🟢 ปกติ (สุ่มค่าเรียลไทม์)", "⚠️ เตือน (ค่าปานกลาง)", "🚨 วิกฤต (ค่าสีแดง)", "🛠️ กำหนดค่าเอง (Custom)"].index(st.session_state.sim_mode)
-        )
-        
-        st.session_state.custom_tds = st.number_input("TDS (ppm)", value=st.session_state.custom_tds)
-        st.session_state.custom_orp = st.number_input("ORP (mV)", value=st.session_state.custom_orp)
-        st.session_state.custom_ph = st.number_input("pH", value=st.session_state.custom_ph, format="%.2f")
+    st.write("")
+    # ปุ่มเดียวสำหรับสลับสถานะ
+    if st.button("🔄 สลับสถานะ (ลงน้ำ / ไม่ได้ลงน้ำ)", use_container_width=True):
+        st.session_state.sensor_connected = not st.session_state.sensor_connected
+        st.rerun()
 
     st.divider()
     st.subheader("🕒 เวลาปัจจุบัน")
-    st.write(now_th.strftime("%d/%m/%Y %H:%M:%S"))
+    st.write(datetime.now(TH_TZ).strftime("%d/%m/%Y %H:%M:%S"))
 
 
 # ============================================================
@@ -383,7 +284,6 @@ with tab1:
     st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
     
     col1, col2, col3 = st.columns(3)
-    # แสดงผลเป็นตัวเลขต่ำๆ เสมอ แม้ไม่ได้ลงน้ำ
     col1.metric("🧂 TDS", f"{tds:.1f} ppm")
     col2.metric("⚡ ORP", f"{orp_value:.1f} mV")
     col3.metric("🧪 pH", f"{ph_value:.2f}")
@@ -391,12 +291,12 @@ with tab1:
     st.divider()
     st.subheader("🤖 สถานะคุณภาพน้ำ")
     if not sensor_online:
-        st.info("ℹ️ เซนเซอร์ไม่ได้อยู่มนน้ำ (แสดงค่าเริ่มต้นต่ำๆ)")
+        st.info("ℹ️ เซนเซอร์ไม่ได้ลงน้ำ (แสดงค่าเริ่มต้นต่ำๆ)")
     elif water_normal:
         st.success("✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ")
     else:
         if is_critical:
-            st.error("🚨 พบค่าวิกฤต (เกินเกณฑ์สีแดง) ระบบส่งแจ้งเตือนด่วนไปที่ LINE แล้ว!")
+            st.error("🚨 พบค่าวิกฤต (เกินเกณฑ์สีแดง)")
         else:
             st.warning("⚠️ พบค่าที่ควรเฝ้าระวัง")
         for item in risk: st.write("• " + item)
@@ -447,56 +347,26 @@ with tab2:
     st.caption("คำแนะนำจากค่าที่ตรวจวัดได้และเกณฑ์มาตรฐาน")
 
     if not sensor_online:
-        st.info("ℹ️ เซนเซอร์ไม่ได้อยู่มนน้ำ (กำลังแสดงผลตามค่าเริ่มต้นต่ำๆ)")
+        st.info("ℹ️ เซนเซอร์ไม่ได้ลงน้ำ (กำลังแสดงผลตามค่าเริ่มต้นต่ำๆ)")
     
     st.subheader("📊 ผลวิเคราะห์ปัจจุบัน")
     
     if tds < 450:
         st.success(f"🧂 TDS {tds:.1f} ppm — ปลอดภัยสูง (พืชทุกชนิดเติบโตได้ดี)")
     elif 450 <= tds <= 1000:
-        st.info(f"ℹ️ TDS {tds:.1f} ppm — ปลอดภัยปานกลาง (พืชทนเค็มต่ำ ผลผลิตอาจลดลง 10-25%)")
-    elif 1000 < tds <= 2000:
-        st.warning(f"⚠️ TDS {tds:.1f} ppm — เฝ้าระวัง (พืชทั่วไปใบไหม้ ขอบใบแห้ง ชะงักการโต)")
-    elif 2000 < tds <= 3000:
-        st.error(f"🔴 TDS {tds:.1f} ppm — อันตราย (เฉพาะพืชทนเค็มสูงเท่านั้น พืชทั่วไปตาย)")
+        st.info(f"ℹ️ TDS {tds:.1f} ppm — ปลอดภัยปานกลาง")
     else:
-        st.error(f"🚨 TDS {tds:.1f} ppm — วิกฤต! (น้ำเค็มเกินไป ไม่ควรใช้เด็ดขาด)")
+        st.warning(f"⚠️ TDS {tds:.1f} ppm — เฝ้าระวัง")
 
     if 150 <= orp_value <= 400:
-        st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม (ปลา/กุ้ง และ พืช)")
-    elif orp_value > 400 and orp_value <= 650:
-        st.info(f"⚡ ORP {orp_value:.1f} mV — น้ำมีค่าการออกซิไดซ์สูง")
-    elif orp_value > 650:
-        st.warning(f"⚠️ ORP {orp_value:.1f} mV — สูงมาก (เทียบเท่าน้ำผ่านการฆ่าเชื้อ ไม่เหมาะกับการเกษตรทั่วไป)")
-    elif orp_value >= 50 and orp_value < 150:
-        st.warning(f"⚠️ ORP {orp_value:.1f} mV — ต่ำ (เริ่มมีลักษณะเทียบเท่าน้ำเสียที่ผ่านการเติมอากาศ)")
+        st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม")
     else:
-        st.error(f"🔴 ORP {orp_value:.1f} mV — ต่ำมาก (ความเสี่ยงน้ำเน่าเสีย/สภาวะขาดออกซิเจน)")
+        st.warning(f"⚠️ ORP {orp_value:.1f} mV — อยู่ในเกณฑ์ต้องเฝ้าระวัง")
 
     if 6.5 <= ph_value <= 8.5:
-        st.success(f"🧪 pH {ph_value:.2f} — เหมาะสม (สภาพความเป็นกรด-ด่างอยู่ในเกณฑ์มาตรฐานเพื่อการเกษตร)")
-    elif ph_value < 6.5:
-        st.warning(f"⚠️ pH {ph_value:.2f} — มีความเป็นกรดสูง (อาจส่งผลให้รากพืชดูดซึมธาตุอาหารบางชนิดไม่ได้)")
+        st.success(f"🧪 pH {ph_value:.2f} — เหมาะสม")
     else:
-        st.warning(f"⚠️ pH {ph_value:.2f} — มีความเป็นด่างสูง (อาจทำให้เกิดการตกตะกอนของแร่ธาตุในน้ำ)")
-
-    st.divider()
-    st.subheader("🌱 แนวทางการใช้น้ำ")
-    
-    advice_messages = []
-    if tds < 450:
-        advice_messages.append("• **ด้านความเค็ม (TDS < 450 ppm):** อยู่ในเกณฑ์ **ปลอดภัยสูง** เหมาะสำหรับพืชทุกชนิด รวมถึงพืชไวต่อเกลือ เช่น ทุเรียน ส้ม มะนาว และผักสลัด")
-    elif 450 <= tds <= 1000:
-        advice_messages.append("• **ด้านความเค็ม (TDS 450 - 1,000 ppm):** อยู่ในเกณฑ์ **ปลอดภัยปานกลาง** สามารถใช้รดพืชทนเค็มต่ำได้ เช่น ข้าว ข้าวโพด อ้อย และพริก")
-    elif 1000 < tds <= 2000:
-        advice_messages.append("• **ด้านความเค็ม (TDS 1,000 - 2,000 ppm):** อยู่ในเกณฑ์ **เฝ้าระวัง** ควรใช้เฉพาะกับพืชทนเค็มปานกลาง เช่น ปาล์มน้ำมัน คะน้า หรือบรอกโคลี")
-    elif 2000 < tds <= 3000:
-        advice_messages.append("• **ด้านความเค็ม (TDS 2,000 - 3,000 ppm):** อยู่ในเกณฑ์ **อันตราย** เหมาะเฉพาะพืชทนเค็มสูง เช่น มะพร้าว อินทผลัม")
-    else:
-        advice_messages.append("• **ด้านความเค็ม (TDS > 3,000 ppm):** อยู่ในเกณฑ์ **วิกฤต** ห้ามนำไปใช้รดพืชทั่วไปเด็ดขาด")
-
-    for msg in advice_messages:
-        st.markdown(msg)
+        st.warning(f"⚠️ pH {ph_value:.2f} — อยู่นอกช่วงมาตรฐาน")
 
 
 # ============================================================
