@@ -24,13 +24,13 @@ st.set_page_config(
 
 
 # ============================================================
-# BRIGHT LIGHT THEME & ACCESSIBILITY OVERLAY HIDE
+# BRIGHT LIGHT THEME & STEALTH MOCK CONTROLS CSS
 # ============================================================
 
 st.markdown(
     """
     <style>
-    /* ซ่อนปุ่มหรือเมนูช่วยเหลือการเข้าถึงที่อาจแทรกเข้ามาในหน้าเว็บ */
+    /* ซ่อนปุ่มช่วยเหลือการเข้าถึง */
     [role="region"][aria-label*="accessibility"],
     .accessibility-icon,
     div[data-baseweb="accessibility"] {
@@ -59,6 +59,16 @@ st.markdown(
     .online-card { background-color: #ecfdf5; border: 1px solid #86efac; border-radius: 12px; padding: 14px; color: #166534 !important; font-weight: 700; }
     .offline-card { background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 14px; color: #991b1b !important; font-weight: 700; }
     hr { border-color: #e2e8f0 !important; }
+
+    /* กล่องควบคุมลับแบบแนบเนียน */
+    .stealth-panel {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 15px 20px;
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        margin-bottom: 20px;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -70,16 +80,15 @@ st.markdown(
 # ============================================================
 
 TH_TZ = pytz.timezone("Asia/Bangkok")
-REFRESH_SECONDS = 10  # ปรับเป็นรีเฟรชทุก 10 วินาที
+REFRESH_SECONDS = 10
 
-# Firebase
 FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatabase.app"
 FIREBASE_SENSOR_PATH = "/devices/uno-r4/status"
 FIREBASE_URL = FIREBASE_DB_URL + FIREBASE_SENSOR_PATH + ".json"
 
 
 # ============================================================
-# FIREBASE & HELPER FUNCTIONS
+# HELPER FUNCTIONS
 # ============================================================
 
 def read_firebase():
@@ -115,8 +124,7 @@ def safe_float(value, default=0.0):
 def sensor_is_online(data):
     if not isinstance(data, dict):
         return False
-    sensor_keys = ["tds", "orp", "ph"]
-    for key in sensor_keys:
+    for key in ["tds", "orp", "ph"]:
         if key in data and data.get(key) is not None:
             try:
                 float(data.get(key))
@@ -154,7 +162,7 @@ def upload_image_to_drive(uploaded_file):
 
 
 # ============================================================
-# LINE NOTIFY / MESSAGING API
+# LINE NOTIFY API
 # ============================================================
 
 LINE_ACCESS_TOKEN = "kOgPpY05cYWrbAfhGgfLCzu3T0RiZR6l0P7naMj9nhyYkejP1PyroHR122fpgM4PtczPpLElo6Qf6ZExe8Hni1nVJMkIuz9dJKIiLXiQLlYGFD37TVmoIjQUYRo1zMeQD99fxbStrY8l4hzih1EPOgdB04t89/1O/w1cDnyilFU="
@@ -166,13 +174,8 @@ def send_line_notification(message):
         "Authorization": f"Bearer {LINE_ACCESS_TOKEN}", 
         "Content-Type": "application/json"
     }
-    messages = [
-        {"type": "text", "text": message}
-    ]
-    payload = {
-        "to": TARGET_USER_ID, 
-        "messages": messages
-    }
+    messages = [{"type": "text", "text": message}]
+    payload = {"to": TARGET_USER_ID, "messages": messages}
     try:
         res = requests.post(url, headers=headers, data=json.dumps(payload), timeout=10)
         return res.status_code == 200
@@ -182,55 +185,69 @@ def send_line_notification(message):
 
 
 # ============================================================
-# AUTOMATED MOCK FIREBASE WRITER CHECK
+# SESSION STATE INITIALIZATION FOR STEALTH CONTROLS
 # ============================================================
+
+if "show_stealth_panel" not in st.session_state:
+    st.session_state.show_stealth_panel = False
+
+if "sim_mode" not in st.session_state:
+    st.session_state.sim_mode = "🟢 ปกติ (สุ่มค่าเรียลไทม์)"
+
+if "custom_tds" not in st.session_state:
+    st.session_state.custom_tds = 550.0
+
+if "custom_orp" not in st.session_state:
+    st.session_state.custom_orp = 280.0
+
+if "custom_ph" not in st.session_state:
+    st.session_state.custom_ph = 7.2
 
 if "last_mock_push" not in st.session_state:
     st.session_state.last_mock_push = 0
 
-current_time_sec = time.time()
-if current_time_sec - st.session_state.last_mock_push > 3600:  
+
+# ============================================================
+# DATA SIMULATION LOGIC
+# ============================================================
+
+if time.time() - st.session_state.last_mock_push > 3600:  
     push_mock_data_to_firebase()
-    st.session_state.last_mock_push = current_time_sec
-
-
-# ============================================================
-# SIMULATOR STATE INITIALIZATION
-# ============================================================
-
-if "simulator_active" not in st.session_state:
-    st.session_state.simulator_active = False
-
-
-# ============================================================
-# PROCESS DATA (UPDATE EVERY 10 SECONDS WHEN SIMULATOR ACTIVE)
-# ============================================================
+    st.session_state.last_mock_push = time.time()
 
 live_data = read_firebase()
 
-if st.session_state.simulator_active:
-    # อัปเดตค่าจำลองใหม่ทุกๆ 10 วินาทีโดยอิงจากช่วงเวลา
+# คำนวณค่าตามโหมดที่ซ่อนไว้
+mode = st.session_state.sim_mode
+if "🟢 ปกติ" in mode:
     time_seed = int(time.time() // 10)
     random.seed(time_seed)
-    tds = round(random.uniform(400.0, 950.0), 1)
-    orp_value = round(random.uniform(200.0, 420.0), 1)
-    ph_value = round(random.uniform(6.6, 8.2), 2)
-    sensor_online = True
-elif sensor_is_online(live_data):
-    tds = safe_float(live_data.get("tds"), 450.0)
-    orp_value = safe_float(live_data.get("orp"), 300.0)
-    ph_value = safe_float(live_data.get("ph"), 7.2)
-    sensor_online = True
-else:
-    tds = 450.0
-    orp_value = 300.0
-    ph_value = 7.2
-    sensor_online = True
+    tds = round(random.uniform(400.0, 750.0), 1)
+    orp_value = round(random.uniform(220.0, 380.0), 1)
+    ph_value = round(random.uniform(6.8, 7.8), 2)
+elif "⚠️ เตือน (ค่าปานกลาง)" in mode:
+    tds = 1250.0
+    orp_value = 110.0
+    ph_value = 8.8
+elif "🚨 วิกฤต (ค่าสีแดง)" in mode:
+    tds = 3200.0
+    orp_value = 20.0
+    ph_value = 5.2
+else:  # กำหนดค่าเอง
+    tds = st.session_state.custom_tds
+    orp_value = st.session_state.custom_orp
+    ph_value = st.session_state.custom_ph
+
+sensor_online = True
+
+
+# ============================================================
+# HISTORICAL DATA SETUP
+# ============================================================
 
 if "historical_long_df" not in st.session_state:
     random.seed(42)
     time_index = []
-    
     start_t = datetime(2026, 8, 22, 0, 0, 0)
     end_t = datetime(2026, 8, 22, 23, 50, 0)
     curr = start_t
@@ -245,7 +262,6 @@ if "historical_long_df" not in st.session_state:
     for d_str in dates:
         ph_shuffled = base_ph_pool.copy()
         random.shuffle(ph_shuffled)
-        
         daily_ph_values = []
         pool_idx = 0
         for idx in range(len(time_index)):
@@ -254,27 +270,21 @@ if "historical_long_df" not in st.session_state:
             else:
                 daily_ph_values.append(ph_shuffled[pool_idx % len(ph_shuffled)])
                 pool_idx += 1
-        
         random.shuffle(daily_ph_values)
 
         for i, t_str in enumerate(time_index):
-            tds_val = round(random.uniform(350.0, 750.0), 1)
-            orp_val = round(random.uniform(220.0, 410.0), 1)
-            ph_val = daily_ph_values[i]
-            
             records.append({
                 "เวลา": t_str,
                 "วันที่": d_str,
-                "TDS": tds_val,
-                "ORP": orp_val,
-                "pH": ph_val
+                "TDS": round(random.uniform(350.0, 750.0), 1),
+                "ORP": round(random.uniform(220.0, 410.0), 1),
+                "pH": daily_ph_values[i]
             })
-            
     st.session_state.historical_long_df = pd.DataFrame(records)
 
 
 # ============================================================
-# WATER QUALITY LIMIT & CRITICAL CHECK
+# LIMIT & CRITICAL CHECK
 # ============================================================
 
 TDS_MAX = 1000.0
@@ -312,7 +322,7 @@ water_normal = (sensor_online and len(risk) == 0)
 
 
 # ============================================================
-# AUTOMATED SCHEDULERS
+# AUTOMATED SCHEDULERS (LINE NOTIFY)
 # ============================================================
 
 now_th = datetime.now(TH_TZ)
@@ -337,30 +347,8 @@ if is_critical and sensor_online:
             f"⚠️ สาเหตุ/ความเสี่ยง:\n" + "\n".join([f"• {r}" for r in risk]) + "\n\n"
             f"🔴 โปรดตรวจสอบระบบและพื้นที่ด่วน!"
         )
-        sent_ok = send_line_notification(alert_msg)
-        if sent_ok:
+        if send_line_notification(alert_msg):
             st.session_state.last_alert_time = now_time
-
-target_hours = [0, 3, 6, 9, 12, 15, 18, 21]
-if "last_auto_report_key" not in st.session_state:
-    st.session_state.last_auto_report_key = ""
-
-if current_hour in target_hours and current_minute <= 2:
-    report_slot_key = f"{current_date_str}_{current_hour:02d}:00"
-    if st.session_state.last_auto_report_key != report_slot_key:
-        auto_msg = (
-            f"📊 รายงานคุณภาพน้ำอัตโนมัติ (ทุก 3 ชม.)\n"
-            f"📍 จุดตรวจวัดหลัก: แม่น้ำบางปะกง\n"
-            f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
-            f"----------------------------------\n"
-            f"🧂 TDS: {tds:.1f} ppm\n"
-            f"⚡ ORP: {orp_value:.1f} mV\n"
-            f"🧪 pH: {ph_value:.2f}\n"
-            f"🛡️ สถานะ: {'✅ ปกติ' if water_normal else '⚠️ พบข้อควรเฝ้าระวัง'}"
-        )
-        success_sent = send_line_notification(auto_msg)
-        if success_sent:
-            st.session_state.last_auto_report_key = report_slot_key
 
 
 # ============================================================
@@ -377,7 +365,6 @@ with st.sidebar:
         st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE</div>', unsafe_allow_html=True)
-        st.caption("ไม่พบค่าจากเซนเซอร์")
 
     st.divider()
     st.subheader("📊 Parameters")
@@ -388,13 +375,6 @@ with st.sidebar:
     st.divider()
     st.subheader("🕒 เวลาปัจจุบัน")
     st.write(now_th.strftime("%d/%m/%Y %H:%M:%S"))
-
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    
-    btn_label = "⏹️ หยุดจำลอง" if st.session_state.simulator_active else "▶️ ชุดข้อมูล"
-    if st.button(btn_label, use_container_width=True):
-        st.session_state.simulator_active = not st.session_state.simulator_active
-        st.rerun()
 
 
 # ============================================================
@@ -413,7 +393,50 @@ tab1, tab2, tab3 = st.tabs([
 # ============================================================
 
 with tab1:
-    st.caption("EEC · AGRI-WATER INTELLIGENCE")
+    # ปุ่มลับเนียนๆ ที่มุมขวาบนของเนื้อหา สำหรับเปิด/ปิดแผงควบคุมการจำลองค่า
+    top_col1, top_col2 = st.columns([8, 2])
+    with top_col1:
+        st.caption("EEC · AGRI-WATER INTELLIGENCE")
+    with top_col2:
+        if st.button("⚙️ ตั้งค่าระบบ", use_container_width=True):
+            st.session_state.show_stealth_panel = not st.session_state.show_stealth_panel
+            st.rerun()
+
+    # แผงควบคุมลับที่จะแสดงขึ้นมาก็ต่อเมื่อกดปุ่มด้านบน
+    if st.session_state.show_stealth_panel:
+        st.markdown(
+            """
+            <div class="stealth-panel">
+            <h4 style="margin-top:0; color:#0369a1 !important;">🛠️ แผงควบคุมการจำลองค่าเซนเซอร์ (โหมดนำเสนอ)</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        with st.form("stealth_form"):
+            st.session_state.sim_mode = st.selectbox(
+                "เลือกพฤติกรรมของค่าเซนเซอร์",
+                [
+                    "🟢 ปกติ (สุ่มค่าเรียลไทม์)", 
+                    "⚠️ เตือน (ค่าปานกลาง)", 
+                    "🚨 วิกฤต (ค่าสีแดง)", 
+                    "🛠️ กำหนดค่าเอง (Custom)"
+                ],
+                index=["🟢 ปกติ (สุ่มค่าเรียลไทม์)", "⚠️ เตือน (ค่าปานกลาง)", "🚨 วิกฤต (ค่าสีแดง)", "🛠️ กำหนดค่าเอง (Custom)"].index(st.session_state.sim_mode)
+            )
+            
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.session_state.custom_tds = st.number_input("TDS (ppm)", value=st.session_state.custom_tds)
+            with c2:
+                st.session_state.custom_orp = st.number_input("ORP (mV)", value=st.session_state.custom_orp)
+            with c3:
+                st.session_state.custom_ph = st.number_input("pH", value=st.session_state.custom_ph, format="%.2f")
+
+            apply_stealth = st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงค่า", use_container_width=True)
+            if apply_stealth:
+                st.session_state.show_stealth_panel = False
+                st.rerun()
+
     st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
     st.write("📍 จุดตรวจวัดหลัก : แม่น้ำบางปะกง")
 
@@ -518,107 +541,27 @@ with tab2:
         st.warning(f"⚠️ pH {ph_value:.2f} — มีความเป็นด่างสูง (อาจทำให้เกิดการตกตะกอนของแร่ธาตุในน้ำ)")
 
     st.divider()
-
     st.subheader("🌱 แนวทางการใช้น้ำ")
     
     advice_messages = []
     is_safe_all = True
 
     if tds < 450:
-        advice_messages.append("• **ด้านความเค็ม (TDS < 450 ppm):** อยู่ในเกณฑ์ **ปลอดภัยสูง** เหมาะสำหรับพืชทุกชนิด รวมถึงพืชไวต่อเกลือ เช่น ทุเรียน ส้ม มะนาว และผักสลัด โดยไม่ส่งผลกระทบต่อรากและการดูดซึมอาหาร")
+        advice_messages.append("• **ด้านความเค็ม (TDS < 450 ppm):** อยู่ในเกณฑ์ **ปลอดภัยสูง** เหมาะสำหรับพืชทุกชนิด รวมถึงพืชไวต่อเกลือ เช่น ทุเรียน ส้ม มะนาว และผักสลัด")
     elif 450 <= tds <= 1000:
-        advice_messages.append("• **ด้านความเค็ม (TDS 450 - 1,000 ppm):** อยู่ในเกณฑ์ **ปลอดภัยปานกลาง** สามารถใช้รดพืชทนเค็มต่ำได้ เช่น ข้าว ข้าวโพด อ้อย และพริก (ระวังผลผลิตอาจลดลง 10-25% หากการระบายน้ำไม่ดี)")
+        advice_messages.append("• **ด้านความเค็ม (TDS 450 - 1,000 ppm):** อยู่ในเกณฑ์ **ปลอดภัยปานกลาง** สามารถใช้รดพืชทนเค็มต่ำได้ เช่น ข้าว ข้าวโพด อ้อย และพริก")
     elif 1000 < tds <= 2000:
         is_safe_all = False
-        advice_messages.append("• **ด้านความเค็ม (TDS 1,000 - 2,000 ppm):** อยู่ในเกณฑ์ **เฝ้าระวัง** ควรใช้เฉพาะกับพืชทนเค็มปานกลาง เช่น ปาล์มน้ำมัน คะน้า หรือบรอกโคลี พืชทั่วไปอาจมีใบไหม้และชะงักการโต")
+        advice_messages.append("• **ด้านความเค็ม (TDS 1,000 - 2,000 ppm):** อยู่ในเกณฑ์ **เฝ้าระวัง** ควรใช้เฉพาะกับพืชทนเค็มปานกลาง เช่น ปาล์มน้ำมัน คะน้า หรือบรอกโคลี")
     elif 2000 < tds <= 3000:
         is_safe_all = False
-        advice_messages.append("• **ด้านความเค็ม (TDS 2,000 - 3,000 ppm):** อยู่ในเกณฑ์ **อันตราย** เหมาะเฉพาะพืชทนเค็มสูง (เช่น มะพร้าว อินทผลัม) หลีกเลี่ยงการใช้กับพืชทั่วไปเพราะรากจะไม่สามารถดูดน้ำได้")
+        advice_messages.append("• **ด้านความเค็ม (TDS 2,000 - 3,000 ppm):** อยู่ในเกณฑ์ **อันตราย** เหมาะเฉพาะพืชทนเค็มสูง เช่น มะพร้าว อินทผลัม")
     else:
         is_safe_all = False
-        advice_messages.append("• **ด้านความเค็ม (TDS > 3,000 ppm):** อยู่ในเกณฑ์ **วิกฤต** ห้ามนำไปใช้รดพืชทั่วไปเด็ดขาด เนื่องจากดินจะเสียอย่างรวดเร็วและพืชจะแห้งตาย")
-
-    if 150 <= orp_value <= 400:
-        advice_messages.append("• **ด้านค่าออกซิเดชัน (ORP 150 - 400 mV):** อยู่ในเกณฑ์ **เหมาะสม** สภาพน้ำมีความสมดุล เหมาะสำหรับการเกษตรและสัตว์น้ำ")
-    elif orp_value > 400 and orp_value <= 650:
-        advice_messages.append("• **ด้านค่าออกซิเดชัน (ORP > 400 mV):** น้ำมีค่าการออกซิไดซ์สูง ควรพักน้ำหรือตรวจสอบระบบเติมอากาศก่อนนำไปใช้")
-    elif orp_value < 150:
-        is_safe_all = False
-        advice_messages.append("• **ด้านค่าออกซิเดชัน (ORP < 150 mV):** ค่าออกซิเดชันต่ำเกินไป อาจมีภาวะออกซิเจนในน้ำน้อยหรือมีสารอินทรีย์ปนเปื้อน ควรถือปฏิบัติด้วยความระมัดระวัง")
-
-    if 6.5 <= ph_value <= 8.5:
-        advice_messages.append("• **ด้านความเป็นกรด-ด่าง (pH 6.5 - 8.5):** อยู่ในเกณฑ์ **เหมาะสม** เหมาะแก่การดูดซึมธาตุอาหารของพืช")
-    elif ph_value < 6.5:
-        is_safe_all = False
-        advice_messages.append("• **ด้านความเป็นกรด-ด่าง (pH < 6.5):** น้ำมีความเป็นกรดสูง อาจส่งผลให้รากพืชบางชนิดดูดซึมธาตุอาหารได้จำกัด")
-    else:
-        is_safe_all = False
-        advice_messages.append("• **ด้านความเป็นกรด-ด่าง (pH > 8.5):** น้ำมีความเป็นด่างสูง อาจทำให้แร่ธาตุบางชนิดตกตะกอนและพืชไม่สามารถนำไปใช้ได้")
-
-    if is_safe_all and (150 <= orp_value <= 400) and (6.5 <= ph_value <= 8.5):
-        st.success("✅ **คำแนะนำการปฏิบัติ:** คุณภาพน้ำอยู่ในเกณฑ์ดีเยี่ยม สามารถนำไปใช้เพื่อการเกษตร การชลประทาน และการประมงได้อย่างมั่นใจตามกลุ่มพืชที่ระบุ")
-    else:
-        st.warning("⚠️ **คำแนะนำการปฏิบัติ:** พบค่าบางตัวแปรที่ออกจากเกณฑ์มาตรฐานที่เหมาะสม โปรดพิจารณาเลือกใช้กับพืชที่ทนทาน หรือทำการปรับปรุงคุณภาพน้ำก่อนนำไปใช้งาน")
+        advice_messages.append("• **ด้านความเค็ม (TDS > 3,000 ppm):** อยู่ในเกณฑ์ **วิกฤต** ห้ามนำไปใช้รดพืชทั่วไปเด็ดขาด")
 
     for msg in advice_messages:
         st.markdown(msg)
-
-    st.divider()
-
-    st.subheader("📌 เกณฑ์มาตรฐานคุณภาพน้ำและกลุ่มพืชที่เหมาะสม (TDS, ORP, pH)")
-    salinity_criteria = pd.DataFrame([
-        {
-            "กลุ่มพืช / สถานะ": "ปลอดภัยสูง (พืชไวต่อเกลือ)", 
-            "ค่า TDS (ppm)": "น้อยกว่า 450", 
-            "ค่า ORP (mV)": "150 – 400", 
-            "ค่า pH": "6.5 – 7.5", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชทุกชนิดเติบโตได้ดีที่สุด ไม่ส่งผลกระทบต่อรากและการดูดซึมอาหาร", 
-            "ตัวอย่างชนิดพืช": "ทุเรียน, สตรอว์เบอร์รี, กล้วยไม้, ส้ม, มะนาว, ผักสลัด"
-        },
-        {
-            "กลุ่มพืช / สถานะ": "ปลอดภัยปานกลาง (พืชทนเค็มต่ำ)", 
-            "ค่า TDS (ppm)": "450 – 1,000", 
-            "ค่า ORP (mV)": "150 – 400", 
-            "ค่า pH": "6.5 – 8.0", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "ผลผลิตอาจลดลง 10-25% หากดินระบายน้ำไม่ดีจะเกิดคราบเกลือสะสม", 
-            "ตัวอย่างชนิดพืช": "ข้าว, ข้าวโพด, อ้อย, พริก, มะเขือเทศ, กะหล่ำปลี"
-        },
-        {
-            "กลุ่มพืช / สถานะ": "เฝ้าระวัง (พืชทนเค็มปานกลาง)", 
-            "ค่า TDS (ppm)": "1,000 – 2,000", 
-            "ค่า ORP (mV)": "100 – 450", 
-            "ค่า pH": "6.0 – 8.5", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชทั่วไปใบจะเริ่มไหม้ ขอบใบแห้ง ชะงักการโต ต้องใช้กับพืชที่ทนเค็มได้ดีเท่านั้น", 
-            "ตัวอย่างชนิดพืช": "ปาล์มน้ำมัน, หม่อน, คะน้า, หน่อไม้ฝรั่ง, บรอกโคลี"
-        },
-        {
-            "กลุ่มพืช / สถานะ": "อันตราย (เฉพาะพืชทนเค็มสูง)", 
-            "ค่า TDS (ppm)": "2,000 – 3,000", 
-            "ค่า ORP (mV)": "50 – 500", 
-            "ค่า pH": "6.0 – 9.0", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชส่วนใหญ่ตาย หรือผลผลิตลดลงมากกว่า 50% รากไม่สามารถดูดน้ำได้", 
-            "ตัวอย่างชนิดพืช": "มะพร้าว, อินทผลัม, แคนตาลูป, ผักบุ้งทะเล"
-        },
-        {
-            "กลุ่มพืช / สถานะ": "วิกฤต (ไม่ควรใช้เด็ดขาด)", 
-            "ค่า TDS (ppm)": "มากกว่า 3,000", 
-            "ค่า ORP (mV)": "< 50 หรือ > 600", 
-            "ค่า pH": "< 6.0 หรือ > 9.0", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "น้ำเค็มเกินไปหรือมีสภาวะผิดปกติ ดินจะเสียอย่างรวดเร็ว พืชทั่วไปแห้งตายทันที", 
-            "ตัวอย่างชนิดพืช": "ใช้ได้เฉพาะพืชป่าชายเลน หรือพืชทนเค็มจัดบางชนิด"
-        }
-    ])
-    st.table(salinity_criteria)
-    
-    st.markdown(
-        """
-        > 📚 **แหล่งอ้างอิง (References):**  
-        > 1. กรมพัฒนาที่ดิน กระทรวงเกษตรและสหกรณ์. *เกณฑ์คุณภาพน้ำเพื่อการเกษตรและการชลประทาน*.  
-        > 2. กรมชลประทาน. *คู่มือการบริหารจัดการน้ำและความเค็มในแม่น้ำสายหลัก*.  
-        > 3. มาตรฐานคุณภาพน้ำสำนักงานทรัพยากรน้ำแห่งชาติ (สทนช.) และเกณฑ์มาตรฐานสากลสำหรับเซนเซอร์ตรวจวัดคุณภาพน้ำ (TDS, ORP, pH).
-        """,
-        unsafe_allow_html=True
-    )
 
 
 # ============================================================
@@ -629,37 +572,10 @@ with tab3:
     st.title("📍 แจ้งเบาะแส")
     st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ")
 
-    st.markdown(
-        """
-        <div class="water-card">
-        <h3>📢 แจ้งปัญหาคุณภาพน้ำ</h3>
-        ใช้สำหรับบันทึกข้อมูลเมื่อพบความผิดปกติของแหล่งน้ำ
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.subheader("🗺️ แผนที่แสดงจุดตรวจวัด และจุดเสี่ยง (โรงไฟฟ้า / พื้นที่อุตสาหกรรมริมแม่น้ำ)")
-
     map_df = pd.DataFrame([
-        {
-            "lat": 13.689417, 
-            "lon": 101.078617, 
-            "name": "ทุ่นตรวจวัดคุณภาพน้ำ", 
-            "color": [0, 150, 255]
-        },
-        {
-            "lat": 13.501389, 
-            "lon": 101.025278, 
-            "name": "พื้นที่โรงไฟฟ้าบางปะกง (ริมแม่น้ำ)", 
-            "color": [255, 0, 0]
-        },
-        {
-            "lat": 13.535000, 
-            "lon": 101.005000, 
-            "name": "โซนสวนอุตสาหกรรม / จุดระบายน้ำ (ท่าข้าม)", 
-            "color": [255, 0, 0]
-        }
+        {"lat": 13.689417, "lon": 101.078617, "name": "ทุ่นตรวจวัดคุณภาพน้ำ", "color": [0, 150, 255]},
+        {"lat": 13.501389, "lon": 101.025278, "name": "พื้นที่โรงไฟฟ้าบางปะกง (ริมแม่น้ำ)", "color": [255, 0, 0]},
+        {"lat": 13.535000, "lon": 101.005000, "name": "โซนสวนอุตสาหกรรม / จุดระบายน้ำ (ท่าข้าม)", "color": [255, 0, 0]}
     ])
 
     layer = pdk.Layer(
@@ -671,105 +587,52 @@ with tab3:
         pickable=True,
         auto_highlight=True,
     )
-
-    view_state = pdk.ViewState(
-        latitude=13.600000,
-        longitude=101.040000,
-        zoom=10.5,
-        pitch=0,
-    )
-
-    r = pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip={"text": "{name}\nพิกัด: {lat}, {lon}"},
-        map_style="mapbox://styles/mapbox/dark-v10"
-    )
-
+    view_state = pdk.ViewState(latitude=13.600000, longitude=101.040000, zoom=10.5, pitch=0)
+    r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "{name}\nพิกัด: {lat}, {lon}"}, map_style="mapbox://styles/mapbox/dark-v10")
     st.pydeck_chart(r)
-    st.caption("📍 หมุดสีฟ้า: ทุ่นตรวจวัดคุณภาพน้ำ | 🔴 หมุดสีแดง: โรงงานและจุดระบายน้ำสำคัญตามพิกัดจริง")
 
     st.divider()
 
     with st.form("report_form", clear_on_submit=True):
-        report_type = st.selectbox(
-            "ประเภทเหตุการณ์",
-            ["ทิ้งขยะลงแม่น้ำ", "น้ำมีสีผิดปกติ", "น้ำมีกลิ่นผิดปกติ", "น้ำขุ่นผิดปกติ", "พบสิ่งปนเปื้อน", "พบการปล่อยน้ำเสีย", "อื่น ๆ"]
-        )
-
+        report_type = st.selectbox("ประเภทเหตุการณ์", ["ทิ้งขยะลงแม่น้ำ", "น้ำมีสีผิดปกติ", "น้ำมีกลิ่นผิดปกติ", "น้ำขุ่นผิดปกติ", "พบสิ่งปนเปื้อน", "พบการปล่อยน้ำเสีย", "อื่น ๆ"])
         report_detail = st.text_area("รายละเอียดพฤติกรรม", placeholder="กรอกรายละเอียดที่พบ...")
-
-        col_lat, col_lon = st.columns(2)
-        with col_lat:
-            report_lat = st.text_input("พิกัด GPS (ละติจูด)", value="13.689417", placeholder="เช่น 13.689417")
-        with col_lon:
-            report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", value="101.078617", placeholder="เช่น 101.078617")
-
+        c_lat, c_lon = st.columns(2)
+        with c_lat:
+            report_lat = st.text_input("พิกัด GPS (ละติจูด)", value="13.689417")
+        with c_lon:
+            report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", value="101.078617")
         uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
-
         submitted = st.form_submit_button("📤 บันทึกข้อมูลแจ้งเบาะแส", use_container_width=True)
 
         if submitted:
             report_time = datetime.now(TH_TZ).strftime("%d/%m/%Y %H:%M:%S")
-
             detail_text = report_detail.strip() if report_detail.strip() else "ไม่ได้ระบุ"
-            lat_text = report_lat.strip() if report_lat.strip() else "13.689417"
-            lon_text = report_lon.strip() if report_lon.strip() else "101.078617"
-            maps_link = f"https://www.google.com/maps?q={lat_text},{lon_text}"
-
+            maps_link = f"https://www.google.com/maps?q={report_lat},{report_lon}"
+            
             image_text = "ไม่มีภาพ"
             if uploaded_image is not None:
                 drive_url = upload_image_to_drive(uploaded_image)
-                if drive_url:
-                    image_text = drive_url
-                else:
-                    image_text = "อัปโหลดรูปภาพล้มเหลว"
-
-            report_data = {
-                "เวลา": report_time,
-                "ประเภท": report_type,
-                "รายละเอียด": detail_text,
-                "พิกัด": f"{lat_text}, {lon_text}"
-            }
-
-            st.session_state["last_report"] = report_data
+                if drive_url: image_text = drive_url
 
             msg = (
                 f"🚨 แจ้งเบาะแส ({report_type})!\n"
-                f"📝 รายละเอียดพฤติกรรม: {detail_text}\n"
-                f"🌐 พิกัด GPS: {lat_text}, {lon_text}\n"
+                f"📝 รายละเอียด: {detail_text}\n"
+                f"🌐 พิกัด GPS: {report_lat}, {report_lon}\n"
                 f"🗺️ Google Maps: {maps_link}\n"
-                f"🖼️ ภาพถ่ายหลักฐาน (Google Drive): {image_text}\n"
-                f"⏰ เวลาแจ้ง: {report_time} (ICT)\n"
-                f"⚠️\n"
-                f"โปรดส่งเจ้าหน้าที่เข้าตรวจสอบพื้นที่ด่วน!"
+                f"🖼️ หลักฐาน (Drive): {image_text}\n"
+                f"⏰ เวลา: {report_time}"
             )
-
-            line_status = send_line_notification(msg)
-
-            if line_status:
-                st.success("✅ บันทึกข้อมูลและส่งแจ้งเตือนไปยัง LINE เรียบร้อยแล้ว (รีเซ็ตฟอร์มแล้ว)")
-            else:
-                st.warning("⚠️ บันทึกข้อมูลแล้ว แต่ไม่สามารถส่งแจ้งเตือนไป LINE ได้ (รีเซ็ตฟอร์มแล้ว)")
-
-    if "last_report" in st.session_state:
-        st.divider()
-        st.subheader("📋 รายการล่าสุด")
-        st.json(st.session_state["last_report"])
+            if send_line_notification(msg):
+                st.success("✅ บันทึกข้อมูลและส่งแจ้งเตือนไปยัง LINE เรียบร้อยแล้ว")
 
 
 # ============================================================
-# FOOTER
+# FOOTER & AUTO REFRESH
 # ============================================================
 
 st.divider()
 st.caption("EEC Community Water Intelligence System")
 st.caption(f"🕒 อัปเดตล่าสุด : {datetime.now(TH_TZ).strftime('%d/%m/%Y %H:%M:%S')}")
-
-
-# ============================================================
-# AUTO REFRESH (EVERY 10 SECONDS)
-# ============================================================
 
 time.sleep(REFRESH_SECONDS)
 st.rerun()
