@@ -70,7 +70,7 @@ st.markdown(
 # ============================================================
 
 TH_TZ = pytz.timezone("Asia/Bangkok")
-REFRESH_SECONDS = 2
+REFRESH_SECONDS = 10  # ปรับเป็นรีเฟรชทุก 10 วินาที
 
 # Firebase
 FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -203,13 +203,15 @@ if "simulator_active" not in st.session_state:
 
 
 # ============================================================
-# PROCESS DATA
+# PROCESS DATA (UPDATE EVERY 10 SECONDS WHEN SIMULATOR ACTIVE)
 # ============================================================
 
 live_data = read_firebase()
 
 if st.session_state.simulator_active:
-    # สร้างค่าจำลองอิงตามเกณฑ์แม่น้ำบางปะกง
+    # อัปเดตค่าจำลองใหม่ทุกๆ 10 วินาทีโดยอิงจากช่วงเวลา
+    time_seed = int(time.time() // 10)
+    random.seed(time_seed)
     tds = round(random.uniform(400.0, 950.0), 1)
     orp_value = round(random.uniform(200.0, 420.0), 1)
     ph_value = round(random.uniform(6.6, 8.2), 2)
@@ -372,10 +374,7 @@ with st.sidebar:
 
     st.subheader("📡 Sensor Status")
     if sensor_online:
-        if st.session_state.simulator_active:
-            st.markdown('<div class="online-card" style="background-color: #fef3c7; border-color: #f59e0b; color: #92400e !important;">⚡ SIMULATOR RUNNING</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
+        st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE</div>', unsafe_allow_html=True)
         st.caption("ไม่พบค่าจากเซนเซอร์")
@@ -392,7 +391,6 @@ with st.sidebar:
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     
-    # ปุ่มชุดข้อมูล (จำลองเซนเซอร์) อยู่บริเวณด้านล่าง Sidebar
     btn_label = "⏹️ หยุดจำลอง" if st.session_state.simulator_active else "▶️ ชุดข้อมูล"
     if st.button(btn_label, use_container_width=True):
         st.session_state.simulator_active = not st.session_state.simulator_active
@@ -770,12 +768,8 @@ st.caption(f"🕒 อัปเดตล่าสุด : {datetime.now(TH_TZ).st
 
 
 # ============================================================
-# AUTO REFRESH
+# AUTO REFRESH (EVERY 10 SECONDS)
 # ============================================================
 
-if st.session_state.simulator_active:
-    time.sleep(REFRESH_SECONDS)
-    st.rerun()
-else:
-    time.sleep(REFRESH_SECONDS)
-    st.rerun()
+time.sleep(REFRESH_SECONDS)
+st.rerun()
