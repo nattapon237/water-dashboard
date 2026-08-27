@@ -195,12 +195,26 @@ if current_time_sec - st.session_state.last_mock_push > 3600:
 
 
 # ============================================================
+# SIMULATOR STATE INITIALIZATION
+# ============================================================
+
+if "simulator_active" not in st.session_state:
+    st.session_state.simulator_active = False
+
+
+# ============================================================
 # PROCESS DATA
 # ============================================================
 
 live_data = read_firebase()
 
-if sensor_is_online(live_data):
+if st.session_state.simulator_active:
+    # สร้างค่าจำลองอิงตามเกณฑ์แม่น้ำบางปะกง
+    tds = round(random.uniform(400.0, 950.0), 1)
+    orp_value = round(random.uniform(200.0, 420.0), 1)
+    ph_value = round(random.uniform(6.6, 8.2), 2)
+    sensor_online = True
+elif sensor_is_online(live_data):
     tds = safe_float(live_data.get("tds"), 450.0)
     orp_value = safe_float(live_data.get("orp"), 300.0)
     ph_value = safe_float(live_data.get("ph"), 7.2)
@@ -358,7 +372,10 @@ with st.sidebar:
 
     st.subheader("📡 Sensor Status")
     if sensor_online:
-        st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
+        if st.session_state.simulator_active:
+            st.markdown('<div class="online-card" style="background-color: #fef3c7; border-color: #f59e0b; color: #92400e !important;">⚡ SIMULATOR RUNNING</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE</div>', unsafe_allow_html=True)
         st.caption("ไม่พบค่าจากเซนเซอร์")
@@ -370,8 +387,16 @@ with st.sidebar:
     st.write("🧪 pH")
 
     st.divider()
-    st.write("🕒 เวลาปัจจุบัน")
+    st.subheader("🕒 เวลาปัจจุบัน")
     st.write(now_th.strftime("%d/%m/%Y %H:%M:%S"))
+
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # ปุ่มชุดข้อมูล (จำลองเซนเซอร์) อยู่บริเวณด้านล่าง Sidebar
+    btn_label = "⏹️ หยุดจำลอง" if st.session_state.simulator_active else "▶️ ชุดข้อมูล"
+    if st.button(btn_label, use_container_width=True):
+        st.session_state.simulator_active = not st.session_state.simulator_active
+        st.rerun()
 
 
 # ============================================================
@@ -748,5 +773,9 @@ st.caption(f"🕒 อัปเดตล่าสุด : {datetime.now(TH_TZ).st
 # AUTO REFRESH
 # ============================================================
 
-time.sleep(REFRESH_SECONDS)
-st.rerun()
+if st.session_state.simulator_active:
+    time.sleep(REFRESH_SECONDS)
+    st.rerun()
+else:
+    time.sleep(REFRESH_SECONDS)
+    st.rerun()
