@@ -370,10 +370,6 @@ with st.sidebar:
     st.write("🧪 pH")
 
     st.divider()
-    st.write("🔄 Auto Refresh & Schedule")
-    st.info(f"• รีเฟรชหน้าจอทุก {REFRESH_SECONDS} วิ\n• ส่งค่าปลอมปกติเข้า Firebase ทุก 60 นาที\n• แจ้งเตือนด่วนทันทีเมื่อค่าเกินสีแดง")
-
-    st.divider()
     st.write("🕒 เวลาปัจจุบัน")
     st.write(now_th.strftime("%d/%m/%Y %H:%M:%S"))
 
