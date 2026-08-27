@@ -23,12 +23,19 @@ st.set_page_config(
 
 
 # ============================================================
-# BRIGHT LIGHT THEME
+# BRIGHT LIGHT THEME & ACCESSIBILITY OVERLAY HIDE
 # ============================================================
 
 st.markdown(
     """
     <style>
+    /* ซ่อนปุ่มหรือเมนูช่วยเหลือการเข้าถึงที่อาจแทรกเข้ามาในหน้าเว็บ */
+    [role="region"][aria-label*="accessibility"],
+    .accessibility-icon,
+    div[data-baseweb="accessibility"] {
+        display: none !important;
+    }
+
     .stApp { background-color: #f8fafc !important; color: #172033 !important; }
     [data-testid="stAppViewContainer"] { background-color: #f8fafc !important; }
     [data-testid="stHeader"] { background-color: #ffffff !important; }
@@ -309,7 +316,7 @@ if is_critical and sensor_online:
     if st.session_state.last_alert_time is None or (now_time - st.session_state.last_alert_time).total_seconds() > 900:
         alert_msg = (
             f"🚨 ⚠️ แจ้งเตือนวิกฤตคุณภาพน้ำ (ค่าเกินเกณฑ์สีแดง)!\n"
-            f"📍 จุดตรวจวัด: คลองสวน\n"
+            f"📍 จุดตรวจวัด: แม่น้ำบางปะกง\n"
             f"⏰ เวลา: {now_time.strftime('%d/%m/%Y %H:%M:%S')}\n"
             f"----------------------------------\n"
             f"🧂 TDS: {tds:.1f} ppm\n"
@@ -331,7 +338,7 @@ if current_hour in target_hours and current_minute <= 2:
     if st.session_state.last_auto_report_key != report_slot_key:
         auto_msg = (
             f"📊 รายงานคุณภาพน้ำอัตโนมัติ (ทุก 3 ชม.)\n"
-            f"📍 จุดตรวจวัด: คลองสวน\n"
+            f"📍 จุดตรวจวัด: แม่น้ำบางปะกง\n"
             f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
             f"----------------------------------\n"
             f"🧂 TDS: {tds:.1f} ppm\n"
@@ -394,7 +401,7 @@ tab1, tab2, tab3 = st.tabs([
 with tab1:
     st.caption("EEC · AGRI-WATER INTELLIGENCE")
     st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
-    st.write("📍 จุดตรวจวัด : คลองสวน")
+    st.write("📍 จุดตรวจวัด : แม่น้ำบางปะกง")
     st.caption("ESP32 / Firebase → Dashboard")
 
     st.divider()
