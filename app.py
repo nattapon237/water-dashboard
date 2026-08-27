@@ -59,16 +59,6 @@ st.markdown(
     .online-card { background-color: #ecfdf5; border: 1px solid #86efac; border-radius: 12px; padding: 14px; color: #166534 !important; font-weight: 700; }
     .offline-card { background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 12px; padding: 14px; color: #991b1b !important; font-weight: 700; }
     hr { border-color: #e2e8f0 !important; }
-
-    /* กล่องควบคุมลับแบบแนบเนียน */
-    .stealth-panel {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        padding: 15px 20px;
-        border-radius: 14px;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-        margin-bottom: 20px;
-    }
     </style>
     """,
     unsafe_allow_html=True
@@ -112,26 +102,6 @@ def push_mock_data_to_firebase():
         requests.put(FIREBASE_URL, json=mock_payload, timeout=5)
     except Exception as e:
         print("Mock Firebase Push Error:", e)
-
-def safe_float(value, default=0.0):
-    try:
-        if value is None:
-            return default
-        return float(value)
-    except:
-        return default
-
-def sensor_is_online(data):
-    if not isinstance(data, dict):
-        return False
-    for key in ["tds", "orp", "ph"]:
-        if key in data and data.get(key) is not None:
-            try:
-                float(data.get(key))
-                return True
-            except:
-                pass
-    return False
 
 
 # ============================================================
@@ -185,14 +155,11 @@ def send_line_notification(message):
 
 
 # ============================================================
-# SESSION STATE INITIALIZATION FOR STEALTH CONTROLS
+# SESSION STATE INITIALIZATION
 # ============================================================
 
-if "show_stealth_panel" not in st.session_state:
-    st.session_state.show_stealth_panel = False
-
 if "sim_mode" not in st.session_state:
-    st.session_state.sim_mode = "🟢 ปกติ (สุ่มค่าเรียลไทม์)"
+    st.session_state.sim_mode = "⚫ เซนเซอร์ไม่ได้ลงน้ำ (ค่าเริ่มต้นต่ำๆ)"
 
 if "custom_tds" not in st.session_state:
     st.session_state.custom_tds = 550.0
@@ -217,28 +184,33 @@ if time.time() - st.session_state.last_mock_push > 3600:
 
 live_data = read_firebase()
 
-# คำนวณค่าตามโหมดที่ซ่อนไว้
+# คำนวณค่าตามโหมดที่เลือกใน Sidebar (เปลี่ยนโหมดไม่ได้ลงน้ำ ให้รันค่าต่ำๆ แทน)
 mode = st.session_state.sim_mode
-if "🟢 ปกติ" in mode:
-    time_seed = int(time.time() // 10)
-    random.seed(time_seed)
-    tds = round(random.uniform(400.0, 750.0), 1)
-    orp_value = round(random.uniform(220.0, 380.0), 1)
-    ph_value = round(random.uniform(6.8, 7.8), 2)
-elif "⚠️ เตือน (ค่าปานกลาง)" in mode:
-    tds = 1250.0
-    orp_value = 110.0
-    ph_value = 8.8
-elif "🚨 วิกฤต (ค่าสีแดง)" in mode:
-    tds = 3200.0
-    orp_value = 20.0
-    ph_value = 5.2
-else:  # กำหนดค่าเอง
-    tds = st.session_state.custom_tds
-    orp_value = st.session_state.custom_orp
-    ph_value = st.session_state.custom_ph
-
-sensor_online = True
+if "⚫ เซนเซอร์ไม่ได้ลงน้ำ" in mode:
+    sensor_online = False
+    tds = 30.0
+    orp_value = 100.0
+    ph_value = 7.00
+else:
+    sensor_online = True
+    if "🟢 ปกติ" in mode:
+        time_seed = int(time.time() // 10)
+        random.seed(time_seed)
+        tds = round(random.uniform(400.0, 750.0), 1)
+        orp_value = round(random.uniform(220.0, 380.0), 1)
+        ph_value = round(random.uniform(6.8, 7.8), 2)
+    elif "⚠️ เตือน (ค่าปานกลาง)" in mode:
+        tds = 1250.0
+        orp_value = 110.0
+        ph_value = 8.8
+    elif "🚨 วิกฤต (ค่าสีแดง)" in mode:
+        tds = 3200.0
+        orp_value = 20.0
+        ph_value = 5.2
+    else:  # กำหนดค่าเอง
+        tds = st.session_state.custom_tds
+        orp_value = st.session_state.custom_orp
+        ph_value = st.session_state.custom_ph
 
 
 # ============================================================
@@ -326,9 +298,6 @@ water_normal = (sensor_online and len(risk) == 0)
 # ============================================================
 
 now_th = datetime.now(TH_TZ)
-current_date_str = now_th.strftime("%Y-%m-%d")
-current_hour = now_th.hour
-current_minute = now_th.minute
 
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = None
@@ -364,13 +333,26 @@ with st.sidebar:
     if sensor_online:
         st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE</div>', unsafe_allow_html=True)
+        st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE (ไม่ได้ลงน้ำ)</div>', unsafe_allow_html=True)
 
     st.divider()
-    st.subheader("📊 Parameters")
-    st.write("🧂 TDS")
-    st.write("⚡ ORP")
-    st.write("🧪 pH")
+    
+    with st.expander("🛠️ ตั้งค่าสถานะเซนเซอร์ (จำลองค่า)", expanded=True):
+        st.session_state.sim_mode = st.selectbox(
+            "เลือกพฤติกรรมของค่าเซนเซอร์",
+            [
+                "⚫ เซนเซอร์ไม่ได้ลงน้ำ (ค่าเริ่มต้นต่ำๆ)",
+                "🟢 ปกติ (สุ่มค่าเรียลไทม์)", 
+                "⚠️ เตือน (ค่าปานกลาง)", 
+                "🚨 วิกฤต (ค่าสีแดง)", 
+                "🛠️ กำหนดค่าเอง (Custom)"
+            ],
+            index=["⚫ เซนเซอร์ไม่ได้ลงน้ำ (ค่าเริ่มต้นต่ำๆ)", "🟢 ปกติ (สุ่มค่าเรียลไทม์)", "⚠️ เตือน (ค่าปานกลาง)", "🚨 วิกฤต (ค่าสีแดง)", "🛠️ กำหนดค่าเอง (Custom)"].index(st.session_state.sim_mode)
+        )
+        
+        st.session_state.custom_tds = st.number_input("TDS (ppm)", value=st.session_state.custom_tds)
+        st.session_state.custom_orp = st.number_input("ORP (mV)", value=st.session_state.custom_orp)
+        st.session_state.custom_ph = st.number_input("pH", value=st.session_state.custom_ph, format="%.2f")
 
     st.divider()
     st.subheader("🕒 เวลาปัจจุบัน")
@@ -393,50 +375,7 @@ tab1, tab2, tab3 = st.tabs([
 # ============================================================
 
 with tab1:
-    # ปุ่มลับเนียนๆ ที่มุมขวาบนของเนื้อหา สำหรับเปิด/ปิดแผงควบคุมการจำลองค่า
-    top_col1, top_col2 = st.columns([8, 2])
-    with top_col1:
-        st.caption("EEC · AGRI-WATER INTELLIGENCE")
-    with top_col2:
-        if st.button("⚙️ ตั้งค่าระบบ", use_container_width=True):
-            st.session_state.show_stealth_panel = not st.session_state.show_stealth_panel
-            st.rerun()
-
-    # แผงควบคุมลับที่จะแสดงขึ้นมาก็ต่อเมื่อกดปุ่มด้านบน
-    if st.session_state.show_stealth_panel:
-        st.markdown(
-            """
-            <div class="stealth-panel">
-            <h4 style="margin-top:0; color:#0369a1 !important;">🛠️ แผงควบคุมการจำลองค่าเซนเซอร์ (โหมดนำเสนอ)</h4>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        with st.form("stealth_form"):
-            st.session_state.sim_mode = st.selectbox(
-                "เลือกพฤติกรรมของค่าเซนเซอร์",
-                [
-                    "🟢 ปกติ (สุ่มค่าเรียลไทม์)", 
-                    "⚠️ เตือน (ค่าปานกลาง)", 
-                    "🚨 วิกฤต (ค่าสีแดง)", 
-                    "🛠️ กำหนดค่าเอง (Custom)"
-                ],
-                index=["🟢 ปกติ (สุ่มค่าเรียลไทม์)", "⚠️ เตือน (ค่าปานกลาง)", "🚨 วิกฤต (ค่าสีแดง)", "🛠️ กำหนดค่าเอง (Custom)"].index(st.session_state.sim_mode)
-            )
-            
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.session_state.custom_tds = st.number_input("TDS (ppm)", value=st.session_state.custom_tds)
-            with c2:
-                st.session_state.custom_orp = st.number_input("ORP (mV)", value=st.session_state.custom_orp)
-            with c3:
-                st.session_state.custom_ph = st.number_input("pH", value=st.session_state.custom_ph, format="%.2f")
-
-            apply_stealth = st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงค่า", use_container_width=True)
-            if apply_stealth:
-                st.session_state.show_stealth_panel = False
-                st.rerun()
-
+    st.caption("EEC · AGRI-WATER INTELLIGENCE")
     st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
     st.write("📍 จุดตรวจวัดหลัก : แม่น้ำบางปะกง")
 
@@ -444,6 +383,7 @@ with tab1:
     st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
     
     col1, col2, col3 = st.columns(3)
+    # แสดงผลเป็นตัวเลขต่ำๆ เสมอ แม้ไม่ได้ลงน้ำ
     col1.metric("🧂 TDS", f"{tds:.1f} ppm")
     col2.metric("⚡ ORP", f"{orp_value:.1f} mV")
     col3.metric("🧪 pH", f"{ph_value:.2f}")
@@ -451,7 +391,7 @@ with tab1:
     st.divider()
     st.subheader("🤖 สถานะคุณภาพน้ำ")
     if not sensor_online:
-        st.info("⏳ กำลังรอข้อมูลจากเซนเซอร์...")
+        st.info("ℹ️ เซนเซอร์ไม่ได้อยู่มนน้ำ (แสดงค่าเริ่มต้นต่ำๆ)")
     elif water_normal:
         st.success("✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ")
     else:
@@ -507,7 +447,7 @@ with tab2:
     st.caption("คำแนะนำจากค่าที่ตรวจวัดได้และเกณฑ์มาตรฐาน")
 
     if not sensor_online:
-        st.warning("🔴 ยังไม่มีข้อมูลจากเซนเซอร์")
+        st.info("ℹ️ เซนเซอร์ไม่ได้อยู่มนน้ำ (กำลังแสดงผลตามค่าเริ่มต้นต่ำๆ)")
     
     st.subheader("📊 ผลวิเคราะห์ปัจจุบัน")
     
@@ -544,20 +484,15 @@ with tab2:
     st.subheader("🌱 แนวทางการใช้น้ำ")
     
     advice_messages = []
-    is_safe_all = True
-
     if tds < 450:
         advice_messages.append("• **ด้านความเค็ม (TDS < 450 ppm):** อยู่ในเกณฑ์ **ปลอดภัยสูง** เหมาะสำหรับพืชทุกชนิด รวมถึงพืชไวต่อเกลือ เช่น ทุเรียน ส้ม มะนาว และผักสลัด")
     elif 450 <= tds <= 1000:
         advice_messages.append("• **ด้านความเค็ม (TDS 450 - 1,000 ppm):** อยู่ในเกณฑ์ **ปลอดภัยปานกลาง** สามารถใช้รดพืชทนเค็มต่ำได้ เช่น ข้าว ข้าวโพด อ้อย และพริก")
     elif 1000 < tds <= 2000:
-        is_safe_all = False
         advice_messages.append("• **ด้านความเค็ม (TDS 1,000 - 2,000 ppm):** อยู่ในเกณฑ์ **เฝ้าระวัง** ควรใช้เฉพาะกับพืชทนเค็มปานกลาง เช่น ปาล์มน้ำมัน คะน้า หรือบรอกโคลี")
     elif 2000 < tds <= 3000:
-        is_safe_all = False
         advice_messages.append("• **ด้านความเค็ม (TDS 2,000 - 3,000 ppm):** อยู่ในเกณฑ์ **อันตราย** เหมาะเฉพาะพืชทนเค็มสูง เช่น มะพร้าว อินทผลัม")
     else:
-        is_safe_all = False
         advice_messages.append("• **ด้านความเค็ม (TDS > 3,000 ppm):** อยู่ในเกณฑ์ **วิกฤต** ห้ามนำไปใช้รดพืชทั่วไปเด็ดขาด")
 
     for msg in advice_messages:
