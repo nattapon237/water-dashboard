@@ -150,16 +150,20 @@ live_data = read_firebase()
 
 if not st.session_state.sensor_connected:
     sensor_online = False
-    tds = 30.0
-    orp_value = 100.0
-    ph_value = 7.00
+    tds_display = "-"
+    orp_display = "-"
+    ph_display = "-"
 else:
     sensor_online = True
     time_seed = int(time.time() // 10)
     random.seed(time_seed)
-    tds = round(random.uniform(400.0, 750.0), 1)
-    orp_value = round(random.uniform(220.0, 380.0), 1)
-    ph_value = round(random.uniform(6.8, 7.8), 2)
+    tds_val = round(random.uniform(400.0, 750.0), 1)
+    orp_val = round(random.uniform(220.0, 380.0), 1)
+    ph_val = round(random.uniform(6.8, 7.8), 2)
+    
+    tds_display = f"{tds_val:.1f} ppm"
+    orp_display = f"{orp_val:.1f} mV"
+    ph_display = f"{ph_val:.2f}"
 
 
 # ============================================================
@@ -218,18 +222,18 @@ risk = []
 is_critical = False
 
 if sensor_online:
-    if tds > TDS_MAX:
-        risk.append(f"TDS สูงเกินเกณฑ์อันตราย {tds:.1f} ppm")
-        if tds > 2000:
+    if tds_val > TDS_MAX:
+        risk.append(f"TDS สูงเกินเกณฑ์อันตราย {tds_val:.1f} ppm")
+        if tds_val > 2000:
             is_critical = True
-    if orp_value < ORP_MIN:
-        risk.append(f"ORP ต่ำเกินไป {orp_value:.1f} mV")
-    elif orp_value > ORP_MAX:
-        risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_value:.1f} mV")
-    if ph_value < PH_MIN:
-        risk.append(f"pH เป็นกรดเกินไป {ph_value:.2f}")
-    elif ph_value > PH_MAX:
-        risk.append(f"pH เป็นด่างเกินไป {ph_value:.2f}")
+    if orp_val < ORP_MIN:
+        risk.append(f"ORP ต่ำเกินไป {orp_val:.1f} mV")
+    elif orp_val > ORP_MAX:
+        risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_val:.1f} mV")
+    if ph_val < PH_MIN:
+        risk.append(f"pH เป็นกรดเกินไป {ph_val:.2f}")
+    elif ph_val > PH_MAX:
+        risk.append(f"pH เป็นด่างเกินไป {ph_val:.2f}")
 
 water_normal = (sensor_online and len(risk) == 0)
 
@@ -250,7 +254,6 @@ with st.sidebar:
         st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE (ไม่ได้ลงน้ำ)</div>', unsafe_allow_html=True)
 
     st.write("")
-    # ปุ่มเดียวสำหรับสลับสถานะ
     if st.button("🔄 สลับสถานะ (ลงน้ำ / ไม่ได้ลงน้ำ)", use_container_width=True):
         st.session_state.sensor_connected = not st.session_state.sensor_connected
         st.rerun()
@@ -284,14 +287,14 @@ with tab1:
     st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
     
     col1, col2, col3 = st.columns(3)
-    col1.metric("🧂 TDS", f"{tds:.1f} ppm")
-    col2.metric("⚡ ORP", f"{orp_value:.1f} mV")
-    col3.metric("🧪 pH", f"{ph_value:.2f}")
+    col1.metric("🧂 TDS", tds_display)
+    col2.metric("⚡ ORP", orp_display)
+    col3.metric("🧪 pH", ph_display)
 
     st.divider()
     st.subheader("🤖 สถานะคุณภาพน้ำ")
     if not sensor_online:
-        st.info("ℹ️ เซนเซอร์ไม่ได้ลงน้ำ (แสดงค่าเริ่มต้นต่ำๆ)")
+        st.info("ℹ️ เซนเซอร์ไม่ได้ลงน้ำ (สถานะออฟไลน์ - แสดงค่าเป็น `-`)")
     elif water_normal:
         st.success("✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ")
     else:
@@ -347,26 +350,25 @@ with tab2:
     st.caption("คำแนะนำจากค่าที่ตรวจวัดได้และเกณฑ์มาตรฐาน")
 
     if not sensor_online:
-        st.info("ℹ️ เซนเซอร์ไม่ได้ลงน้ำ (กำลังแสดงผลตามค่าเริ่มต้นต่ำๆ)")
-    
-    st.subheader("📊 ผลวิเคราะห์ปัจจุบัน")
-    
-    if tds < 450:
-        st.success(f"🧂 TDS {tds:.1f} ppm — ปลอดภัยสูง (พืชทุกชนิดเติบโตได้ดี)")
-    elif 450 <= tds <= 1000:
-        st.info(f"ℹ️ TDS {tds:.1f} ppm — ปลอดภัยปานกลาง")
+        st.info("ℹ️ เซนเซอร์ไม่ได้ลงน้ำ (สถานะออฟไลน์)")
     else:
-        st.warning(f"⚠️ TDS {tds:.1f} ppm — เฝ้าระวัง")
+        st.subheader("📊 ผลวิเคราะห์ปัจจุบัน")
+        if tds_val < 450:
+            st.success(f"🧂 TDS {tds_val:.1f} ppm — ปลอดภัยสูง (พืชทุกชนิดเติบโตได้ดี)")
+        elif 450 <= tds_val <= 1000:
+            st.info(f"ℹ️ TDS {tds_val:.1f} ppm — ปลอดภัยปานกลาง")
+        else:
+            st.warning(f"⚠️ TDS {tds_val:.1f} ppm — เฝ้าระวัง")
 
-    if 150 <= orp_value <= 400:
-        st.success(f"⚡ ORP {orp_value:.1f} mV — เหมาะสม")
-    else:
-        st.warning(f"⚠️ ORP {orp_value:.1f} mV — อยู่ในเกณฑ์ต้องเฝ้าระวัง")
+        if 150 <= orp_val <= 400:
+            st.success(f"⚡ ORP {orp_val:.1f} mV — เหมาะสม")
+        else:
+            st.warning(f"⚠️ ORP {orp_val:.1f} mV — อยู่ในเกณฑ์ต้องเฝ้าระวัง")
 
-    if 6.5 <= ph_value <= 8.5:
-        st.success(f"🧪 pH {ph_value:.2f} — เหมาะสม")
-    else:
-        st.warning(f"⚠️ pH {ph_value:.2f} — อยู่นอกช่วงมาตรฐาน")
+        if 6.5 <= ph_val <= 8.5:
+            st.success(f"🧪 pH {ph_val:.2f} — เหมาะสม")
+        else:
+            st.warning(f"⚠️ pH {ph_val:.2f} — อยู่นอกช่วงมาตรฐาน")
 
 
 # ============================================================
