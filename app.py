@@ -401,24 +401,6 @@ with tab2:
     st.dataframe(std_table_df, use_container_width=True, hide_index=True)
 
     st.divider()
-    st.subheader("📈 กราฟเปรียบเทียบ 3 ตัวแปรหลัก (TDS, ORP, pH)")
-    
-    comp_df = pd.DataFrame([
-        {"ตัวแปร": "TDS (ppm / 10)", "ค่าที่วัดได้": display_tds / 10, "เกณฑ์มาตรฐานสูงสุด": 100},
-        {"ตัวแปร": "ORP (mV / 10)", "ค่าที่วัดได้": display_orp / 10, "เกณฑ์มาตรฐานสูงสุด": 40},
-        {"ตัวแปร": "pH x 10", "ค่าที่วัดได้": display_ph * 10, "เกณฑ์มาตรฐานสูงสุด": 85}
-    ])
-    
-    chart_comp = alt.Chart(comp_df).mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
-        x=alt.X('ตัวแปร:N', title='ตัวแปรคุณภาพน้ำ', sort=None),
-        y=alt.Y('ค่าที่วัดได้:Q', title='ระดับค่าเปรียบเทียบ'),
-        color='ตัวแปร:N',
-        tooltip=['ตัวแปร', 'ค่าที่วัดได้']
-    ).properties(height=280).interactive()
-    
-    st.altair_chart(chart_comp, use_container_width=True)
-
-    st.divider()
     st.subheader("📚 แหล่งอ้างอิงและเกณฑ์มาตรฐาน")
     st.markdown("""
     - **เกณฑ์คุณภาพน้ำเพื่อการเกษตร (TDS):** ค่าความเข้มข้นของสารละลายรวมที่ไม่ควรเกิน 1,000 ppm สำหรับพืชทั่วไป
