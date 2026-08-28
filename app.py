@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 import pytz
 import random
 import altair as alt
-import pydeck as pdk
 
 
 # ============================================================
@@ -442,25 +441,12 @@ with tab3:
     st.title("📍 แจ้งเบาะแส")
     st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ")
 
-    # แผนที่ Pydeck
-    map_df = pd.DataFrame([
-        {"lat": 13.689417, "lon": 101.078617, "name": "ทุ่นตรวจวัดคุณภาพน้ำ"},
-        {"lat": 13.501389, "lon": 101.025278, "name": "พื้นที่โรงไฟฟ้าบางปะกง (ริมแม่น้ำ)"},
-        {"lat": 13.535000, "lon": 101.005000, "name": "โซนสวนอุตสาหกรรม / จุดระบายน้ำ (ท่าข้าม)"}
-    ])
-
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        map_df,
-        get_position=["lon", "lat"],
-        get_color=[0, 150, 255, 200],
-        get_radius=120,
-        pickable=True,
-        auto_highlight=True,
-    )
-    view_state = pdk.ViewState(latitude=13.600000, longitude=101.040000, zoom=10.5, pitch=0)
-    r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "{name}\nพิกัด: {lat}, {lon}"}, map_style="road")
-    st.pydeck_chart(r)
+    # แผนที่ st.map ตามที่ต้องการ
+    map_df = pd.DataFrame({
+        'lat': [13.689417],
+        'lon': [101.078617]
+    })
+    st.map(map_df, zoom=14, use_container_width=True)
 
     st.divider()
 
