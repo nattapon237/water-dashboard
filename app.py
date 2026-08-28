@@ -458,7 +458,7 @@ with tab3:
         auto_highlight=True,
     )
     view_state = pdk.ViewState(latitude=13.600000, longitude=101.040000, zoom=10.5, pitch=0)
-    r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "{name}\nพิกัด: {lat}, {lon}"}, map_style="mapbox://styles/mapbox/dark-v10")
+    r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "{name}\nพิกัด: {lat}, {lon}"}, map_style="road")
     st.pydeck_chart(r)
 
     st.divider()
