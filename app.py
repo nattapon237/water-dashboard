@@ -217,6 +217,7 @@ if "historical_long_df" not in st.session_state:
     records = []
     dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
     
+    # pH pool (6.1 ถึง 7.9)
     base_ph_pool = [6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9]
     
     for d_str in dates:
@@ -226,7 +227,7 @@ if "historical_long_df" not in st.session_state:
         daily_ph_values = []
         pool_idx = 0
         for idx in range(len(time_index)):
-            if idx == 50:
+            if idx == 50:  # จุดสูงสุด pH = 8.0 เพียงจุดเดียว
                 daily_ph_values.append(8.0)
             else:
                 daily_ph_values.append(ph_shuffled[pool_idx % len(ph_shuffled)])
@@ -236,7 +237,10 @@ if "historical_long_df" not in st.session_state:
 
         for i, t_str in enumerate(time_index):
             tds_val = round(random.uniform(350.0, 750.0), 1)
+            
+            # ปรับช่วง ORP ให้เฉลี่ยอยู่สูงขึ้นไปแตะแถวๆ 400 mV (ช่วง 220 - 410 mV)
             orp_val = round(random.uniform(220.0, 410.0), 1)
+            
             ph_val = daily_ph_values[i]
             
             records.append({
@@ -426,6 +430,7 @@ with tab1:
             st.write(f"### 📊 กราฟแสดงผลประจำวันที่ {d_str}")
             df_filtered = df_long[df_long["วันที่"] == d_str]
             
+            # กราฟที่ 1: TDS
             st.markdown("#### 🧂 ค่า TDS (ppm)")
             chart_tds = alt.Chart(df_filtered).mark_line(point=True, color='#f97316').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
@@ -434,6 +439,7 @@ with tab1:
             ).properties(height=220).interactive()
             st.altair_chart(chart_tds, use_container_width=True)
             
+            # กราฟที่ 2: ORP (ปรับสเกลให้ครอบคลุมถึงช่วง ~410 mV)
             st.markdown("#### ⚡ ค่า ORP (mV)")
             chart_orp = alt.Chart(df_filtered).mark_line(point=True, color='#0ea5e9').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
@@ -442,6 +448,7 @@ with tab1:
             ).properties(height=220).interactive()
             st.altair_chart(chart_orp, use_container_width=True)
             
+            # กราฟที่ 3: pH
             st.markdown("#### 🧪 ค่า pH")
             chart_ph = alt.Chart(df_filtered).mark_line(point=True, color='#10b981').encode(
                 x=alt.X('เวลา:N', title='เวลา', sort=None),
@@ -494,15 +501,28 @@ with tab2:
         st.warning(f"⚠️ pH {ph_value:.2f} — มีความเป็นด่างสูง (อาจทำให้เกิดการตกตะกอนของแร่ธาตุในน้ำ)")
 
     st.divider()
+
     st.subheader("🌱 แนวทางการใช้น้ำ")
     if tds <= 1000 and 150 <= orp_value <= 400 and 6.5 <= ph_value <= 8.5:
         st.success("✅ สามารถนำข้อมูลไปประกอบการวางแผนใช้น้ำเพื่อการเกษตรและประมงได้ตามกลุ่มพืชที่เหมาะสม")
     else:
         st.warning("⚠️ พบค่าความเค็ม, ORP หรือ pH ที่ควรเฝ้าระวัง โปรดตรวจสอบเกณฑ์ความเหมาะสมก่อนใช้งาน")
 
+    st.divider()
+
+    st.subheader("📌 เกณฑ์ระดับความเค็มของน้ำและกลุ่มพืชที่เหมาะสม")
+    salinity_criteria = pd.DataFrame([
+        {"กลุ่มพืช / สถานะ": "ปลอดภัยสูง (พืชไวต่อเกลือ)", "ค่า TDS (ppm)": "น้อยกว่า 450", "ค่า EC (µS/cm)": "น้อยกว่า 700", "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชทุกชนิดเติบโตได้ดีที่สุด ไม่ส่งผลกระทบต่อรากและการดูดซึมอาหาร", "ตัวอย่างชนิดพืช": "ทุเรียน, สตรอว์เบอร์รี, กล้วยไม้, ส้ม, มะนาว, ผักสลัด"},
+        {"กลุ่มพืช / สถานะ": "ปลอดภัยปานกลาง (พืชทนเค็มต่ำ)", "ค่า TDS (ppm)": "450 – 1,000", "ค่า EC (µS/cm)": "700 – 1,500", "กลุ่มพืชที่เหมาะสมและผลกระทบ": "ผลผลิตอาจลดลง 10-25% หากดินระบายน้ำไม่ดีจะเกิดคราบเกลือสะสม", "ตัวอย่างชนิดพืช": "ข้าว, ข้าวโพด, อ้อย, พริก, มะเขือเทศ, กะหล่ำปลี"},
+        {"กลุ่มพืช / สถานะ": "เฝ้าระวัง (พืชทนเค็มปานกลาง)", "ค่า TDS (ppm)": "1,000 – 2,000", "ค่า EC (µS/cm)": "1,500 – 3,000", "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชทั่วไปใบจะเริ่มไหม้ ขอบใบแห้ง ชะงักการโต ต้องใช้กับพืชที่ทนเค็มได้ดีเท่านั้น", "ตัวอย่างชนิดพืช": "ปาล์มน้ำมัน, หม่อน, คะน้า, หน่อไม้ฝรั่ง, บรอกโคลี"},
+        {"กลุ่มพืช / สถานะ": "อันตราย (เฉพาะพืชทนเค็มสูง)", "ค่า TDS (ppm)": "2,000 – 3,000", "ค่า EC (µS/cm)": "3,000 – 4,500", "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชส่วนใหญ่ตาย หรือผลผลิตลดลงมากกว่า 50% รากไม่สามารถดูดน้ำได้", "ตัวอย่างชนิดพืช": "มะพร้าว, อินทผลัม, แคนตาลูป, ผักบุ้งทะเล"},
+        {"กลุ่มพืช / สถานะ": "วิกฤต (ไม่ควรใช้เด็ดขาด)", "ค่า TDS (ppm)": "มากกว่า 3,000", "ค่า EC (µS/cm)": "มากกว่า 4,500", "กลุ่มพืชที่เหมาะสมและผลกระทบ": "น้ำเค็มเกินไป ดินจะเสียอย่างรวดเร็ว พืชทั่วไปแห้งตายทันที", "ตัวอย่างชนิดพืช": "ใช้ได้เฉพาะพืชป่าชายเลน หรือพืชทนเค็มจัดบางชนิด"}
+    ])
+    st.table(salinity_criteria)
+
 
 # ============================================================
-# TAB 3: REPORT / CLUE (WITH FIXED MAP)
+# TAB 3: REPORT / CLUE
 # ============================================================
 
 with tab3:
@@ -520,15 +540,11 @@ with tab3:
     )
 
     st.subheader("🗺️ ตำแหน่งทุ่นตรวจวัดคุณภาพน้ำ (พิกัด: 13°41'21.90\"N 101°04'43.02\"E)")
-    
-    # กำหนด DataFrame สำหรับแผนที่
-    map_df = pd.DataFrame({
+    map_data = pd.DataFrame({
         'lat': [13.689417],
         'lon': [101.078617]
     })
-    
-    # แสดงแผนที่ด้วย st.map และกำหนด use_container_width เพื่อความสมบูรณ์
-    st.map(map_df, zoom=14, use_container_width=True)
+    st.map(map_data, zoom=14)
     st.caption("📍 พิกัดจุดติดตั้งทุ่น: 13°41'21.90\"N 101°04'43.02\"E (13.689417, 101.078617)")
 
     st.divider()
