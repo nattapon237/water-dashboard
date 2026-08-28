@@ -255,6 +255,9 @@ with st.sidebar:
     st.write("")
     if st.button("🔄 สลับสถานะ (ลงน้ำ / ไม่ได้ลงน้ำ)", use_container_width=True):
         st.session_state.sensor_connected = not st.session_state.sensor_connected
+        if st.session_state.sensor_connected:
+            with st.spinner("กำลังเชื่อมต่อเซนเซอร์..."):
+                time.sleep(3)
         st.rerun()
 
     st.divider()
@@ -441,7 +444,6 @@ with tab3:
     st.title("📍 แจ้งเบาะแส")
     st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ")
 
-    # แผนที่ st.map ตามที่ต้องการ
     map_df = pd.DataFrame({
         'lat': [13.689417],
         'lon': [101.078617]
