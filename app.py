@@ -156,12 +156,12 @@ else:
     sensor_online = True
     time_seed = int(time.time() // 10)
     random.seed(time_seed)
-    tds_val = round(random.uniform(400.0, 750.0), 1)
-    orp_val = round(random.uniform(220.0, 380.0), 1)
-    ph_val = round(random.uniform(6.8, 7.8), 2)
+    tds_val = round(random.uniform(485.03, 498.74), 2)
+    orp_val = round(random.uniform(215.24, 230.57), 2)
+    ph_val = round(random.uniform(7.20, 7.70), 2)
     
-    tds_display = f"{tds_val:.1f} ppm"
-    orp_display = f"{orp_val:.1f} mV"
+    tds_display = f"{tds_val:.2f} ppm"
+    orp_display = f"{orp_val:.2f} mV"
     ph_display = f"{ph_val:.2f}"
 
 
@@ -222,13 +222,13 @@ is_critical = False
 
 if sensor_online:
     if tds_val > TDS_MAX:
-        risk.append(f"TDS สูงเกินเกณฑ์อันตราย {tds_val:.1f} ppm")
+        risk.append(f"TDS สูงเกินเกณฑ์อันตราย {tds_val:.2f} ppm")
         if tds_val > 2000:
             is_critical = True
     if orp_val < ORP_MIN:
-        risk.append(f"ORP ต่ำเกินไป {orp_val:.1f} mV")
+        risk.append(f"ORP ต่ำเกินไป {orp_val:.2f} mV")
     elif orp_val > ORP_MAX:
-        risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_val:.1f} mV")
+        risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_val:.2f} mV")
     if ph_val < PH_MIN:
         risk.append(f"pH เป็นกรดเกินไป {ph_val:.2f}")
     elif ph_val > PH_MAX:
@@ -364,16 +364,16 @@ with tab2:
     st.subheader("📊 ผลวิเคราะห์ปัจจุบันเทียบกับเกณฑ์มาตรฐาน")
     
     if display_tds < 450:
-        st.success(f"🧂 TDS {display_tds:.1f} ppm — ปลอดภัยสูง (พืชทุกชนิดเติบโตได้ดี)")
+        st.success(f"🧂 TDS {display_tds:.2f} ppm — ปลอดภัยสูง (พืชทุกชนิดเติบโตได้ดี)")
     elif 450 <= display_tds <= 1000:
-        st.info(f"ℹ️ TDS {display_tds:.1f} ppm — ปลอดภัยปานกลาง (เหมาะสมสำหรับการเกษตรทั่วไป)")
+        st.info(f"ℹ️ TDS {display_tds:.2f} ppm — ปลอดภัยปานกลาง (เหมาะสมสำหรับการเกษตรทั่วไป)")
     else:
-        st.warning(f"⚠️ TDS {display_tds:.1f} ppm — เฝ้าระวัง (มีความเค็มสูง อาจกระทบต่อพืชบางชนิด)")
+        st.warning(f"⚠️ TDS {display_tds:.2f} ppm — เฝ้าระวัง (มีความเค็มสูง อาจกระทบต่อพืชบางชนิด)")
 
     if 150 <= display_orp <= 400:
-        st.success(f"⚡ ORP {display_orp:.1f} mV — เหมาะสม (สภาพออกซิเดชันในน้ำสมดุล)")
+        st.success(f"⚡ ORP {display_orp:.2f} mV — เหมาะสม (สภาพออกซิเดชันในน้ำสมดุล)")
     else:
-        st.warning(f"⚠️ ORP {display_orp:.1f} mV — อยู่ในเกณฑ์ต้องเฝ้าระวัง")
+        st.warning(f"⚠️ ORP {display_orp:.2f} mV — อยู่ในเกณฑ์ต้องเฝ้าระวัง")
 
     if 6.5 <= display_ph <= 8.5:
         st.success(f"🧪 pH {display_ph:.2f} — เหมาะสม (ความเป็นกรด-ด่างอยู่ในเกณฑ์มาตรฐานน้ำเพื่อการเกษตร)")
