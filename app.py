@@ -187,8 +187,14 @@ if current_time_sec - st.session_state.last_mock_push > 3600:
 
 
 # ============================================================
-# PROCESS DATA
+# PROCESS DATA (WITH 5 SECONDS STABILIZATION DELAY)
 # ============================================================
+
+# ดีเลย์รอ 5 วินาทีก่อนเริ่มอ่านค่าเซนเซอร์เมื่อระบบเริ่มทำงานหรือรีเฟรช
+if "sensor_initialized" not in st.session_state:
+    with st.spinner("⏳ กำลังหย่อนเซนเซอร์ลงน้ำ... กรุณารอสักครู่ (5 วินาที)"):
+        time.sleep(5)
+    st.session_state.sensor_initialized = True
 
 live_data = read_firebase()
 
@@ -502,7 +508,7 @@ with tab2:
 
 
 # ============================================================
-# TAB 3: REPORT / CLUE (WITH FIXED MAP)
+# TAB 3: REPORT / CLUE
 # ============================================================
 
 with tab3:
@@ -521,13 +527,11 @@ with tab3:
 
     st.subheader("🗺️ ตำแหน่งทุ่นตรวจวัดคุณภาพน้ำ (พิกัด: 13°41'21.90\"N 101°04'43.02\"E)")
     
-    # กำหนด DataFrame สำหรับแผนที่
     map_df = pd.DataFrame({
         'lat': [13.689417],
         'lon': [101.078617]
     })
     
-    # แสดงแผนที่ด้วย st.map และกำหนด use_container_width เพื่อความสมบูรณ์
     st.map(map_df, zoom=14, use_container_width=True)
     st.caption("📍 พิกัดจุดติดตั้งทุ่น: 13°41'21.90\"N 101°04'43.02\"E (13.689417, 101.078617)")
 
