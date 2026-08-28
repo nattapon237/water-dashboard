@@ -158,8 +158,13 @@ else:
     random.seed(time_seed)
     tds_val = round(random.uniform(485.03, 498.74), 2)
     orp_val = round(random.uniform(215.24, 230.57), 2)
-    ph_val = round(random.uniform(7.20, 7.70), 2)
     
+    # สุ่ม pH ระหว่าง 7.20 - 7.70 โดยบังคับให้หลักสุดท้ายไม่เป็น 0
+    ph_int = random.randint(721, 769)
+    if ph_int % 10 == 0:
+        ph_int += 1
+    ph_val = ph_int / 100.0
+
     tds_display = f"{tds_val:.2f} ppm"
     orp_display = f"{orp_val:.2f} mV"
     ph_display = f"{ph_val:.2f}"
