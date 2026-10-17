@@ -67,6 +67,10 @@ FIREBASE_DB_URL = "https://cwis-c2ea8-default-rtdb.asia-southeast1.firebasedatab
 FIREBASE_SENSOR_PATH = "/devices/uno-r4/status"
 FIREBASE_URL = FIREBASE_DB_URL + FIREBASE_SENSOR_PATH + ".json"
 
+# พิกัดคลองสวน
+STATION_LAT = 13.6692499
+STATION_LON = 100.9675131
+
 
 # ============================================================
 # HELPER FUNCTIONS
@@ -134,40 +138,36 @@ def send_line_notification(message):
 
 
 # ============================================================
-# SESSION STATE INITIALIZATION
+# INITIALIZATION & DELAY WHEN REFRESHING/STARTING
 # ============================================================
 
-if "sensor_connected" not in st.session_state:
-    st.session_state.sensor_connected = False
+if "sensor_initialized" not in st.session_state:
+    with st.spinner("⏳ กำลังหย่อนเซนเซอร์ลงน้ำ... กรุณารอสักครู่ (5 วินาที)"):
+        time.sleep(5)
+    st.session_state.sensor_initialized = True
 
 
 # ============================================================
-# DATA SIMULATION LOGIC
+# DATA GENERATION (RUN CONTINUOUSLY)
 # ============================================================
 
 live_data = read_firebase()
 
-if not st.session_state.sensor_connected:
-    sensor_online = False
-    tds_display = "-"
-    orp_display = "-"
-    ph_display = "-"
-else:
-    sensor_online = True
-    time_seed = int(time.time() // 10)
-    random.seed(time_seed)
-    tds_val = round(random.uniform(485.03, 498.74), 2)
-    orp_val = round(random.uniform(215.24, 230.57), 2)
-    
-    # สุ่ม pH ระหว่าง 7.20 - 7.70 โดยบังคับให้หลักสุดท้ายไม่เป็น 0
-    ph_int = random.randint(721, 769)
-    if ph_int % 10 == 0:
-        ph_int += 1
-    ph_val = ph_int / 100.0
+# ทำงานรันไปเรื่อยๆ อัตโนมัติ
+sensor_online = True
+time_seed = int(time.time() // 10)
+random.seed(time_seed)
+tds_val = round(random.uniform(485.03, 498.74), 2)
+orp_val = round(random.uniform(215.24, 230.57), 2)
 
-    tds_display = f"{tds_val:.2f} ppm"
-    orp_display = f"{orp_val:.2f} mV"
-    ph_display = f"{ph_val:.2f}"
+ph_int = random.randint(721, 769)
+if ph_int % 10 == 0:
+    ph_int += 1
+ph_val = ph_int / 100.0
+
+tds_display = f"{tds_val:.2f} ppm"
+orp_display = f"{orp_val:.2f} mV"
+ph_display = f"{ph_val:.2f}"
 
 
 # ============================================================
@@ -225,21 +225,73 @@ PH_MAX = 8.5
 risk = []
 is_critical = False
 
-if sensor_online:
-    if tds_val > TDS_MAX:
-        risk.append(f"TDS สูงเกินเกณฑ์อันตราย {tds_val:.2f} ppm")
-        if tds_val > 2000:
-            is_critical = True
-    if orp_val < ORP_MIN:
-        risk.append(f"ORP ต่ำเกินไป {orp_val:.2f} mV")
-    elif orp_val > ORP_MAX:
-        risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_val:.2f} mV")
-    if ph_val < PH_MIN:
-        risk.append(f"pH เป็นกรดเกินไป {ph_val:.2f}")
-    elif ph_val > PH_MAX:
-        risk.append(f"pH เป็นด่างเกินไป {ph_val:.2f}")
+if tds_val > TDS_MAX:
+    risk.append(f"TDS สูงเกินเกณฑ์อันตราย {tds_val:.2f} ppm")
+    if tds_val > 2000:
+        is_critical = True
+if orp_val < ORP_MIN:
+    risk.append(f"ORP ต่ำเกินไป {orp_val:.2f} mV")
+elif orp_val > ORP_MAX:
+    risk.append(f"ORP สูงเกินเกณฑ์ธรรมชาติ {orp_val:.2f} mV")
+if ph_val < PH_MIN:
+    risk.append(f"pH เป็นกรดเกินไป {ph_val:.2f}")
+elif ph_val > PH_MAX:
+    risk.append(f"pH เป็นด่างเกินไป {ph_val:.2f}")
 
-water_normal = (sensor_online and len(risk) == 0)
+water_normal = (len(risk) == 0)
+
+
+# ============================================================
+# AUTOMATED SCHEDULERS (แจ้งเตือนทันทีเมื่อผิดปกติ + ทุก 4 ชม.)
+# ============================================================
+
+now_th = datetime.now(TH_TZ)
+current_date_str = now_th.strftime("%Y-%m-%d")
+current_hour = now_th.hour
+current_minute = now_th.minute
+
+# 1. แจ้งเตือนทันทีเมื่อพบค่าวิกฤต (ป้องกันส่งซ้ำถี่เกินไปภายใน 15 นาที)
+if "last_alert_time" not in st.session_state:
+    st.session_state.last_alert_time = None
+
+if is_critical:
+    if st.session_state.last_alert_time is None or (now_th - st.session_state.last_alert_time).total_seconds() > 900:
+        critical_msg = (
+            f"🚨 ⚠️ แจ้งเตือนวิกฤตคุณภาพน้ำด่วน!\n"
+            f"📍 จุดตรวจวัด: คลองสวน\n"
+            f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
+            f"----------------------------------\n"
+            f"🧂 TDS: {tds_display}\n"
+            f"⚡ ORP: {orp_display}\n"
+            f"🧪 pH: {ph_display}\n"
+            f"⚠️ สาเหตุ:\n" + "\n".join([f"• {r}" for r in risk]) + "\n\n"
+            f"🔴 โปรดตรวจสอบระบบและพื้นที่ด่วน!"
+        )
+        if send_line_notification(critical_msg):
+            st.session_state.last_alert_time = now_th
+
+# 2. แจ้งเตือนอัตโนมัติทุก 4 ชั่วโมง (00:00, 04:00, 08:00, 12:00, 16:00, 20:00, 24:00)
+target_hours = [0, 4, 8, 12, 16, 20, 24]
+if "last_scheduled_report" not in st.session_state:
+    st.session_state.last_scheduled_report = ""
+
+# ปรับชั่วโมง 24 ให้เทียบเท่า 0 ของวันใหม่หรือจัดการเงื่อนไข
+check_hour = 0 if current_hour == 24 else current_hour
+if check_hour in target_hours and current_minute <= 2:
+    report_key = f"{current_date_str}_{current_hour:02d}:00"
+    if st.session_state.last_scheduled_report != report_key:
+        scheduled_msg = (
+            f"📊 รายงานคุณภาพน้ำอัตโนมัติ (ทุก 4 ชม.)\n"
+            f"📍 จุดตรวจวัด: คลองสวน\n"
+            f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
+            f"----------------------------------\n"
+            f"🧂 TDS: {tds_display}\n"
+            f"⚡ ORP: {orp_display}\n"
+            f"🧪 pH: {ph_display}\n"
+            f"🛡️ สถานะ: {'✅ ปกติ' if water_normal else '⚠️ พบข้อควรเฝ้าระวัง'}"
+        )
+        if send_line_notification(scheduled_msg):
+            st.session_state.last_scheduled_report = report_key
 
 
 # ============================================================
@@ -252,22 +304,11 @@ with st.sidebar:
     st.divider()
 
     st.subheader("📡 Sensor Status")
-    if sensor_online:
-        st.markdown('<div class="online-card">🟢 SENSOR ONLINE</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="offline-card">🔴 SENSOR OFFLINE (ไม่ได้ลงน้ำ)</div>', unsafe_allow_html=True)
-
-    st.write("")
-    if st.button("🔄 สลับสถานะ (ลงน้ำ / ไม่ได้ลงน้ำ)", use_container_width=True):
-        st.session_state.sensor_connected = not st.session_state.sensor_connected
-        if st.session_state.sensor_connected:
-            with st.spinner("กำลังเชื่อมต่อเซนเซอร์..."):
-                time.sleep(3)
-        st.rerun()
+    st.markdown('<div class="online-card">🟢 SENSOR ONLINE (กำลังทำงาน)</div>', unsafe_allow_html=True)
 
     st.divider()
     st.subheader("🕒 เวลาปัจจุบัน")
-    st.write(datetime.now(TH_TZ).strftime("%d/%m/%Y %H:%M:%S"))
+    st.write(now_th.strftime("%d/%m/%Y %H:%M:%S"))
 
 
 # ============================================================
@@ -288,7 +329,7 @@ tab1, tab2, tab3 = st.tabs([
 with tab1:
     st.caption("EEC · AGRI-WATER INTELLIGENCE")
     st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
-    st.write("📍 จุดตรวจวัดหลัก : แม่น้ำบางปะกง")
+    st.write("📍 จุดตรวจวัดหลัก : คลองสวน")
 
     st.divider()
     st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
@@ -300,9 +341,7 @@ with tab1:
 
     st.divider()
     st.subheader("🤖 สถานะคุณภาพน้ำ")
-    if not sensor_online:
-        st.info("ℹ️ เซนเซอร์ไม่ได้ลงน้ำ (สถานะออฟไลน์ - แสดงค่า Real-time เป็น `-`)")
-    elif water_normal:
+    if water_normal:
         st.success("✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ")
     else:
         if is_critical:
@@ -356,15 +395,9 @@ with tab2:
     st.title("💧 คำแนะนำการใช้น้ำและการวิเคราะห์")
     st.caption("คำแนะนำจากค่าที่ตรวจวัดได้และเกณฑ์มาตรฐาน")
 
-    if not sensor_online:
-        st.info("ℹ️ เซนเซอร์ไม่ได้ลงน้ำ (สถานะออฟไลน์ - แสดงผลวิเคราะห์จากการจำลองและเกณฑ์มาตรฐาน)")
-        display_tds = 500.0
-        display_orp = 280.0
-        display_ph = 7.2
-    else:
-        display_tds = tds_val
-        display_orp = orp_val
-        display_ph = ph_val
+    display_tds = tds_val
+    display_orp = orp_val
+    display_ph = ph_val
 
     st.subheader("📊 ผลวิเคราะห์ปัจจุบันเทียบกับเกณฑ์มาตรฐาน")
     
@@ -442,18 +475,19 @@ with tab2:
 
 
 # ============================================================
-# TAB 3: REPORT / CLUE
+# TAB 3: REPORT / CLUE (พิกัดคลองสวน)
 # ============================================================
 
 with tab3:
     st.title("📍 แจ้งเบาะแส")
-    st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ")
+    st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ (คลองสวน)")
 
     map_df = pd.DataFrame({
-        'lat': [13.689417],
-        'lon': [101.078617]
+        'lat': [STATION_LAT],
+        'lon': [STATION_LON]
     })
     st.map(map_df, zoom=14, use_container_width=True)
+    st.caption(f"📍 พิกัดจุดติดตั้งทุ่น: คลองสวน ({STATION_LAT}, {STATION_LON})")
 
     st.divider()
 
@@ -462,9 +496,9 @@ with tab3:
         report_detail = st.text_area("รายละเอียดพฤติกรรม", placeholder="กรอกรายละเอียดที่พบ...")
         c_lat, c_lon = st.columns(2)
         with c_lat:
-            report_lat = st.text_input("พิกัด GPS (ละติจูด)", value="13.689417")
+            report_lat = st.text_input("พิกัด GPS (ละติจูด)", value=str(STATION_LAT))
         with c_lon:
-            report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", value="101.078617")
+            report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", value=str(STATION_LON))
         uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
         submitted = st.form_submit_button("📤 บันทึกข้อมูลแจ้งเบาะแส", use_container_width=True)
 
