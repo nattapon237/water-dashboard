@@ -229,7 +229,7 @@ water_normal = (len(risk) == 0)
 
 
 # ============================================================
-# AUTOMATED SCHEDULERS
+# AUTOMATED SCHEDULERS (แจ้งเตือนทุก 4 ชม. + แจ้งเตือนค่าผิดปกติทุก 30 นาที)
 # ============================================================
 
 now_th = datetime.now(TH_TZ)
@@ -237,25 +237,33 @@ current_date_str = now_th.strftime("%Y-%m-%d")
 current_hour = now_th.hour
 current_minute = now_th.minute
 
-if "last_alert_time" not in st.session_state:
-    st.session_state.last_alert_time = None
+# 1. ระบบจำลองส่งแจ้งเตือนค่าผิดปกติเข้า LINE OA ทุกๆ 30 นาที
+if "last_30min_alert" not in st.session_state:
+    st.session_state.last_30min_alert = ""
 
-if is_critical:
-    if st.session_state.last_alert_time is None or (now_th - st.session_state.last_alert_time).total_seconds() > 900:
-        critical_msg = (
-            f"🚨 ⚠️ แจ้งเตือนวิกฤตคุณภาพน้ำด่วน!\n"
+if current_minute in [0, 30] or current_minute <= 1 or (current_minute >= 30 and current_minute <= 31):
+    alert_key = f"{current_date_str}_{current_hour:02d}_{'30' if current_minute >= 30 else '00'}"
+    if st.session_state.last_30min_alert != alert_key:
+        # จำลองสุ่มค่าผิดปกติโชว์เข้า LINE OA
+        sim_tds = round(random.uniform(1050.0, 1480.0), 2)
+        sim_orp = round(random.uniform(120.0, 145.0), 2)
+        sim_ph = round(random.uniform(8.60, 9.20), 2)
+        
+        abnormal_msg = (
+            f"🚨 ⚠️ แจ้งเตือนพบค่าผิดปกติในน้ำ! (ทุก 30 นาที)\n"
             f"📍 จุดตรวจวัด: คลองสวน\n"
             f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
             f"----------------------------------\n"
-            f"🧂 TDS: {tds_display}\n"
-            f"⚡ ORP: {orp_display}\n"
-            f"🧪 pH: {ph_display}\n"
-            f"⚠️ สาเหตุ:\n" + "\n".join([f"• {r}" for r in risk]) + "\n\n"
-            f"🔴 โปรดตรวจสอบระบบและพื้นที่ด่วน!"
+            f"🧂 TDS: {sim_tds:.2f} ppm (เกินเกณฑ์เฝ้าระวัง > 1,000)\n"
+            f"⚡ ORP: {sim_orp:.2f} mV (ต่ำกว่าเกณฑ์ < 150)\n"
+            f"🧪 pH: {sim_ph:.2f} (สูงเกินเกณฑ์มาตรฐาน > 8.5)\n"
+            f"----------------------------------\n"
+            f"⚠️ สถานะ: พบความผิดปกติที่อาจกระทบการเกษตร โปรดเฝ้าระวัง!"
         )
-        if send_line_notification(critical_msg):
-            st.session_state.last_alert_time = now_th
+        if send_line_notification(abnormal_msg):
+            st.session_state.last_30min_alert = alert_key
 
+# 2. รายงานสรุปอัตโนมัติทุก 4 ชั่วโมง (00:00, 04:00, 08:00, 12:00, 16:00, 20:00, 24:00)
 target_hours = [0, 4, 8, 12, 16, 20, 24]
 if "last_scheduled_report" not in st.session_state:
     st.session_state.last_scheduled_report = ""
