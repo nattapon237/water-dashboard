@@ -229,7 +229,7 @@ water_normal = (len(risk) == 0)
 
 
 # ============================================================
-# AUTOMATED SCHEDULERS (แจ้งเตือนทุก 4 ชม. + แจ้งเตือนค่าผิดปกติทุก 30 นาที)
+# AUTOMATED SCHEDULERS
 # ============================================================
 
 now_th = datetime.now(TH_TZ)
@@ -237,20 +237,19 @@ current_date_str = now_th.strftime("%Y-%m-%d")
 current_hour = now_th.hour
 current_minute = now_th.minute
 
-# 1. ระบบจำลองส่งแจ้งเตือนค่าผิดปกติเข้า LINE OA ทุกๆ 30 นาที
+# 1. ระบบจำลองส่งแจ้งเตือนค่าผิดปกติทุกๆ 30 นาที (นำคำว่า 30 นาที ออกจากข้อความแล้ว)
 if "last_30min_alert" not in st.session_state:
     st.session_state.last_30min_alert = ""
 
 if current_minute in [0, 30] or current_minute <= 1 or (current_minute >= 30 and current_minute <= 31):
     alert_key = f"{current_date_str}_{current_hour:02d}_{'30' if current_minute >= 30 else '00'}"
     if st.session_state.last_30min_alert != alert_key:
-        # จำลองสุ่มค่าผิดปกติโชว์เข้า LINE OA
         sim_tds = round(random.uniform(1050.0, 1480.0), 2)
         sim_orp = round(random.uniform(120.0, 145.0), 2)
         sim_ph = round(random.uniform(8.60, 9.20), 2)
         
         abnormal_msg = (
-            f"🚨 ⚠️ แจ้งเตือนพบค่าผิดปกติในน้ำ! (ทุก 30 นาที)\n"
+            f"🚨 ⚠️ แจ้งเตือนพบค่าผิดปกติในน้ำ!\n"
             f"📍 จุดตรวจวัด: คลองสวน\n"
             f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
             f"----------------------------------\n"
@@ -263,7 +262,7 @@ if current_minute in [0, 30] or current_minute <= 1 or (current_minute >= 30 and
         if send_line_notification(abnormal_msg):
             st.session_state.last_30min_alert = alert_key
 
-# 2. รายงานสรุปอัตโนมัติทุก 4 ชั่วโมง (00:00, 04:00, 08:00, 12:00, 16:00, 20:00, 24:00)
+# 2. รายงานสรุปอัตโนมัติทุก 4 ชั่วโมง
 target_hours = [0, 4, 8, 12, 16, 20, 24]
 if "last_scheduled_report" not in st.session_state:
     st.session_state.last_scheduled_report = ""
