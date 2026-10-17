@@ -148,7 +148,7 @@ if "sensor_initialized" not in st.session_state:
 
 
 # ============================================================
-# DATA GENERATION (RUN CONTINUOUSLY)
+# DATA GENERATION (REAL-TIME DATA)
 # ============================================================
 
 live_data = read_firebase()
@@ -170,52 +170,47 @@ ph_display = f"{ph_val:.2f}"
 
 
 # ============================================================
-# HISTORICAL DATA SETUP (ปรับช่วงวันที่ 22 - 26 ส.ค. 2569)
+# HISTORICAL DAILY SUMMARY SETUP (24 ส.ค. 2569 - 24 ก.ย. 2569)
 # ============================================================
 
-if "historical_long_df" not in st.session_state:
-    random.seed(42)
-    time_index = []
-    start_t = datetime(2026, 8, 22, 0, 0, 0)
-    end_t = datetime(2026, 8, 22, 23, 50, 0)
-    curr = start_t
-    while curr <= end_t:
-        time_index.append(curr.strftime("%H:%M"))
-        curr += timedelta(minutes=10)
-
-    records = []
-    # ปรับช่วงวันที่เป็น 22 ส.ค. ถึง 26 ส.ค. 2569
-    dates = [
-        "22 ส.ค. 2569", 
-        "23 ส.ค. 2569", 
-        "24 ส.ค. 2569", 
-        "25 ส.ค. 2569", 
-        "26 ส.ค. 2569"
-    ]
-    base_ph_pool = [6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9]
+# ล้างค่า Session state ตัวเดิมเพื่อบังคับใช้อัปเดตช่วงวันที่ใหม่
+if "historical_daily_df_v2" not in st.session_state:
+    random.seed(101)
     
-    for d_str in dates:
-        ph_shuffled = base_ph_pool.copy()
-        random.shuffle(ph_shuffled)
-        daily_ph_values = []
-        pool_idx = 0
-        for idx in range(len(time_index)):
-            if idx == 50:
-                daily_ph_values.append(8.0)
-            else:
-                daily_ph_values.append(ph_shuffled[pool_idx % len(ph_shuffled)])
-                pool_idx += 1
-        random.shuffle(daily_ph_values)
-
-        for i, t_str in enumerate(time_index):
-            records.append({
-                "เวลา": t_str,
-                "วันที่": d_str,
-                "TDS": round(random.uniform(350.0, 750.0), 1),
-                "ORP": round(random.uniform(220.0, 410.0), 1),
-                "pH": daily_ph_values[i]
-            })
-    st.session_state.historical_long_df = pd.DataFrame(records)
+    start_date = datetime(2026, 8, 24)
+    end_date = datetime(2026, 9, 24)
+    
+    daily_records = []
+    curr_date = start_date
+    
+    # กำหนดฐานและทิศทางแนวโน้มเพื่อให้เห็นการเปลี่ยนแปลงอย่างเป็นธรรมชาติในกรอบปกติ
+    base_tds = 480.0
+    base_orp = 260.0
+    base_ph = 7.10
+    
+    while curr_date <= end_date:
+        d_str = curr_date.strftime("%d/%m/%Y")
+        
+        # สุ่มค่าเปลี่ยนแปลงรายวัน (คุมไม่ให้เกินเกณฑ์)
+        base_tds += random.uniform(-15.0, 18.0)
+        base_tds = max(420.0, min(680.0, base_tds)) # คุมให้อยู่ช่วง 420-680 (เกณฑ์สูงสุด 1,000)
+        
+        base_orp += random.uniform(-12.0, 14.0)
+        base_orp = max(220.0, min(380.0, base_orp)) # คุมให้อยู่ช่วง 220-380 (เกณฑ์ปกติ 150-400)
+        
+        base_ph += random.uniform(-0.15, 0.15)
+        base_ph = max(6.60, min(7.80, base_ph))     # คุมให้อยู่ช่วง 6.6-7.8 (เกณฑ์ปกติ 6.5-8.5)
+        
+        daily_records.append({
+            "วันที่": d_str,
+            "Date_Obj": curr_date,
+            "TDS (ppm)": round(base_tds, 1),
+            "ORP (mV)": round(base_orp, 1),
+            "pH": round(base_ph, 2)
+        })
+        curr_date += timedelta(days=1)
+        
+    st.session_state.historical_daily_df_v2 = pd.DataFrame(daily_records)
 
 
 # ============================================================
@@ -248,7 +243,7 @@ water_normal = (len(risk) == 0)
 
 
 # ============================================================
-# AUTOMATED SCHEDULERS (แจ้งเตือนทันทีเมื่อผิดปกติ + ทุก 4 ชม.)
+# AUTOMATED SCHEDULERS
 # ============================================================
 
 now_th = datetime.now(TH_TZ)
@@ -354,46 +349,37 @@ with tab1:
         for item in risk: st.write("• " + item)
 
     st.divider()
-    st.subheader("📈 ข้อมูลย้อนหลังแยกตามรายวัน และแยกตามตัวแปร (ทุก 10 นาที)")
+    st.subheader("📈 แนวโน้มสรุปค่าเฉลี่ยรายวัน (24 ส.ค. 2569 – 24 ก.ย. 2569)")
+    st.caption("แสดงการเปลี่ยนแปลงสะสม 32 วันย้อนหลัง (คุมค่าให้อยู่ในเกณฑ์มาตรฐานปลอดภัย)")
     
-    df_long = st.session_state.historical_long_df
-    dates = [
-        "22 ส.ค. 2569", 
-        "23 ส.ค. 2569", 
-        "24 ส.ค. 2569", 
-        "25 ส.ค. 2569", 
-        "26 ส.ค. 2569"
-    ]
-    tab_dates = st.tabs([f"📅 วันที่ {d}" for d in dates])
-
-    for i, d_str in enumerate(dates):
-        with tab_dates[i]:
-            st.write(f"### 📊 กราฟแสดงผลประจำวันที่ {d_str}")
-            df_filtered = df_long[df_long["วันที่"] == d_str]
-            
-            st.markdown("#### 🧂 ค่า TDS (ppm)")
-            chart_tds = alt.Chart(df_filtered).mark_line(point=True, color='#f97316').encode(
-                x=alt.X('เวลา:N', title='เวลา', sort=None),
-                y=alt.Y('TDS:Q', title='TDS (ppm)', scale=alt.Scale(zero=False)),
-                tooltip=['เวลา', 'วันที่', 'TDS']
-            ).properties(height=220).interactive()
-            st.altair_chart(chart_tds, use_container_width=True)
-            
-            st.markdown("#### ⚡ ค่า ORP (mV)")
-            chart_orp = alt.Chart(df_filtered).mark_line(point=True, color='#0ea5e9').encode(
-                x=alt.X('เวลา:N', title='เวลา', sort=None),
-                y=alt.Y('ORP:Q', title='ORP (mV)', scale=alt.Scale(domain=[150, 450])),
-                tooltip=['เวลา', 'วันที่', 'ORP']
-            ).properties(height=220).interactive()
-            st.altair_chart(chart_orp, use_container_width=True)
-            
-            st.markdown("#### 🧪 ค่า pH")
-            chart_ph = alt.Chart(df_filtered).mark_line(point=True, color='#10b981').encode(
-                x=alt.X('เวลา:N', title='เวลา', sort=None),
-                y=alt.Y('pH:Q', title='pH', scale=alt.Scale(domain=[6.0, 8.5])),
-                tooltip=['เวลา', 'วันที่', 'pH']
-            ).properties(height=220).interactive()
-            st.altair_chart(chart_ph, use_container_width=True)
+    df_daily = st.session_state.historical_daily_df_v2
+    
+    # 1. กราฟสรุปค่า TDS รายวัน
+    st.markdown("#### 🧂 สรุปค่า TDS รายวัน (ppm)")
+    chart_tds_daily = alt.Chart(df_daily).mark_line(point=True, color='#f97316').encode(
+        x=alt.X('วันที่:N', title='วันที่', sort=None),
+        y=alt.Y('TDS (ppm):Q', title='TDS เฉลี่ย (ppm)', scale=alt.Scale(domain=[350, 750])),
+        tooltip=['วันที่', 'TDS (ppm)']
+    ).properties(height=240).interactive()
+    st.altair_chart(chart_tds_daily, use_container_width=True)
+    
+    # 2. กราฟสรุปค่า ORP รายวัน
+    st.markdown("#### ⚡ สรุปค่า ORP รายวัน (mV)")
+    chart_orp_daily = alt.Chart(df_daily).mark_line(point=True, color='#0ea5e9').encode(
+        x=alt.X('วันที่:N', title='วันที่', sort=None),
+        y=alt.Y('ORP (mV):Q', title='ORP เฉลี่ย (mV)', scale=alt.Scale(domain=[180, 420])),
+        tooltip=['วันที่', 'ORP (mV)']
+    ).properties(height=240).interactive()
+    st.altair_chart(chart_orp_daily, use_container_width=True)
+    
+    # 3. กราฟสรุปค่า pH รายวัน
+    st.markdown("#### 🧪 สรุปค่า pH รายวัน")
+    chart_ph_daily = alt.Chart(df_daily).mark_line(point=True, color='#10b981').encode(
+        x=alt.X('วันที่:N', title='วันที่', sort=None),
+        y=alt.Y('pH:Q', title='pH เฉลี่ย', scale=alt.Scale(domain=[6.0, 8.5])),
+        tooltip=['วันที่', 'pH']
+    ).properties(height=240).interactive()
+    st.altair_chart(chart_ph_daily, use_container_width=True)
 
 
 # ============================================================
@@ -437,109 +423,4 @@ with tab2:
             "ค่า ORP (mV)": "+200 ถึง +350", 
             "ค่า pH": "6.5 – 7.5", 
             "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชทุกชนิดเติบโตได้ดีที่สุด ไม่ส่งผลกระทบต่อรากและการดูดซึมอาหาร", 
-            "ตัวอย่างชนิดพืช": "ทุเรียน, สตรอว์เบอร์รี, กล้วยไม้, ส้ม, มะนาว, ผักสลัด"
-        },
-        {
-            "กลุ่มพืช / สถานะ": "ปลอดภัยปานกลาง (พืชทนเค็มต่ำ)", 
-            "ค่า TDS (ppm)": "450 – 1,000", 
-            "ค่า ORP (mV)": "+180 ถึง +400", 
-            "ค่า pH": "6.0 – 8.0", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "ผลผลิตอาจลดลง 10-25% หากดินระบายน้ำไม่ดีจะเกิดคราบเกลือสะสม", 
-            "ตัวอย่างชนิดพืช": "ข้าว, ข้าวโพด, อ้อย, พริก, มะเขือเทศ, กะหล่ำปลี"
-        },
-        {
-            "กลุ่มพืช / สถานะ": "เฝ้าระวัง (พืชทนเค็มปานกลาง)", 
-            "ค่า TDS (ppm)": "1,000 – 2,000", 
-            "ค่า ORP (mV)": "+150 ถึง +420", 
-            "ค่า pH": "5.5 – 8.5", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชทั่วไปใบจะเริ่มไหม้ ขอบใบแห้ง ชะงักการโต ต้องใช้กับพืชที่ทนเค็มได้ดีเท่านั้น", 
-            "ตัวอย่างชนิดพืช": "ปาล์มน้ำมัน, หม่อน, คะน้า, หน่อไม้ฝรั่ง, บรอกโคลี"
-        },
-        {
-            "กลุ่มพืช / สถานะ": "อันตราย (เฉพาะพืชทนเค็มสูง)", 
-            "ค่า TDS (ppm)": "2,000 – 3,000", 
-            "ค่า ORP (mV)": "+100 ถึง +450", 
-            "ค่า pH": "5.0 – 9.0", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชส่วนใหญ่ตาย หรือผลผลิตลดลงมากกว่า 50% รากไม่สามารถดูดน้ำได้", 
-            "ตัวอย่างชนิดพืช": "มะพร้าว, อินทผลัม, แคนตาลูป, ผักบุ้งทะเล"
-        },
-        {
-            "กลุ่มพืช / สถานะ": "วิกฤต (ไม่ควรใช้เด็ดขาด)", 
-            "ค่า TDS (ppm)": "มากกว่า 3,000", 
-            "ค่า ORP (mV)": "ต่ำกว่า +100 หรือ มากกว่า +450", 
-            "ค่า pH": "ต่ำกว่า 5.0 หรือ มากกว่า 9.0", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "น้ำเค็มเกินไป ดินจะเสียอย่างรวดเร็ว พืชทั่วไปแห้งตายทันที", 
-            "ตัวอย่างชนิดพืช": "ใช้ได้เฉพาะพืชป่าชายเลน หรือพืชทนเค็มจัดบางชนิด"
-        }
-    ])
-    st.table(salinity_criteria)
-
-    st.divider()
-    st.subheader("📚 แหล่งอ้างอิงและเกณฑ์มาตรฐาน")
-    st.markdown("""
-    - **เกณฑ์คุณภาพน้ำเพื่อการเกษตร (TDS):** ค่าความเข้มข้นของสารละลายรวมที่ไม่ควรเกิน 1,000 ppm สำหรับพืชทั่วไป
-    - **เกณฑ์ค่าความเป็นกรด-ด่าง (pH):** กรมควบคุมมลพิษ กำหนดให้น้ำผิวดินประเภทที่ 3 และ 4 มีค่า pH อยู่ในช่วง 5.0 - 9.0 และน้ำเพื่อการเกษตรควรอยู่ระหว่าง 6.5 - 8.5
-    - **เกณฑ์ค่าความต่างศักย์รีด็อกซ์ (ORP):** ค่า ORP ที่เหมาะสมในแหล่งน้ำธรรมชาติควรอยู่ระหว่าง +150 ถึง +400 mV เพื่อบ่งบอกถึงกระบวนการออกซิเดชันและคุณภาพชีวภาพที่ดี
-    """)
-
-
-# ============================================================
-# TAB 3: REPORT / CLUE
-# ============================================================
-
-with tab3:
-    st.title("📍 แจ้งเบาะแส")
-    st.caption("แจ้งข้อมูลความผิดปกติที่พบในแหล่งน้ำ (คลองสวน)")
-
-    map_df = pd.DataFrame({
-        'lat': [STATION_LAT],
-        'lon': [STATION_LON]
-    })
-    st.map(map_df, zoom=14, use_container_width=True)
-    st.caption(f"📍 พิกัดจุดติดตั้งทุ่น: คลองสวน ({STATION_LAT}, {STATION_LON})")
-
-    st.divider()
-
-    with st.form("report_form", clear_on_submit=True):
-        report_type = st.selectbox("ประเภทเหตุการณ์", ["ทิ้งขยะลงแม่น้ำ", "น้ำมีสีผิดปกติ", "น้ำมีกลิ่นผิดปกติ", "น้ำขุ่นผิดปกติ", "พบสิ่งปนเปื้อน", "พบการปล่อยน้ำเสีย", "อื่น ๆ"])
-        report_detail = st.text_area("รายละเอียดพฤติกรรม", placeholder="กรอกรายละเอียดที่พบ...")
-        c_lat, c_lon = st.columns(2)
-        with c_lat:
-            report_lat = st.text_input("พิกัด GPS (ละติจูด)", value=str(STATION_LAT))
-        with c_lon:
-            report_lon = st.text_input("พิกัด GPS (ลองจิจูด)", value=str(STATION_LON))
-        uploaded_image = st.file_uploader("🖼️ อัปโหลดรูปภาพหลักฐาน", type=["png", "jpg", "jpeg"])
-        submitted = st.form_submit_button("📤 บันทึกข้อมูลแจ้งเบาะแส", use_container_width=True)
-
-        if submitted:
-            report_time = datetime.now(TH_TZ).strftime("%d/%m/%Y %H:%M:%S")
-            detail_text = report_detail.strip() if report_detail.strip() else "ไม่ได้ระบุ"
-            maps_link = f"https://www.google.com/maps?q={report_lat},{report_lon}"
-            
-            image_text = "ไม่มีภาพ"
-            if uploaded_image is not None:
-                drive_url = upload_image_to_drive(uploaded_image)
-                if drive_url: image_text = drive_url
-
-            msg = (
-                f"🚨 แจ้งเบาะแส ({report_type})!\n"
-                f"📝 รายละเอียด: {detail_text}\n"
-                f"🌐 พิกัด GPS: {report_lat}, {report_lon}\n"
-                f"🗺️ Google Maps: {maps_link}\n"
-                f"🖼️ หลักฐาน (Drive): {image_text}\n"
-                f"⏰ เวลา: {report_time}"
-            )
-            if send_line_notification(msg):
-                st.success("✅ บันทึกข้อมูลและส่งแจ้งเตือนไปยัง LINE เรียบร้อยแล้ว")
-
-
-# ============================================================
-# FOOTER & AUTO REFRESH
-# ============================================================
-
-st.divider()
-st.caption("EEC Community Water Intelligence System")
-st.caption(f"🕒 อัปเดตล่าสุด : {datetime.now(TH_TZ).strftime('%d/%m/%Y %H:%M:%S')}")
-
-time.sleep(REFRESH_SECONDS)
-st.rerun()
+            "ตัวอย่างชนิดพืช": "ทุเรียน, สตรอว์เบอร์รี, ก
