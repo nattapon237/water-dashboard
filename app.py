@@ -173,8 +173,7 @@ ph_display = f"{ph_val:.2f}"
 # HISTORICAL DAILY SUMMARY SETUP (24 ส.ค. 2569 - 24 ก.ย. 2569)
 # ============================================================
 
-# ล้างค่า Session state ตัวเดิมเพื่อบังคับใช้อัปเดตช่วงวันที่ใหม่
-if "historical_daily_df_v2" not in st.session_state:
+if "historical_daily_df_v3" not in st.session_state:
     random.seed(101)
     
     start_date = datetime(2026, 8, 24)
@@ -183,7 +182,6 @@ if "historical_daily_df_v2" not in st.session_state:
     daily_records = []
     curr_date = start_date
     
-    # กำหนดฐานและทิศทางแนวโน้มเพื่อให้เห็นการเปลี่ยนแปลงอย่างเป็นธรรมชาติในกรอบปกติ
     base_tds = 480.0
     base_orp = 260.0
     base_ph = 7.10
@@ -191,15 +189,14 @@ if "historical_daily_df_v2" not in st.session_state:
     while curr_date <= end_date:
         d_str = curr_date.strftime("%d/%m/%Y")
         
-        # สุ่มค่าเปลี่ยนแปลงรายวัน (คุมไม่ให้เกินเกณฑ์)
         base_tds += random.uniform(-15.0, 18.0)
-        base_tds = max(420.0, min(680.0, base_tds)) # คุมให้อยู่ช่วง 420-680 (เกณฑ์สูงสุด 1,000)
+        base_tds = max(420.0, min(680.0, base_tds))
         
         base_orp += random.uniform(-12.0, 14.0)
-        base_orp = max(220.0, min(380.0, base_orp)) # คุมให้อยู่ช่วง 220-380 (เกณฑ์ปกติ 150-400)
+        base_orp = max(220.0, min(380.0, base_orp))
         
         base_ph += random.uniform(-0.15, 0.15)
-        base_ph = max(6.60, min(7.80, base_ph))     # คุมให้อยู่ช่วง 6.6-7.8 (เกณฑ์ปกติ 6.5-8.5)
+        base_ph = max(6.60, min(7.80, base_ph))
         
         daily_records.append({
             "วันที่": d_str,
@@ -210,7 +207,7 @@ if "historical_daily_df_v2" not in st.session_state:
         })
         curr_date += timedelta(days=1)
         
-    st.session_state.historical_daily_df_v2 = pd.DataFrame(daily_records)
+    st.session_state.historical_daily_df_v3 = pd.DataFrame(daily_records)
 
 
 # ============================================================
@@ -268,159 +265,4 @@ if is_critical:
             f"🔴 โปรดตรวจสอบระบบและพื้นที่ด่วน!"
         )
         if send_line_notification(critical_msg):
-            st.session_state.last_alert_time = now_th
-
-target_hours = [0, 4, 8, 12, 16, 20, 24]
-if "last_scheduled_report" not in st.session_state:
-    st.session_state.last_scheduled_report = ""
-
-check_hour = 0 if current_hour == 24 else current_hour
-if check_hour in target_hours and current_minute <= 2:
-    report_key = f"{current_date_str}_{current_hour:02d}:00"
-    if st.session_state.last_scheduled_report != report_key:
-        scheduled_msg = (
-            f"📊 รายงานคุณภาพน้ำอัตโนมัติ (ทุก 4 ชม.)\n"
-            f"📍 จุดตรวจวัด: คลองสวน\n"
-            f"⏰ เวลา: {now_th.strftime('%d/%m/%Y %H:%M:%S')}\n"
-            f"----------------------------------\n"
-            f"🧂 TDS: {tds_display}\n"
-            f"⚡ ORP: {orp_display}\n"
-            f"🧪 pH: {ph_display}\n"
-            f"🛡️ สถานะ: {'✅ ปกติ' if water_normal else '⚠️ พบข้อควรเฝ้าระวัง'}"
-        )
-        if send_line_notification(scheduled_msg):
-            st.session_state.last_scheduled_report = report_key
-
-
-# ============================================================
-# SIDEBAR
-# ============================================================
-
-with st.sidebar:
-    st.title("💧 Water Monitor")
-    st.caption("EEC Community Water")
-    st.divider()
-
-    st.subheader("📡 Sensor Status")
-    st.markdown('<div class="online-card">🟢 SENSOR ONLINE (กำลังทำงาน)</div>', unsafe_allow_html=True)
-
-    st.divider()
-    st.subheader("🕒 เวลาปัจจุบัน")
-    st.write(now_th.strftime("%d/%m/%Y %H:%M:%S"))
-
-
-# ============================================================
-# TABS
-# ============================================================
-
-tab1, tab2, tab3 = st.tabs([
-    "📊 ภาพรวมน้ำ (Dashboard)",
-    "💧 คำแนะนำการใช้น้ำ",
-    "📍 แจ้งเบาะแส"
-])
-
-
-# ============================================================
-# TAB 1: DASHBOARD
-# ============================================================
-
-with tab1:
-    st.caption("EEC · AGRI-WATER INTELLIGENCE")
-    st.title("💧 ระบบตรวจสอบคุณภาพน้ำ")
-    st.write("📍 จุดตรวจวัดหลัก : คลองสวน")
-
-    st.divider()
-    st.subheader("📡 ค่าจากเซนเซอร์แบบ Real-time")
-    
-    col1, col2, col3 = st.columns(3)
-    col1.metric("🧂 TDS", tds_display)
-    col2.metric("⚡ ORP", orp_display)
-    col3.metric("🧪 pH", ph_display)
-
-    st.divider()
-    st.subheader("🤖 สถานะคุณภาพน้ำ")
-    if water_normal:
-        st.success("✅ ค่าคุณภาพน้ำอยู่ในเกณฑ์ปกติ")
-    else:
-        if is_critical:
-            st.error("🚨 พบค่าวิกฤต (เกินเกณฑ์สีแดง)")
-        else:
-            st.warning("⚠️ พบค่าที่ควรเฝ้าระวัง")
-        for item in risk: st.write("• " + item)
-
-    st.divider()
-    st.subheader("📈 แนวโน้มสรุปค่าเฉลี่ยรายวัน (24 ส.ค. 2569 – 24 ก.ย. 2569)")
-    st.caption("แสดงการเปลี่ยนแปลงสะสม 32 วันย้อนหลัง (คุมค่าให้อยู่ในเกณฑ์มาตรฐานปลอดภัย)")
-    
-    df_daily = st.session_state.historical_daily_df_v2
-    
-    # 1. กราฟสรุปค่า TDS รายวัน
-    st.markdown("#### 🧂 สรุปค่า TDS รายวัน (ppm)")
-    chart_tds_daily = alt.Chart(df_daily).mark_line(point=True, color='#f97316').encode(
-        x=alt.X('วันที่:N', title='วันที่', sort=None),
-        y=alt.Y('TDS (ppm):Q', title='TDS เฉลี่ย (ppm)', scale=alt.Scale(domain=[350, 750])),
-        tooltip=['วันที่', 'TDS (ppm)']
-    ).properties(height=240).interactive()
-    st.altair_chart(chart_tds_daily, use_container_width=True)
-    
-    # 2. กราฟสรุปค่า ORP รายวัน
-    st.markdown("#### ⚡ สรุปค่า ORP รายวัน (mV)")
-    chart_orp_daily = alt.Chart(df_daily).mark_line(point=True, color='#0ea5e9').encode(
-        x=alt.X('วันที่:N', title='วันที่', sort=None),
-        y=alt.Y('ORP (mV):Q', title='ORP เฉลี่ย (mV)', scale=alt.Scale(domain=[180, 420])),
-        tooltip=['วันที่', 'ORP (mV)']
-    ).properties(height=240).interactive()
-    st.altair_chart(chart_orp_daily, use_container_width=True)
-    
-    # 3. กราฟสรุปค่า pH รายวัน
-    st.markdown("#### 🧪 สรุปค่า pH รายวัน")
-    chart_ph_daily = alt.Chart(df_daily).mark_line(point=True, color='#10b981').encode(
-        x=alt.X('วันที่:N', title='วันที่', sort=None),
-        y=alt.Y('pH:Q', title='pH เฉลี่ย', scale=alt.Scale(domain=[6.0, 8.5])),
-        tooltip=['วันที่', 'pH']
-    ).properties(height=240).interactive()
-    st.altair_chart(chart_ph_daily, use_container_width=True)
-
-
-# ============================================================
-# TAB 2: WATER USAGE ADVICE
-# ============================================================
-
-with tab2:
-    st.title("💧 คำแนะนำการใช้น้ำและการวิเคราะห์")
-    st.caption("คำแนะนำจากค่าที่ตรวจวัดได้และเกณฑ์มาตรฐาน")
-
-    display_tds = tds_val
-    display_orp = orp_val
-    display_ph = ph_val
-
-    st.subheader("📊 ผลวิเคราะห์ปัจจุบันเทียบกับเกณฑ์มาตรฐาน")
-    
-    if display_tds < 450:
-        st.success(f"🧂 TDS {display_tds:.2f} ppm — ปลอดภัยสูง (พืชทุกชนิดเติบโตได้ดี)")
-    elif 450 <= display_tds <= 1000:
-        st.info(f"ℹ️ TDS {display_tds:.2f} ppm — ปลอดภัยปานกลาง (เหมาะสมสำหรับการเกษตรทั่วไป)")
-    else:
-        st.warning(f"⚠️ TDS {display_tds:.2f} ppm — เฝ้าระวัง (มีความเค็มสูง อาจกระทบต่อพืชบางชนิด)")
-
-    if 150 <= display_orp <= 400:
-        st.success(f"⚡ ORP {display_orp:.2f} mV — เหมาะสม (สภาพออกซิเดชันในน้ำสมดุล)")
-    else:
-        st.warning(f"⚠️ ORP {display_orp:.2f} mV — อยู่ในเกณฑ์ต้องเฝ้าระวัง")
-
-    if 6.5 <= display_ph <= 8.5:
-        st.success(f"🧪 pH {display_ph:.2f} — เหมาะสม (ความเป็นกรด-ด่างอยู่ในเกณฑ์มาตรฐานน้ำเพื่อการเกษตร)")
-    else:
-        st.warning(f"⚠️ pH {display_ph:.2f} — อยู่นอกช่วงมาตรฐาน")
-
-    st.divider()
-    st.subheader("📌 เกณฑ์ระดับความเค็มของน้ำและกลุ่มพืชที่เหมาะสม")
-    
-    salinity_criteria = pd.DataFrame([
-        {
-            "กลุ่มพืช / สถานะ": "ปลอดภัยสูง (พืชไวต่อเกลือ)", 
-            "ค่า TDS (ppm)": "น้อยกว่า 450", 
-            "ค่า ORP (mV)": "+200 ถึง +350", 
-            "ค่า pH": "6.5 – 7.5", 
-            "กลุ่มพืชที่เหมาะสมและผลกระทบ": "พืชทุกชนิดเติบโตได้ดีที่สุด ไม่ส่งผลกระทบต่อรากและการดูดซึมอาหาร", 
-            "ตัวอย่างชนิดพืช": "ทุเรียน, สตรอว์เบอร์รี, ก
+            st
