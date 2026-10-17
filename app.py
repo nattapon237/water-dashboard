@@ -153,7 +153,6 @@ if "sensor_initialized" not in st.session_state:
 
 live_data = read_firebase()
 
-# ทำงานรันไปเรื่อยๆ อัตโนมัติ
 sensor_online = True
 time_seed = int(time.time() // 10)
 random.seed(time_seed)
@@ -171,7 +170,7 @@ ph_display = f"{ph_val:.2f}"
 
 
 # ============================================================
-# HISTORICAL DATA SETUP
+# HISTORICAL DATA SETUP (ปรับช่วงวันที่ 22 - 26 ส.ค. 2569)
 # ============================================================
 
 if "historical_long_df" not in st.session_state:
@@ -185,7 +184,14 @@ if "historical_long_df" not in st.session_state:
         curr += timedelta(minutes=10)
 
     records = []
-    dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
+    # ปรับช่วงวันที่เป็น 22 ส.ค. ถึง 26 ส.ค. 2569
+    dates = [
+        "22 ส.ค. 2569", 
+        "23 ส.ค. 2569", 
+        "24 ส.ค. 2569", 
+        "25 ส.ค. 2569", 
+        "26 ส.ค. 2569"
+    ]
     base_ph_pool = [6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9]
     
     for d_str in dates:
@@ -250,7 +256,6 @@ current_date_str = now_th.strftime("%Y-%m-%d")
 current_hour = now_th.hour
 current_minute = now_th.minute
 
-# 1. แจ้งเตือนทันทีเมื่อพบค่าวิกฤต (ป้องกันส่งซ้ำถี่เกินไปภายใน 15 นาที)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = None
 
@@ -270,12 +275,10 @@ if is_critical:
         if send_line_notification(critical_msg):
             st.session_state.last_alert_time = now_th
 
-# 2. แจ้งเตือนอัตโนมัติทุก 4 ชั่วโมง (00:00, 04:00, 08:00, 12:00, 16:00, 20:00, 24:00)
 target_hours = [0, 4, 8, 12, 16, 20, 24]
 if "last_scheduled_report" not in st.session_state:
     st.session_state.last_scheduled_report = ""
 
-# ปรับชั่วโมง 24 ให้เทียบเท่า 0 ของวันใหม่หรือจัดการเงื่อนไข
 check_hour = 0 if current_hour == 24 else current_hour
 if check_hour in target_hours and current_minute <= 2:
     report_key = f"{current_date_str}_{current_hour:02d}:00"
@@ -354,7 +357,13 @@ with tab1:
     st.subheader("📈 ข้อมูลย้อนหลังแยกตามรายวัน และแยกตามตัวแปร (ทุก 10 นาที)")
     
     df_long = st.session_state.historical_long_df
-    dates = ["22 ส.ค. 2569", "23 ส.ค. 2569", "24 ส.ค. 2569"]
+    dates = [
+        "22 ส.ค. 2569", 
+        "23 ส.ค. 2569", 
+        "24 ส.ค. 2569", 
+        "25 ส.ค. 2569", 
+        "26 ส.ค. 2569"
+    ]
     tab_dates = st.tabs([f"📅 วันที่ {d}" for d in dates])
 
     for i, d_str in enumerate(dates):
@@ -475,7 +484,7 @@ with tab2:
 
 
 # ============================================================
-# TAB 3: REPORT / CLUE (พิกัดคลองสวน)
+# TAB 3: REPORT / CLUE
 # ============================================================
 
 with tab3:
